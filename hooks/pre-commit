@@ -1,0 +1,21 @@
+#!/bin/sh
+# Installed with: git config core.hooksPath hooks  (once per clone).
+# See AGENTS.md.
+
+# no game data: nothing below game/ or build/, no program or data files
+# (the game's own: 386 ... cfg; STAGE.C, *.M and the files without an
+# extension are not caught: .c and .m would stop sources)
+pat='^(game|build)/|\.(exe|com|ovl|dll|drv|sdr|mod|s3m|xmi|voc|fli|flc|vga|pcx|lbm|ogg|gog|iso|bin|cue|dat|pak|res|386|bpc|rel|rix|mgl|fnt|mus|int|roy|fld|dlt|cfg)$'
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eiq "$pat"; then
+    echo "pre-commit: game files staged:" >&2
+    git diff --cached --name-only --diff-filter=ACMR | grep -Ei "$pat" >&2
+    exit 1
+fi
+
+# the checks, when something they depend on changed
+if git diff --cached --name-only | grep -Eq '^(src|tools|port/src/gen)/|^PROVENANCE.md$'; then
+    py=python3
+    command -v python3 >/dev/null 2>&1 || py=python
+    exec $py doskit/tools/check.py
+fi
+exit 0
