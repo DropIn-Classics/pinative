@@ -62,5 +62,8 @@ void ENTRY(void)
 
     if (SETUP_ARGS())
         return;
-    pi_stop("SVGA_CHECK");
+    SVGA_CHECK();
+    /* IRQ 1 masked at the PIC (the keyboard is read otherwise; not
+     * followed): nothing in the port's memory */
+    pi_stop("VGA_INIT");
 }

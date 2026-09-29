@@ -2193,7 +2193,13 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      through a pMAX heap of the port's, port/src/pmax.c): memory equal
      at SVGA_CHECK (see "SETUP_ARGS in a run"); the /S, /O and /R
      branches stop at SOUND_SETUP, OPTIONS_SCREEN and OPTIONS_RESET.
-   - on from SETUP_ARGS: SVGA_CHECK, the video set-up CODE:049A,
+   - done 2026-09-29: SVGA_CHECK for the VGA resolutions (its SVGA
+     branch stops the port); memory equal at VGA_INIT's first call
+     (linear 1013CAh, t=2.425942: nothing changed since SVGA_CHECK). The
+     order in ENTRY is SVGA_CHECK, IRQ 1 masked, VGA_INIT, then
+     HISCORE_INIT (OPTIONS+7 is HISCORES, see the hints).
+   - on from SVGA_CHECK: VGA_INIT (mode 13h, the CRTC, 15 retraces, a
+     block by INT 92h AH=4: vga.c, the frame wait and the pMAX heap),
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts
      already read, each compared with memcmp.py;

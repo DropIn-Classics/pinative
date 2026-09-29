@@ -22,5 +22,7 @@ void pi_exit_text(const char *text);
 void ENTRY(void);
 /* CODE:32F39: 1 (CF) when the program is to end */
 int SETUP_ARGS(void);
+/* CODE:0753 */
+void SVGA_CHECK(void);
 
 #endif

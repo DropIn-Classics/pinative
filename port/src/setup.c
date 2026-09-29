@@ -1,6 +1,6 @@
 /* setup.c - SETUP_ARGS (CODE:32F39): the language of SETSOUND.DAT's texts
  * and the command line's options, the sound set-up and the options screen
- * when asked for (not translated yet: the port stops there).
+ * when asked for (not translated yet: the port stops there); SVGA_CHECK.
  */
 #include <stdio.h>
 #include "game.h"
@@ -94,4 +94,16 @@ done:
     }
     SETSOUND_FREE();
     return 0;
+}
+
+/* CODE:0753: the SVGA mode checked and found for OPT_RESOLUTION 1 and 2;
+ * nothing for VGA (0, 3) */
+void SVGA_CHECK(void)
+{
+    uint8_t r = rb(N_OPT_RESOLUTION);
+
+    if (r == 0 || r == 3)
+        return;
+    /* INT 10h with OPT_SVGA_MODE, CODE:0649, SVGA_FIND, INT 94h AH=6 */
+    pi_stop("SVGA_CHECK's SVGA modes");
 }

@@ -14,8 +14,9 @@ archive as tools/illfiles.py reads it) and loads it into doskit's
 `pmem.h` memory as pMAX does (src/image.c: linear 100F30h, selector 1Ch;
 the SHA-256 of src/gen/names.h checked). Translated: ENTRY and
 SETUP_ARGS (src/entry.c, src/setup.c; the configuration file and
-SETSOUND.DAT through src/pmax.c, in place of pMAX's services), up to
-SVGA_CHECK, where the port stops (`Stopped before SVGA_CHECK`); `-opt o`,
+SETSOUND.DAT through src/pmax.c, in place of pMAX's services) and
+SVGA_CHECK for VGA, up to VGA_INIT, where the port stops (`Stopped
+before VGA_INIT`); `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
@@ -53,4 +54,6 @@ headless build writes the pictures `DK_SHOTS` names, as
   GOG `ILLUSION.CFG`: CODE and TAIL 0 bytes differ, and SETSOUND.DAT at
   the same linear address (1473C0h) in both; `-opt ?` the original's
   help text (docs/HANDOFF.md, "SETUP_ARGS in a run").
+- 2026-09-29, Linux: at VGA_INIT's first call (dosrun `-break
+  1013CA#1 -mem`): CODE and TAIL 0 bytes differ.
 - Not built with MSVC (build.bat changed alike) or on macOS since.
