@@ -21,7 +21,8 @@ the command-line options and Esc are found (see "The self-patched call
 in a run", the end, and "Esc"); a jingle requested in a run (see "A
 jingle in a run"); what each option does in a game (see "The options");
 the jingle's effect in the WAV, and the runner's breakpoints no longer
-change a run (see "The jingle in the WAV").
+change a run (see "The jingle in the WAV"); a jingle alone, which
+stops the module's music for its 1.78 s (see "The jingle alone").
 
 ## The earlier analysis
 
@@ -1039,6 +1040,48 @@ a little otherwise than without them; their findings are what the
 code did in those runs, the timings to the millisecond perhaps not
 what a run without looking gives.
 
+### The jingle alone
+
+Runs of 2026-09-29, on macOS, doskit 69b5070 (the keys and the Mac
+layout of "The jingle in the WAV", `-until 150`, `-wav`; 21 s each). To
+hear a jingle without changing the play, the poke wrote the request
+itself, record 11F15h's words, where MUSIC_REQUEST puts them: at the
+700th call of CODE:14DE2 `CODE:F5C6 "0E 00 01 00"` (order index 0Eh,
+module slot 1), at the 701st `CODE:F5C2 "03 00"` (the request, word +2;
+in linear addresses, base 100F30h). Not written: MUSIC_NEXT and
+CODE:CB97 (the record's track 0 and its byte +0Ah, not looked at).
+A control run without the pokes.
+
+- CODE:9EBA (command 0Ah) at t=140.071, once; the control run has none.
+  Both runs have the same MUSIC_REQUEST and CODE:9EDB calls at t=136.01
+  and 138.30, the same shots at t=139 and 145 (byte for byte) and the
+  same VRAM hash at t=150: the play is not changed; the RAM hashes
+  differ (the sound's state, presumably, not compared).
+- The WAVs are the same up to t=140.119, 48 ms after the command.
+  Loudness per 0.25 s from there: 4836, 3355, 1391, ... against 2145,
+  1844, 1601, and near silence at t=141.62 (75 against 1785): the
+  numbers of the award run of "The jingle in the WAV" (4877, 3167, the
+  silence at 141.74), so the difference there was the jingle, not the
+  award.
+- After it the music is the control run's, 1.78 s late: the loudness
+  per 10 ms from t=142 to 150 correlates 0.895 with the control run's
+  shifted by 1.78 s, 0.017 unshifted (the same for 142-146 and
+  146-150); not sample for sample (no exact match within 4 s). So the
+  jingle takes the module's place and the module goes on from where it
+  stopped, as docs/audio-driver.md read from the driver (command 0Ah
+  keeps the module's position for later).
+- The jingle's length from the data: order 0Eh of table 1's
+  `MUSIC2.MOD` is pattern 14, speed 4 (F04) for rows 0-5, 1 (F01) for
+  row 6, 4 from row 7, and at row 22 B0Eh, a jump to its own order: 24
+  + 1 + 64 = 89 ticks, 1.78 s at 50 Hz (the default tempo; the
+  pattern sets none). The patterns at orders 0Dh, 0Fh, 10h also end
+  with a jump to their own order (B0Dh, B0Fh, B10h), so that jump ends
+  a jingle, presumably (the driver's code at +1576h not read for it).
+
+Not listened to. The CD is not in the WAV (the runner keeps its plays
+on the clock only), so bit 2 of CODE:CB97 (the CD's volume 0 before a
+jingle) is not seen.
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
@@ -1160,10 +1203,11 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix
      (see "The jingle in the WAV"; the runner's breakpoints fixed on
-     the way). Open from it: the WAV listened to; the jingle alone (a
-     run that requests record 11F15h without changing the play, e.g. a
-     poke of the request itself); what the number in a record's
-     positive word +2 means.
+     the way). Open from it: the WAV listened to; what the number in a
+     record's positive word +2 means. Done 2026-09-29: the jingle alone
+     (see "The jingle alone": it takes the module music's place for
+     1.78 s, the module goes on after it). Open from it: how the driver
+     ends a jingle (a jump to its own order, presumably).
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
