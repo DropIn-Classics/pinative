@@ -1,9 +1,11 @@
 /* sound.c - CHOOSER_LOAD (CODE:757D) and SOUND_START (CODE:7082): the CD
  * checked, the sound driver loaded and started.
  */
+#include <string.h>
 #include "game.h"
 #include "image.h"
 #include "names.h"
+#include "nosound.h"
 #include "pmax.h"
 #include "pmem.h"
 
@@ -20,6 +22,7 @@ static void CALLBACKS_CS(void)
 static int SOUND_START(void)
 {
     uint16_t sel;
+    NsRegs r;
 
     if (CD_INSTALLED() != 0)
         pi_stop("SOUND_START: no CD (CODE:716A)");
@@ -42,8 +45,17 @@ static int SOUND_START(void)
     ww(N_DRIVER_ENTRY + 4, pmax_alias(sel));
     CALLBACKS_CS();
 
-    /* command 0 (FS:EDI the callbacks, ES:EBX the header, DS the driver) */
-    pi_stop("SOUND_START: the driver's command 0");
+    /* command 0: FS:EDI the callbacks, ES:EBX the header, DS the driver */
+    memset(&r, 0, sizeof r);
+    r.fs = r.es = pi_image.desc[ILLUSION_CODE].sel;
+    r.edi = N_HOST_CALLBACKS;
+    r.ebx = N_DRIVER_CFG;
+    r.ds = rw(N_DRIVER_SEL);
+    if (ns_call(rw(N_DRIVER_ENTRY + 4), &r))
+        pi_stop("SOUND_START: the driver failed (CODE:7152)");
+
+    /* command 4: intro\MOD.INT into slot 0 */
+    pi_stop("SOUND_START: the driver's command 4");
     return 0;
 }
 

@@ -2108,6 +2108,32 @@ AH=1 gets in ESI). The port (the lowest free selector, 14h, 1Ch, 24h and
 48h taken) gives the same 4 and 0Ch; its memory is equal there, the
 driver's block included (port/README.md, "Checked").
 
+### The driver's command 0 in a run
+
+The same run stopped after command 0 (CODE:7124, linear 108054h,
+t=2.766845; `-intwatch 92`, `-mem` build/pm/ns_7124.mem). NOSOUND's
+command 0 (names in src/NOSOUND.hints) keeps DS, ES:EBX and FS:EDI,
+saves ports 61h, 21h and A1h (30h, BAh, FFh: dosrun's answers), then:
+
+- CHAN_BUF_ALLOC: host callback 0, 800h bytes, selector 2Ch, header
+  at 14A8C0h (after the driver's 3500h bytes), the data cleared; the
+  selector also into +0Ah of four 3Bh-byte records at CODE:2C3A;
+- BUFFERS_ALLOC: MIX_RATE AC44h (44100, from the file) / 50 = 372h,
+  twice that 6E4h, times NBUF 3: A56h and a DMA buffer of 14ACh bytes;
+- DMA_ALLOC: host callback 1 (INT 92h AH=8 BL=2 around AH=0Ah) gives
+  selector 34h at linear 13120h, DOS memory, not in the heap's chain;
+  it does not cross a 64 KB line, so no filler; cleared;
+- VOLTAB_MAKE: 8202h bytes ("Volume table") at selector 3Ch, header at
+  14B0D0h: 41h rows of 100h words, row v entry b = (signed b) * v.
+
+So pMAX's selectors went 4, 0Ch, 2Ch, 34h, 3Ch: the lowest free, with
+14h, 1Ch, 24h taken. The heap chain after it: 1532F0h, the free rest
+to FEFFF0h. The port (port/src/nosound.c, hostcb.c) leaves the image,
+the driver's block and the three new blocks equal; what else differs in
+the whole memory is pMAX's own (below the image, the block headers, and
+bytes near the top of memory the run left there before the image was
+loaded, presumably pMAX's unpacking; not looked into).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2276,11 +2302,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      since doskit's `bin` kind), compared with NOSOUND runs; real sound
      later. Done 2026-09-29: the driver loaded (the port always loads
      NOSOUND.SDR), INT 93h AH=8's alias (0Ch), CALLBACKS_CS; memory
-     equal at CODE:711D (see "The driver loaded, in a run"). Next:
-     NOSOUND's command 0
-     (CODE:09F0: CODE:10BB, 137A = host callback 0 of 800h bytes, 11C6 and
-     1214 = the DMA buffer through callbacks 1, 3, 2, 053D = its own INT
-     92h of 8202h bytes) and command 4 (CODE:1C28, the MOD loader).
+     equal at CODE:711D (see "The driver loaded, in a run"). Done
+     2026-09-29: NOSOUND's command 0 (port/src/nosound.c; see "The
+     driver's command 0 in a run"). Next: NOSOUND's command 4
+     (CODE:1C28, the MOD loader), with host callbacks 6 to 9 and pMAX's
+     allocation from the top (policy 1), which port/src/pmax.c stops at.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

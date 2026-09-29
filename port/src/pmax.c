@@ -1,6 +1,7 @@
 /* pmax.c - see pmax.h */
 #include <stdlib.h>
 #include <string.h>
+#include "game.h"
 #include "image.h"
 #include "pmax.h"
 #include "pmem.h"
@@ -76,8 +77,11 @@ int pmax_cfg_header(uint32_t off)
  * image's end + 10h, after a 10h-byte header (docs/HANDOFF.md, "SETUP_ARGS
  * in a run", "The CD check and the driver's start in a run").  The port
  * puts its blocks there too, first fit from the bottom, each after 10h
- * bytes and on 16 bytes.  Allocations from the top (policy 2) and DOS
- * memory are not done yet.  The headers themselves are pMAX's and not
+ * bytes and on 16 bytes.  With policy 2 (INT 92h AH=8 BL=2) a block comes
+ * from DOS memory: in the run the first at linear 13120h (docs/HANDOFF.md,
+ * "The driver's command 0 in a run"); the port puts the next ones after
+ * it the same way, not checked.  Policy 1 (from the top, MOD.INT at
+ * FA8060h) is not done yet.  The headers themselves are pMAX's and not
  * written.
  *
  * Selectors: the lowest free of 04h, 0Ch, 14h ... (steps of 8), with 14h
@@ -87,7 +91,11 @@ int pmax_cfg_header(uint32_t off)
 #define MAX_BLOCKS 64
 #define MAX_SELS 256
 
+#define LOW_START 0x13120u
+#define LOW_END 0xA0000u
+
 static struct { uint32_t base, size; uint16_t sel; int used; } blocks[MAX_BLOCKS];
+static uint8_t policy;
 static struct { uint32_t base; int used; } sels[MAX_SELS];
 
 static void sels_init(void)
@@ -117,8 +125,15 @@ static uint16_t sel_new(uint32_t base)
 
 static uint32_t block_alloc(uint32_t size, uint16_t *sel)
 {
-    uint32_t at = (pi_image.base + pi_image.alloc + 0x10 + 15) & ~15u;
+    uint32_t at = (pi_image.base + pi_image.alloc + 0x10 + 15) & ~15u, end = PM_SIZE;
     int k, free_slot = -1;
+
+    if (policy == 2) {
+        at = LOW_START;
+        end = LOW_END;
+    } else if (policy != 0) {
+        pi_stop("pMAX: an allocation with policy 1 (from the top)");
+    }
 
     /* the lowest address after every block in use that the new one fits
      * before the next (first fit over the used blocks, by address) */
@@ -136,7 +151,7 @@ static uint32_t block_alloc(uint32_t size, uint16_t *sel)
     for (k = 0; k < MAX_BLOCKS && free_slot < 0; k++)
         if (!blocks[k].used)
             free_slot = k;
-    if (free_slot < 0 || (uint64_t)at + size > PM_SIZE || !(*sel = sel_new(at)))
+    if (free_slot < 0 || (uint64_t)at + size > end || !(*sel = sel_new(at)))
         return 0;
     blocks[free_slot].base = at;
     blocks[free_slot].size = size;
@@ -166,6 +181,11 @@ uint16_t pmax_alloc(uint32_t size)
 {
     uint16_t sel = 0;
     return block_alloc(size, &sel) ? sel : 0;
+}
+
+void pmax_policy(uint8_t bl)
+{
+    policy = bl;
 }
 
 uint16_t pmax_alias(uint16_t sel)

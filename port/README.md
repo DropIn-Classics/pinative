@@ -17,10 +17,11 @@ SETUP_ARGS (src/entry.c, src/setup.c; the configuration file and
 SETSOUND.DAT through src/pmax.c, in place of pMAX's services) and
 SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
 (src/video.c), CHOOSER_LOAD's start and SOUND_START (src/sound.c; the
-CD check in src/cd.c) up to the sound driver's command 0 at CODE:711D,
-where the port stops (`Stopped before SOUND_START: the driver's command
-0`). The port loads NOSOUND.SDR, the silent driver, whatever driver the
-configuration names; `-opt o`,
+CD check in src/cd.c) and the sound driver's command 0 (src/nosound.c,
+NOSOUND.SDR's command in C; the host callbacks it calls in
+src/hostcb.c), up to its command 4 at CODE:7138, where the port stops
+(`Stopped before SOUND_START: the driver's command 4`). The port loads
+NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
@@ -67,4 +68,9 @@ headless build writes the pictures `DK_SHOTS` names, as
   10804D#1 -mem`, NOSOUND.SDR in the configuration header): CODE and
   TAIL 0 bytes differ, and the driver's block at 1473C0h (memcmp.py
   src/NOSOUND.hints ... --base 1473C0) 0 bytes differ.
+- 2026-09-29, Linux: after the driver's command 0 (dosrun `-break
+  108054#1 -mem`, NOSOUND.SDR): CODE, TAIL and the driver's block 0
+  bytes differ, and the three blocks it allocates (800h bytes at
+  14A8D0h, the DMA buffer at 13120h, the volume table at 14B0E0h)
+  equal byte for byte.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

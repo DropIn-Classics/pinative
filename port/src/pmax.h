@@ -41,6 +41,11 @@ uint16_t pmax_load(const char *name);
 /* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
  * or 0 when there is no room */
 uint16_t pmax_alloc(uint32_t size);
+/* INT 92h AH=8: the allocation policy (0 from the bottom of the heap, 1
+ * from its top, 2 DOS memory); pmax_load and pmax_alloc follow it.  INT
+ * 92h AH=0Ah (a block with a name) is pmax_alloc: the name goes only into
+ * pMAX's header. */
+void pmax_policy(uint8_t bl);
 /* INT 93h AH=8: a second selector for the block of `sel` (the driver's
  * code selector, DX 409Ah); 0 when there is none */
 uint16_t pmax_alias(uint16_t sel);

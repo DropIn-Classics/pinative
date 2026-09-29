@@ -9,3 +9,34 @@ words      CODE:09A4 13 CODE       ; commands 00h..12h (docs/audio-driver.md, th
 name       CODE:09A4 CMDS
 code       CODE:09F0 CMD_INIT      ; command 0
 code       CODE:0D2B CMD_LOAD_MODULE ; command 4: a module into slot BL from ES:EDX
+code       CODE:10BB PORTS_SAVE    ; ports 61h, 21h, A1h to SAVED_61, SAVED_IMR1, SAVED_IMR2; IRQ_MASK1, IRQ_MASK2 FFh
+name       CODE:2D4A SAVED_IMR1    ; port 21h at command 0 (run 2026-09-29: BAh)
+name       CODE:2D4B SAVED_IMR2    ; port A1h (run: FFh)
+name       CODE:2D4C SAVED_61      ; port 61h (run: 30h)
+name       CODE:10DF IRQ_MASK1     ; the master PIC's mask the driver keeps (FFh: all masked)
+name       CODE:10E0 IRQ_MASK2     ; the slave's
+name       CODE:2D54 DRV_DS        ; DS at command 0, the driver's own block (run: 4); DISPATCH loads it for the other commands
+name       CODE:2D56 HOST_CFG      ; EBX and ES at command 0: the configuration header (DRIVER_CFG); the selector at CODE:2D5A
+name       CODE:2D5C HOST_CB_SEL   ; FS at command 0: the host callbacks' table; its offset (EDI) at HOST_CB_OFF
+name       CODE:2D5E HOST_CB_OFF
+name       CODE:2D62 INITED        ; FFh after command 0 (a second command 0 fails); cleared by command 0Bh
+name       CODE:2D63 PLAYING       ; FFh after command 1 (presumably the output started; not followed)
+name       CODE:0D0D CMD11_PTR     ; a far pointer from command 11h (ES:EDX), FFFFFFFFh after command 0; the selector at CODE:0D11
+code       CODE:137A CHAN_BUF_ALLOC ; 800h bytes by host callback 0, cleared, their selector to CHAN_BUF_SEL and to +0Ah of the four CHANNELS records
+name       CODE:327C CHAN_BUF_SEL  ; run 2026-09-29: 2Ch
+name       CODE:2C3A CHANNELS      ; four records of 3Bh bytes (what they hold not followed)
+code       CODE:06FD DEV_INIT      ; the device's part of command 0: for NOSOUND only BUFFERS_ALLOC
+code       CODE:11C6 BUFFERS_ALLOC ; FRAME_BYTES = MIX_RATE / 50 and the sizes from it; DMA_ALLOC, VOLTAB_MAKE
+name       CODE:326C MIX_RATE      ; AC44h (44100) in the file, not changed by command 0
+name       CODE:3262 NBUF          ; 3 in the file; command 1 sets it from CX (2..0Fh)
+name       CODE:326E FRAME_BYTES   ; MIX_RATE / 50 (run: 372h)
+name       CODE:3270 FRAME_BYTES2  ; twice FRAME_BYTES (run: 6E4h)
+name       CODE:3272 MIX_SIZE      ; FRAME_BYTES * NBUF (run: A56h)
+name       CODE:3274 DMA_SIZE      ; FRAME_BYTES2 * NBUF (run: 14ACh)
+code       CODE:1214 DMA_ALLOC     ; DMA_SIZE bytes by host callback 1, its linear base by callback 3; one that crosses a 64 KB line is freed, a filler up to the line allocated (DMA_FILLER_SEL), the buffer again, the filler freed; the buffer cleared, its selector to DMA_SEL and its base to DMA_LINEAR
+name       CODE:325E DMA_SEL       ; run: 34h
+name       CODE:3266 DMA_LINEAR    ; run: 13120h
+name       CODE:21A0 DMA_FILLER_SEL
+code       CODE:053D VOLTAB_MAKE   ; 8202h bytes by INT 92h AH=0Ah ("Volume table"), selector to VOLTAB_SEL: 41h rows of 100h words, row v entry b = (signed b) * v
+name       CODE:327E VOLTAB_SEL    ; run: 3Ch
+name       CODE:0956 RESULT        ; EAX a command returns through CODE:095A (CF clear) or CODE:0988 (CF set)

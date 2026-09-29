@@ -34,4 +34,10 @@ int CD_INSTALLED(void);
 void CD_LOCK(uint8_t bl);
 int CD_READ_TOC(void);
 
+/* hostcb.c: the host callbacks; 1 for CF */
+int HCB_ALLOC(uint32_t size, uint16_t *bx);
+int HCB_ALLOC_LOW(uint32_t size, uint16_t *bx);
+void HCB_FREE(uint16_t bx);
+uint32_t HCB_LINEAR(uint16_t bx);
+
 #endif

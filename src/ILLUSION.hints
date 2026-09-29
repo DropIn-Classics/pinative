@@ -71,6 +71,19 @@ name       CODE:6360 DRIVER_CFG    ; the configuration header again (INT 94h AH=
 name       CODE:8134 DRIVER_ENTRY  ; a far pointer: offset 0, the selector INT 93h AH=8 makes of DRIVER_SEL (run: 0Ch)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0
 code       CODE:61D9 CALLBACKS_CS  ; each selector word of HOST_CALLBACKS set to CS
+code       CODE:6244 HCB_ALLOC     ; host callback 0: EBX bytes by INT 92h AH=0Ah (the name "Used by MS32"), the selector in BX (run 2026-09-29: NOSOUND's 800h bytes got 2Ch)
+code       CODE:61ED HCB_ALLOC_LOW ; host callback 1: the same with INT 92h AH=8 BL=2 around it (run: NOSOUND's 14ACh-byte DMA buffer got 34h at linear 13120h, DOS memory)
+code       CODE:6234 HCB_FREE      ; host callback 2: the selector in BX freed (INT 92h AH=5)
+code       CODE:626D HCB_LINEAR    ; host callback 3: the linear base of selector BX in EBX (INT 93h AH=0Bh)
+code       CODE:627B HCB_GETVEC    ; host callback 4: INT 93h AH=3 (a protected-mode vector, docs/audio-driver.md)
+code       CODE:6280 HCB_SETVEC    ; host callback 5: INT 93h AH=4
+code       CODE:6285 HCB_LOAD      ; host callback 6: the file named at DS:EBX loaded by INT 94h AH=1 with INT 92h AH=8 BL=1 around it; its selector to HCB_FILE_SEL, HCB_CURSOR 0
+code       CODE:62EE HCB_READ      ; host callback 7: ECX bytes from HCB_FILE_SEL:HCB_CURSOR to ES:EDI, the cursor moved on
+code       CODE:6318 HCB_UNLOAD    ; host callback 8: HCB_FILE_SEL freed
+code       CODE:632E HCB_SEEK      ; host callback 9: HCB_CURSOR = EDX
+code       CODE:633F HCB_FLATSEL   ; host callback 10: INT 93h AH=0Ch's selector in BX
+name       CODE:61D3 HCB_CURSOR    ; the offset HCB_READ copies from
+name       CODE:61D7 HCB_FILE_SEL  ; the selector of HCB_LOAD's file
 code       CODE:35B52 CD_INSTALLED ; INT 2Fh AX=1500h: CF when no CD drive; the first drive to CD_DRIVE, INT 93h AH=13h's real-mode segment to CD_IOCTL+10h
 code       CODE:35B7D CD_LOCK      ; IOCTL output (0Ch) with the control block CODE:35EFF (code 1: lock or unlock the door, BL to CODE:35F00; run: BL 1)
 code       CODE:35C58 CD_READ_TOC  ; IOCTL input (3): audio disk info (0Ah, the first and last track), then track info (0Bh) for each, its start to CD_TRACK_START; CF on an error (an error 0Fh tried once more)
