@@ -45,7 +45,7 @@ selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
 left (see "The Info page and the greetings page"); table 1's shooting
 game on the display (see "Table 1's shooting game in a run"); table 4's
-sea game, in part (see "Table 4's sea game in a run").
+sea game, but for its drawing (see "Table 4's sea game in a run").
 
 ## The earlier analysis
 
@@ -917,8 +917,8 @@ records" and "Table 2's music chooser"; in short:
   so tools/event_streams.py does not list them.
 
 Open from it: table 1's opcode-14h object (done 2026-09-29, see
-"Table 1's shooting game in a run") and table 4's (done 2026-09-29, in
-part, see "Table 4's sea game in a run"); slot 41's lamps (the list at module 994Ah by the
+"Table 1's shooting game in a run") and table 4's (done 2026-09-29, but
+for its drawing, see "Table 4's sea game in a run"); slot 41's lamps (the list at module 994Ah by the
 player's word +12h) not checked. The run of the chooser: next section.
 
 ### Table 2's chooser in a run
@@ -1822,8 +1822,9 @@ Found 2026-09-29, on Linux, from table 4's module (read in part) and runs
 (`build/vm4/`; the details in docs/bpc-module.md, "Table 4's sea game").
 Table 4's opcode-14h object (module 97E5h) is a boat on the display,
 steered with the flippers past rocks; bonuses pay 5,000,000 or
-10,000,000; Enter, once a game, clears the rocks and gives 150 frames
-of immunity; a crash ends the game with "ITEM COLLECTED / FISH".
+10,000,000, the sixteenth is the extra ball and ends the game; Enter,
+once a game, clears the rocks and for 150 frames no new ones come; a
+crash ends the game with "ITEM COLLECTED / FISH".
 
 - Keys to table 4 with `-put` of the GOG configuration: `106 space`,
   Down at 110, 110.5, 111, `112 enter` (the list is up already after
@@ -1842,9 +1843,29 @@ of immunity; a crash ends the game with "ITEM COLLECTED / FISH".
   for the boat at 146; a bonus (9F68h) at 148.51, the player's score
   byte +7 from 0 to 5 (5,000,000); the later Enters did nothing; the
   crash at 159.47, "ITEM COLLECTED" and "FISH" with a picture at 161.
-- Not run or not read: 9F1Dh (the extra ball and the end without a
-  crash) and A053h (10,000,000) were never reached; which flipper
-  steers which way; how the course makes rows; what ACB9h is.
+- Read later the same day (docs/bpc-module.md, "Table 4's sea game",
+  rewritten): how rows are made (eight columns, a kind and a row each),
+  the course (a step on only per bonus: 8 x 5,000,000, 7 x 10,000,000,
+  then the extra ball), the random number (the PIT's counter 0 in it),
+  the steering, the arrow to a bonus. Corrected: immunity stops new
+  rocks, it does not stop a crash.
+- Runs (`build/vm4b/`, the same keys and pokes; module x is linear
+  29D3C0h + x): a 10,000,000 bonus put in the boat's column at the
+  first update (`-poke 2A6C38#1 2A807B 4E`: column 1, row 14): A053h
+  at 141.89 (the fifth frame), the player's score byte +7 from 00 to
+  10 in the same frame; a random 5,000,000 bonus (9F68h) at 144.62
+  with no key pressed; the course index 8 at the end. The extra ball
+  (`... 2A807B 6E`): 9F1Dh at 141.89, the update not called again,
+  "EXTRA BALL" on the display at 142.5 and 144, no crash, 9C44h not
+  reached. Steering (ACCCh..ACD3h dumped every 0.05 s, left flipper at
+  142.3, right at 143.0 and 143.6): lane 0 to 7 at once at 142.35, the
+  position 70h down by 4 a frame to 0 by 142.75; the right: the
+  position up from 0Ch to 7Ch and the lane 7 to 0 at 143.50, again 0
+  to 1 at 144.05; the scroll +2 a frame, a row every 4 frames; the
+  crash (9EC8h) at 145.07.
+- Not run: the rows at speed 8, immunity after Enter against a rock
+  already there, the arrow on the screen; the pictures and the rest of
+  the drawing are not read.
 
 ### The GOG release on the Mac
 
@@ -1947,7 +1968,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
      objects (table 1's done 2026-09-29, see "Table 1's shooting game
-     in a run"; table 4's in part, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
+     in a run"; table 4's but for its drawing, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix

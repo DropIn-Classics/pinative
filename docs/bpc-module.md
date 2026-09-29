@@ -274,11 +274,12 @@ in the crosshair's window is shot when it aims.
 
 ## Table 4's sea game
 
-Found 2026-09-29 from table 4's module and runs (docs/HANDOFF.md,
-"Table 4's sea game in a run"); read in part only. The opcode-`0x14`
-object at `0x97E5` (start `0x97ED`, update `0x9878`, code up to about
-`0xB1F3`) is a boat on the display that the flippers steer past rocks,
-picking up bonuses.
+Found 2026-09-29 from table 4's module (a throwaway capstone script with
+the relocations marked) and runs (docs/HANDOFF.md, "Table 4's sea game
+in a run"). The opcode-`0x14` object at `0x97E5` (start `0x97ED`, update
+`0x9878`, code up to about `0xB1F3`) is a boat on the display that the
+flippers steer past rocks, picking up bonuses. Not read: the drawing
+routines (`0xA16E`, `0xA3EC`, `0xAF4D`, `0xB0FA` and what they call).
 
 - It is run by mode stream `0x8F72` (the mode of counter `0x5F60`'s
   threshold 2, stream `0x6008`): music `0x195D5`, display `0x9022`
@@ -289,47 +290,94 @@ picking up bonuses.
   27's stream at the serve and by this mode); record `0x5EA2` (handler
   `0x16`) starts the threshold's mode when zone `0x33FF`'s stream
   (`0x4644`) takes it lit, as table 1's `0x4362` does.
-- State, from `0xACB8` (bytes unless said): `+0` a bonus shown (`0xFF`),
-  `+2`.. seven objects, one byte each (what they are in the high nibble, presumably),
-  `0xACCA` a frame count, `0xACCB` frames of immunity, `0xACCC` the
-  speed, `0xACD0` (word) the scroll, modulo `0x200`, `0xACD2` the boat's
-  lane 0..7 (word), `0xACD3` its position within the lane, `0xACD4` the
-  index into the course at `0xACFA` (4 bytes a step: the frames to the
-  next row `0xACD9`, the speed, ?, `0xACD5`), `0xACD8` Enter used
-  (`0xFF`), `0xACE4` the end flag, `0xACE5` and `0xACE6` a running
-  script (a frame count and a pointer).
-- Start: the objects cleared, `0xACD8`, `0xACB8`, `0xACE4` 0,
-  `0xACD9` 1, the first picture; the host vector kept for the update.
-  State `+0xF1` (the last key) is not cleared, so an Enter still there
-  from the serve counts at once (seen in a run).
+- State (bytes unless said): `0xACB6` (word) which arrow to draw, see
+  below; `0xACB8` `0xFF` while a bonus is on the water; `0xACB9` column
+  7's object as it was before the last row; `0xACBA`..`0xACC1` the eight
+  columns, one object each: the high nibble its kind (0 a rock, 2 a
+  5,000,000 bonus, 4 a 10,000,000 bonus, 6 the extra ball), the low
+  nibble its row 1..15 down the water, 0 an empty column; `0xACC2`..
+  `0xACC9` held a copy of them in a run (who writes it not looked at);
+  `0xACCA` a frame count; `0xACCB` frames of immunity; `0xACCC` the
+  speed; `0xACCD` the running move's step (signed); `0xACCE` (dword)
+  the row count; `0xACD0` (word) the scroll, modulo `0x200`; `0xACD2`
+  the boat's lane 0..7; `0xACD3` its position 0..`0x7F` in a move;
+  `0xACD4` the index into the course at `0xACFA`; `0xACD5` the course
+  step's bonus kind; `0xACD6` (word) the random number; `0xACD8` Enter
+  used (`0xFF`); `0xACD9` frames to the next row; `0xACE4` the end
+  flag; `0xACE5` and `0xACE6` a running script (a frame count and a
+  pointer).
+- Start: the 28 bytes from `0xACBA` cleared (the columns up to
+  `0xACD5`: lane 0, course step 0), `0xACD8`, `0xACB8`, `0xACE4` 0,
+  `0xACD9` 1, the random number stirred; the host vector kept for the
+  update. `0xACD6` is not cleared. State `+0xF1` (the last key) is not
+  cleared either, so an Enter still there from the serve counts at once
+  (seen in a run).
+- The random number (`0xA27B`, at the start and every frame): `0xACD6`
+  plus the PIT's counter 0 (latched and read at port `0x40`), then
+  `ADC` of itself, `XOR` the word at `0xACBA`, plus the row count. So
+  the rocks come from the timer; in the runner, whose PIT keeps the
+  emulated clock, a run repeats.
 - Update, once a frame: while a script runs, its next step (`0x9A20`:
   a picture a step, the script's routine at the end); else Enter
   (state `+0xF1` = `0x1C`) the first time: script `0x9A88` (24 frames a
   step), audio record `0x1953D`; else the frame: immunity counted down,
-  the scroll moved by half the speed, the flippers steer (`0xA2E1`:
-  state `+0x2A7B`, `+0x2A7C`, the lane changed in steps of the speed),
-  a new row of objects when `0xACD9` runs out (`0x9C91`, from the
-  course), the objects checked against the boat.
-- What meeting an object does goes through a jump table at `0x9EBF`
-  (read with BX at byte offsets from the object's value shifted right
-  by 4; which values reach which entry is not worked out). The four
-  targets that are code: `0x9EC8`, the crash: script `0x9AEC` (`0x36`
-  frames a step), audio record `0x19557`, and at its end `0x9C44`;
-  `0x9F68` and `0xA053`: the player's score + 5,000,000 (BCD at
-  `0xAD42`) or + 10,000,000 (`0xAD4A`), audio record `0x194A1`, the
-  course index + 4; `0x9F1D`: stream `0x90AE` queued (a take of slot-15
-  record `0x90CC`, handler 1: the extra ball, presumably collected at
-  once) and the end flag set. While immunity (`0xACCB`) is not 0 a
-  rock does not crash the boat (`0x9E50`, read, not run).
+  the frame count up, the scroll moved by half the speed, the random
+  number stirred, the steering (`0xA2E1`), the bonus check (`0xA067`),
+  and when `0xACD9` runs out a row (`0x9C91`) with the course step's
+  values; then the drawing. The update ends the object (ZF clear) when
+  `0xACE4` is set.
+- The course, 4 bytes a step: the frames to the next row, the speed,
+  the bonus kind, a fourth byte not read. Steps 0..2: 4 frames, speed
+  4, kind 0; 3..7: 3 frames, speed 4, kind 0; 8..14: 2 frames, speed 8,
+  kind `0x20`; 15: 2 frames, speed 8, kind `0x40`. The index goes on a
+  step (+4) only when a 5,000,000 or 10,000,000 bonus is collected, so
+  the game gets faster by bonuses, not by time: eight bonuses of
+  5,000,000, seven of 10,000,000, then the extra ball; 110,000,000 at
+  most.
+- A row (`0x9C91`): each column in turn (`0xACBA` up). An object moves
+  a row down, from rows 1..7 only on even row counts, from 8 on every
+  row. One that leaves row 15 is cleared; when its column is the
+  boat's, it meets the boat first (below). An empty column gets a new
+  object when the random number's low three bits are 0 (one in eight)
+  and the column before it (column 7 before the row, for column 0) is
+  empty or at row 1 or 2: a bonus of the step's kind at row 1 (`0x21` +
+  `0xACD5`) if none is on the water and bits 12..13 of the random
+  number are not both 0, else a rock at row 1, but no rock while
+  immunity runs.
+- The boat's column: lane + 1, rounded (+1 more when the position is
+  `0x40` or more), modulo 8.
+- Meeting the boat: a jump through the table read with BX at `0x9EBF`
+  + (the value + 1) / 16, i.e. the words at `0x9EC0` by the kind: rock
+  `0x9EC8`, the crash: script `0x9AEC` (`0x36` frames a step), audio
+  record `0x19557`, and at its end `0x9C44`; kind 2 `0x9F68` and kind 4
+  `0xA053`: the player's score + 5,000,000 (BCD at `0xAD42`) or +
+  10,000,000 (`0xAD4A`), audio record `0x194A1`, the course index + 4;
+  kind 6 `0x9F1D`: stream `0x90AE` queued (a take of slot-15 record
+  `0x90CC`, handler 1: the extra ball) and the end flag set. Odd kinds
+  would read no code target; the row code makes none. The crash does
+  not look at immunity: a rock already on the water crashes the boat
+  (an earlier note here said otherwise).
+- Steering (`0xA2E1`), only when no move runs (`0xACCD` 0 and the
+  position 0): the left flipper (state `+0x2A7B`, checked first) takes
+  the lane down by one at once and the position from `0x80` - speed
+  down by the speed a frame; the right one (`+0x2A7C`) takes the
+  position up from 0 by the speed a frame and the lane up by one when it
+  reaches `0x80`. The lane wraps modulo 8. A move takes `0x80` / speed
+  frames (32 at speed 4, 16 at 8) and runs to its end whatever the
+  keys; a held flipper starts the next at once.
+- The bonus check (`0xA067`): `0xACB8` set while one of `0xACB9`..
+  `0xACC0` has a high nibble, else cleared with `0xACB6`. With a bonus,
+  `0xACB6` is 0 when it is in the boat's column, else 6 or 18 by side,
+  6 more by the distance round (not worked out further); the drawing
+  (`0xA9C7`) then shows the picture of the 6-byte entry at `0xAC98` +
+  `0xACB6` on three frames of four, presumably an arrow to the bonus
+  (not looked at on the screen).
 - Enter's script ends in `0x9BC8`: every object whose high nibble is 0
-  (the rocks, presumably) cleared, 150 frames of immunity. Once a game.
+  (the rocks) cleared, 150 frames of immunity. Once a game.
 - `0x9C44`, the crash's end: stream `0x90BA` queued (music `0x196DD`,
   display `0x8FC6`: a picture, "ITEM" / "COLLECTED" / "FISH", 2 s), and
-  the update ends the object. So the game always ends in "ITEM
-  COLLECTED: FISH" unless `0x9F1D` ends it first.
-- Not read: how rows are made from the course (`0x9C91`), the drawing
-  routines (`0xA067`, `0xA16E`, `0xA27B`, `0xA3EC`, `0xAF4D`, `0xB0FA`),
-  how the boat meets an object, which flipper steers which way.
+  the update ends the object. So the game ends in "ITEM COLLECTED:
+  FISH" on a crash, in "EXTRA BALL" after the 15 bonuses.
 
 ## Initial shared slots
 
