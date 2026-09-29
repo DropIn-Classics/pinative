@@ -21,8 +21,9 @@ SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
 CD check in src/cd.c) and the sound driver's commands 0 and 4
 (src/nosound.c, NOSOUND.SDR's commands in C, command 4 loading
 `intro\MOD.INT`; the host callbacks they call in src/hostcb.c) and
-CHOOSER_LOAD's eleven files (src/intro.c), up to the intro's CODE:7341,
-where the port stops (`Stopped before CODE:7341`). The port loads
+CHOOSER_LOAD's eleven files and the intro's palettes (src/intro.c), up
+to the intro's CODE:698A, where the port stops (`Stopped before
+CODE:698A`). The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
@@ -86,4 +87,7 @@ headless build writes the pictures `DK_SHOTS` names, as
 - 2026-09-29, Linux: after CHOOSER_LOAD's files (dosrun `-break
   1087B5#1 -mem`, CODE:7885, NOSOUND.SDR): CODE and TAIL 0 bytes differ;
   all 43 used blocks of pMAX's heap chain equal byte for byte.
+- 2026-09-29, Linux: at CODE:78D9 (dosrun `-break 108809#1 -mem`,
+  NOSOUND.SDR), INTRO_PALS made: CODE and TAIL 0 bytes differ, the 43
+  blocks equal.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

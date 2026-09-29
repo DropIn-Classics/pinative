@@ -82,6 +82,14 @@ name       CODE:6356 INTROPIX_SEL  ; intro\intropix.mgl's (run: 164h)
 name       CODE:6348 SCROLL_SEL    ; intro\SCROLL.DLT's (run: 16Ch)
 name       CODE:634A BKGR_SEL      ; intro\BKGR.FLD's (run: 174h)
 name       CODE:634C PCSKY_SEL     ; intro\PCSKY.FLD's (run: 17Ch)
+code       CODE:7341 INTRO_PALS_MAKE ; reached from CODE:7885 through CODE:7438's checksummed jump; INTRO_PALS made from PCSKY.FLD's first 30h bytes (16 colours): rows 0-2 with 0 added, row 3 cleared, rows 4-15 with 0, 0, 0, 0, 0, 3, 0Ah, 0, 19h, 23h, 2Dh, 0Fh added; EDI by CODE:7441 ([CODE:905B] less the byte sum of CODE:6F43..7028: 8D3Ch in the run's memory)
+code       CODE:732D PAL_ADD       ; 30h bytes from DS:0 to ES:EDI, BL added to each, at most 3Fh
+name       CODE:8D3C INTRO_PALS    ; 300h bytes: 16 rows of 16 DAC colours (INTRO_PALS_MAKE); run 2026-09-29: made at CODE:78D9
+code       CODE:7029 INTRO_TICK    ; the driver's command 0Dh (the module's position, presumably; not checked); INTRO_TIME raised to it; each INTRO_SCRIPT entry from INTRO_NEXT whose dword is at most INTRO_TIME has its routine called, INTRO_NEXT moved on 8, up to INTRO_MOD_NAME (the table's end)
+name       CODE:7ABC INTRO_SCRIPT  ; the intro's script: entries of a dword (a position INTRO_TICK compares with INTRO_TIME) and a routine
+name       CODE:8124 INTRO_TIME    ; the highest position INTRO_TICK has seen; 0 in CHOOSER_LOAD
+name       CODE:8128 INTRO_NEXT    ; the next INTRO_SCRIPT entry; INTRO_SCRIPT in CHOOSER_LOAD
+name       CODE:903C INTRO_END     ; a byte: 1 by CODE:6E1E, the routine of INTRO_SCRIPT's last entry (at CODE:80B4, position B4Eh), which CHOOSER_LOAD's loop at CODE:7996 waits for; 0 in CHOOSER_LOAD
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0

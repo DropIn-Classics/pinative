@@ -2255,6 +2255,19 @@ other checksummed calls in CHOOSER_LOAD, computed the same way and not
 yet seen in a run: [CODE:908B] 698Ah, [CODE:9097] 6FC0h, [CODE:9043]
 6E49h, [CODE:907F] 72BBh, [CODE:235E] 73D8h (the tail jump at the end).
 
+CODE:7341 (INTRO_PALS_MAKE; names in the hints) makes INTRO_PALS, 16
+rows of 16 DAC colours, from PCSKY.FLD's first 30h bytes with a value
+added to each (at most 3Fh), row 3 cleared; its EDI comes from CODE:7441,
+the same checksum trick ([CODE:905B] less the byte sum of CODE:6F43..
+7028: 8D3Ch). Then CHOOSER_LOAD sets the intro's script: INTRO_SCRIPT
+(CODE:7ABC, 192 entries of a position and a routine) is run by
+INTRO_TICK (CODE:7029) against the driver's command 0Dh, presumably the
+module's position (not checked); the last entry (position B4Eh) is
+CODE:6E1E, which sets INTRO_END, what the loop at CODE:7996 waits for.
+The same run stopped at CODE:78D9 (linear 108809h, t=13.949067; `-mem`
+build/pm/ns_78d9.mem): the port equal there too (CODE, TAIL, the 43
+blocks).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2429,9 +2442,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (MOD_LOAD, CODE:1C28), host callbacks 6 to 9 and pMAX's allocation
      from the top; memory equal at CODE:75B6, the end of SOUND_START (see
      "The driver's command 4 in a run"). Done 2026-09-29: CHOOSER_LOAD's
-     files (port/src/intro.c; see "The chooser's files in a run"). Next:
-     the intro, CODE:7341 (reached from CODE:7885), where the port stops
-     now.
+     files (port/src/intro.c; see "The chooser's files in a run"). Done
+     2026-09-29: INTRO_PALS_MAKE and the script's variables, up to
+     CODE:78D9. Next: CODE:698A (mode 13h re-programmed: sequencer
+     memory mode 06h, chain 4 off, and its own CRTC values), where the port
+     stops now.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

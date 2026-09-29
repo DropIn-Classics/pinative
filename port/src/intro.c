@@ -19,6 +19,34 @@ static uint16_t load(const char *name, uint32_t *size)
     return sel;
 }
 
+/* CODE:732D: 30h bytes from `from` (linear) to CODE:`*di`, `bl` added to
+ * each, at most 3Fh */
+static void PAL_ADD(uint32_t from, uint32_t *di, uint8_t bl)
+{
+    uint32_t i;
+
+    for (i = 0; i < 0x30; i++) {
+        uint8_t al = (uint8_t)(lrb(from + i) + bl);
+        wb((*di)++, al < 0x3F ? al : 0x3F);
+    }
+}
+
+/* CODE:7341: INTRO_PALS from PCSKY.FLD's first 16 colours.  EDI comes
+ * from CODE:7441's checksum (8D3Ch in the run, INTRO_PALS) */
+static void INTRO_PALS_MAKE(void)
+{
+    static const uint8_t add[12] = { 0, 0, 0, 0, 0, 3, 0x0A, 0, 0x19, 0x23, 0x2D, 0x0F };
+    uint32_t from = pmax_base(rw(N_PCSKY_SEL)), di = N_INTRO_PALS;
+    int i;
+
+    for (i = 0; i < 3; i++)
+        PAL_ADD(from, &di, 0);
+    for (i = 0; i < 0x30; i++)
+        wb(di++, 0);
+    for (i = 0; i < 12; i++)
+        PAL_ADD(from, &di, add[i]);
+}
+
 void CHOOSER_LOAD(void)
 {
     uint32_t size;
@@ -47,6 +75,14 @@ void CHOOSER_LOAD(void)
     ww(N_BKGR_SEL, load("intro\\BKGR.FLD", NULL));
     ww(N_PCSKY_SEL, load("intro\\PCSKY.FLD", NULL));
 
-    /* CODE:7885: CODE:7341 through CODE:7438's checksummed jump */
-    pi_stop("CODE:7341 (CHOOSER_LOAD's intro)");
+    /* CODE:7885: through CODE:7438's checksummed jump */
+    INTRO_PALS_MAKE();
+    wd(N_INTRO_NEXT, N_INTRO_SCRIPT);
+    wd(N_INTRO_TIME, 0);
+    wd(0x8120, 0);              /* written only, by this name */
+    wb(N_INTRO_END, 0);
+    wd(0x812C, 0x7074);         /* a RET's offset (CODE:7074); not read by this name */
+
+    /* CODE:78C9: CODE:698A through CODE:4CF2's checksummed jump */
+    pi_stop("CODE:698A (CHOOSER_LOAD's intro)");
 }
