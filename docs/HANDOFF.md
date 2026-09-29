@@ -15,7 +15,8 @@ All four tables load and scroll; which CD track each plays is found
 tools/event_streams.py lists every stream of a module (see "The event
 language"); what the 28 handlers of a take do is read (see "The slot-15
 handlers"). The offsets among the 32-bit immediates have hints (see
-"Offsets among the immediates").
+"Offsets among the immediates"). Table 2's music chooser seen in a run,
+and the game's frame rate found (see "Table 2's chooser in a run").
 
 ## The earlier analysis
 
@@ -475,8 +476,8 @@ track (dumped in the runs: 2, 0Eh, 1Ah, 27h), its byte +0Ah (1 for all
 four) goes to CODE:CB97; with its bit 0 `MUSIC_TRACK` counts the
 track's length down and plays it again. Run on table 1 to t=330: track 2
 again at t=283.37, 159.3 s after the first play, while the track lasts
-182.9 s (13,717 frames); why is not found (the counter's rate against
-the runner's clock, presumably). CODE:4FE8 plays track 51 near the chooser's loading of
+182.9 s (13,717 frames): the countdown is in game frames at 61 a second
+while the runner shows 70 (see "The frame rate"). CODE:4FE8 plays track 51 near the chooser's loading of
 `infodata.mgl`; it did not run up to t=126.
 
 Tracks 3..13, 15..25, 27..38 and 40..51 are not heard in the runs.
@@ -674,8 +675,8 @@ types at CODE:2C40F ... 2C719). No run was made for it.
   and waits for it up to 60 s; at the end unlights, stops the music
   (track 0) and unblocks. So the 6.3 s between the take and the play in
   the forced run are that 7-s wait, presumably; that they are 6.3 and
-  not 7 is not explained (the word at state+50h, which the waits are
-  multiplied by, not checked against the frame rate).
+  not 7: the wait is 7 x 61 frames at 70 a second, 6.1 s (see "The
+  frame rate").
 
 ### The slot-15 handlers
 
@@ -762,11 +763,56 @@ records" and "Table 2's music chooser"; in short:
   streams through it, table 2's one. These roots come from module code,
   so tools/event_streams.py does not list them.
 
-Open from it: a run on table 2 that lights 927Ah and enters hole 4C50h
-(`-poke` as in "A mode's track in a run"), to see the chooser and hear
-the driver's commands 8 and 0Ah logged; table 1's and 4's
-opcode-14h objects (module 9A46h, 97E5h) not looked at; slot 41's
-lamps (the list at module 994Ah by the player's word +12h) not checked.
+Open from it: table 1's and 4's opcode-14h objects (module 9A46h,
+97E5h) not looked at; slot 41's lamps (the list at module 994Ah by the
+player's word +12h) not checked. The run of the chooser: next section.
+
+### Table 2's chooser in a run
+
+Run 2026-09-29, on Windows (keys `100 space`, `103 down`, `106 enter`,
+`130 f1`, `131 enter`, Right Shift at 150 and 152, Enter at 155; `-cd`,
+`-log` on MUSIC_REQUEST, MUSIC_TRACK, CODE:9D3C, 9EBA, 9EDB; a shot a
+second). Table 2's module is not where table 1's is: [CODE:A11D] was
+1AC750h (linear 2AD680h) in this run, against 1D3170h for table 1, so
+a `-poke` into a module takes its base from a dump of CODE:A11D first
+(the first try poked table 1's addresses and hit nothing). The two
+pokes, at the 700th call of CODE:14DE2 (linear 115D12h, t=134.37):
+`2B68FB 01` (record 927Ah lit for player 0) and `2B0B63 "00 00 00 00
+50 01 3C 02"` (zone 34E3h, hole 4C50h's, over the whole table). Seen:
+
+- t=134.45: MUSIC_REQUEST (record 16), MUSIC_TRACK with 13h, the CD plays
+  track 19; the display "CHOOSE LEFT RIGHT / SELECT WITH RETURN", then
+  "BY THE BEACH" (t=141); Right Shift: "MOONLIGHT PARKING" (t=151),
+  again: "ROLL ME ON" (t=154);
+- t=151.03: CODE:9D3C, track 19's time up (16.6 s after its play, the
+  track 19.1 s long): CD volume 0 and the driver's command 8, the module
+  music, while the chooser still runs;
+- Enter (t=155.03): MUSIC_REQUEST with record 2, MUSIC_TRACK with 0Eh,
+  the CD plays track 14: record 2 of the third template, as read from
+  the data. Then "GYM MODE ENABLED" on the display (t=156; which stream
+  shows it not looked at).
+
+The other requests in the run (t=130.02, the F1 start; 131.36, the
+serve) went through CODE:9EDB (a negative word +2: command 8), none
+through CODE:9EBA (command 0Ah, the jingle): not seen yet.
+
+### The frame rate
+
+Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
+10DABEh) and the code (hints `FRAME_RATE`, `MEASURE_RATE`, CODE:910E).
+The waits of both stream languages and the music's countdown are in
+frames, multiplied by `FRAME_RATE` (state+50h). The display mode's
+routine (by the byte at CODE:00A2, presumably the configuration's
+resolution; the runs' mode is the first, 336x350) sets it to 46h (70)
+or 3Ch; then `MEASURE_RATE` times one vertical retrace with the PIT and
+stores 1234DCh / the ticks, at most 3Dh. So on a 70 Hz display the game
+counts 61 frames a second and runs 70 of them: a game second lasts
+61/70 s. Checked against two runs: table 1's track replayed after 159.3
+s of 182.9 (182.9 x 61/70 = 159.4), track 19's return after 16.6 s of
+19.1 (16.6). That the cap is meant so (and not, say, a 60 Hz rate plus
+a margin) is not known; a port that wants the original's timing counts
+61 a second at 70 Hz frames. The four mode routines' other effects
+(CODE:D890, D892, 9B8E, B922) are not looked at.
 
 ### The GOG release on the Mac
 
@@ -851,8 +897,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      of docs/bpc-module.md.
    - done 2026-09-29: the event language (see "The event language";
      tools/event_streams.py with tests/test_event_streams.py). Open from
-     it: the word at state+50h against the frame rate (every wait is
-     multiplied by it); the slot-15 update CODE:2E8CD (timed lights);
+     it (the frame rate done 2026-09-29, see "The frame rate"): the slot-15 update CODE:2E8CD (timed lights);
      the animations of display opcodes 1 and 0Ch (who plays them and
      clears state+2A50h); opcode 4's objects (CODE:28EA6); the hole
      eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
@@ -864,8 +909,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      random awards. Where CODE:BAD4 is counted: DRV_TICK (see "Offsets
      among the immediates"), how often not checked.
    - done 2026-09-29: table 2's music (see "The audio records and
-     table 2's music chooser"). Open from it: a run of the chooser, table
-     1's and 4's opcode-14h objects.
+     table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
+     chooser in a run"). Open from it: table 1's and 4's opcode-14h
+     objects; a jingle (driver command 0Ah) in a run.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these

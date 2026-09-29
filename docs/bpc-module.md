@@ -165,7 +165,10 @@ indices and prints the five exported records.
 ## Table 2's music chooser
 
 Found 2026-09-29 by disassembling table 2's module (a throwaway capstone
-script) and the main program's hints; not seen in a run.
+script) and the main program's hints. Seen in a run the same day
+(docs/HANDOFF.md, "Table 2's chooser in a run", the chooser forced with
+two `-poke`): the texts, the three names with Right Shift, track 19
+while it runs and track 14 after "ROLL ME ON" and Enter.
 
 - Table 2 offers three tunes. Its templates are the records 3..5, 6..8
   and 9..11 (pointers at module `0x9D9E`), their names text records at
