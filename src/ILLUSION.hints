@@ -10,6 +10,14 @@ comment    CODE:02FF INT 94h AH=8 with CX:EDX = CODE:086C: the configuration fil
 comment    CODE:35B34 INT 2Fh AX=1510h, MSCDEX device request, the header copied to real-mode memory first
 comment    CODE:35B52 INT 2Fh AX=1500h, MSCDEX installed? drive letter to CODE:3631B (no MSCDEX: "CD error!")
 comment    CODE:35C58 IOCTL input: audio disk info, then track info for each track to CODE:35F1B (run with -cue: 0Ah, then 0Bh for tracks 1..51)
+code       CODE:35B0D CD_REQUEST   ; EBX = a request header in the image, copied to real-mode memory for INT 2Fh AX=1510h
+code       CODE:35C09 CD_VOLUME    ; IOCTL output (command 0Ch), BL to CODE:35EF8 and 35EFA: presumably the audio channel control's two volumes, not checked
+name       CODE:35F1B CD_TRACK_START ; a dword a track, by its number (run: track 2's read at +8 when table 1 starts)
+code       CODE:35DDC CD_PLAY      ; EBX = the track: the play request at CODE:35EA1 from its start to the next track's; ECX back = its length (run: "play frames 24470..38187 (track 2)" for EBX=2)
+code       CODE:35E4F CD_STOP      ; the request at CODE:35E94 (command 85h, stop audio)
+code       CODE:9D83 MUSIC_TRACK   ; stops the CD and plays track EBX; when bit 0 of CODE:CB97 is set, the length times [CCB8E] / 75 to CODE:9DBD, counted down at CODE:9CEA, which plays the track again at 0 (run, table 1: again after 159.3 s of a 182.9 s track, not explained)
+comment    CODE:9BCA the table's first music record ([CODE:F470], header slot 35 of the table module): its word +8 the CD track, its byte +0Ah to CODE:CB97 (runs: tracks 2, 0Eh, 1Ah, 27h for tables 1..4, the byte 1 for all four)
+comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 
 ; 16-bit addresses without a register (67h): no source form in a USE32
 ; segment, the assembler would write a 32-bit address

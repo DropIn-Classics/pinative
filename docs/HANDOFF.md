@@ -9,6 +9,8 @@ The runner runs the game now (protected mode, MSCDEX, VGA mode 0Dh in
 doskit, 2026-09-29) through the intro and the chooser to the first
 table, which scrolls by itself (see "The loader in the runner"); a ball
 is played on it with the game's own keys (see "The keys", 2026-09-29).
+All four tables load and scroll; which CD track each plays is found
+(see "The tables and their CD tracks").
 
 ## The earlier analysis
 
@@ -198,7 +200,9 @@ jump or call to its start anywhere in the image), left as data:
 - routines after a RET: CODE:2FFA, 36A1 (waits for scan code 2 and its
   release), 73D8, 92CE, 9606 (after the text "HEJ!$"), A618/A61E,
   15340, 297A6, 2E886 and 302F8 (both in the interpreters' style),
-  35BC6, 35D20, 29832 (the one that sets CODE:2982E to 29922h);
+  35BC6, 35D20 (a seek, command 83h, to a track's start: the request at
+  CODE:35EB7; the play is CD_PLAY at CODE:35DDC), 29832 (the one that
+  sets CODE:2982E to 29922h);
 - one to three bytes after a RET or JMP (CODE:A497, A653, 32902,
   32A79, 3300F, 35E37).
 
@@ -352,6 +356,36 @@ billion instructions (0d71ad0); setjmp's signal mask made runs under PE
 45 times slower on macOS (4a9ac3a); INT 21h AH=57h (a file's date and
 time, the set-up sets it) was missing (6a34e22).
 
+### The tables and their CD tracks
+
+Runs of 2026-09-29 (`-key 100 space`, one `down` a second from 103 per
+table after the first, `106 enter`; `-cue` with the 51 tracks): all four
+tables load and scroll by themselves, Babewatch, Extreme Sports and The
+Vikings as Law 'n Justice does (a picture of each at t=140), with no
+instruction the runner does not know. The CD track each plays at about
+t=124: 2, 14, 26, 39. Nothing else is played up to t=150 (tables 2..4)
+or t=240 (tables 1 and 2, with a game started by F1 at 130).
+
+How (hints: `CD_PLAY`, `MUSIC_TRACK` and the comments near them): the
+program's MSCDEX calls all go through `CD_REQUEST` (CODE:35B0D); the play
+is `CD_PLAY` (CODE:35DDC, found with `-rwatch` on the track table
+CODE:35F1B; at that time the program runs as CS 0Ch, DS 04h).
+At a table's start CODE:9BCA takes the record at [CODE:F470] (header
+slot 35 of the table module, docs/bpc-module.md): its word +8 is the
+track (dumped in the runs: 2, 0Eh, 1Ah, 27h), its byte +0Ah (1 for all
+four) goes to CODE:CB97; with its bit 0 `MUSIC_TRACK` counts the
+track's length down and plays it again. Run on table 1 to t=330: track 2
+again at t=283.37, 159.3 s after the first play, while the track lasts
+182.9 s (13,717 frames); why is not found (the counter's rate against
+the runner's clock, presumably). Plays during a game come through
+CODE:F5BE (read at CODE:9E13; not seen in the runs, who writes it not
+looked at). CODE:4FE8 plays track 51 near the chooser's loading of
+`infodata.mgl`; it did not run up to t=126.
+
+Tracks 3..13, 15..25, 27..38 and 40..51 are not heard in the runs:
+presumably the other music of each table (the 12-byte records of header
+slot 34), not checked.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -411,9 +445,11 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      55ecb38); the game gets to the first table (see "The loader in
      the runner").
    - done 2026-09-29: a ball played on the first table (see "The
-     keys"). next: the
-     other three tables, which CD track goes with what; x87 is not
-     emulated, not needed up to t=200.
+     keys").
+   - done 2026-09-29: the other three tables in the runner and each
+     table's first CD track (see "The tables and their CD tracks").
+     next: who asks for the other tracks during a game (CODE:F5BE);
+     x87 is not emulated, not needed up to t=240.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
    once more is known, the copy protection first); displacements with
