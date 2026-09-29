@@ -19,7 +19,7 @@ handlers"). The offsets among the 32-bit immediates have hints (see
 and the game's frame rate found (see "Table 2's chooser in a run");
 the command-line options and Esc are found (see "The self-patched call
 in a run", the end, and "Esc"); a jingle requested in a run (see "A
-jingle in a run").
+jingle in a run"); what each option does in a game (see "The options").
 
 ## The earlier analysis
 
@@ -511,6 +511,48 @@ The hint on `GAME_PHASE` has the routine of each. Not seen: 0, 8
 tilt). Why the ball save came back so often (each serve starts it
 again?) is not looked at. The Y key on a QWERTZ or AZERTY keyboard (scan code 15h is Z
 on QWERTZ) not looked at.
+
+### The options
+
+Found 2026-09-29 (hints `OPTIONS` and the block after `OPT_RESOLUTION`):
+statically from the options screen (CODE:32C22, 32C7C, the counts at
+CODE:32DE3) and `SETSOUND\SETSOUND.DAT`'s texts, the readers from a run
+on table 1 (a game of three balls as in "Esc", F1 at 130, Enter at 131,
+146, 161, to t=175; `-rwatch 10E8A6 E`, the seven words below) and a
+search of build/ILLUSION.ASM for their field offsets. One byte of
+`OPTIONS` per line of the screen, in its order; `OPTIONS_APPLY`
+(CODE:B2E0, once at a table's loading) turns five of them into words of
+the state (CODE:CB3E, state+0E38h..0E44h, reached through [CODE:0014];
+0E38h, not 1E38h: a first search for 1E38h found nothing):
+
+| byte | line | values (index: text -> word) | read by |
+|---|---|---|---|
+| +0 | BALLS PER GAME | 0 THREE 3, 1 FIVE 5 -> `BALLS_PER_GAME` | game start (CODE:2A97C, to state+0D36h), zone type 0 (CODE:2C5EA) |
+| +1 | TABLE ANGLE | 0 NORMAL 3, 1 HIGH 4, 2 VERY HIGH 5, 3 VERY LOW 1, 4 LOW 2 -> `SLOPE_Y` | CODE:134FF each frame (23,690 reads in the run), CODE:B7CC |
+| +2 | SCROLLING | 0 MEDIUM 3, 1 SMOOTH 5, 2 FAST 1 -> `SCROLL_DIVISOR` | CODE:30203, `IDIV` of a distance (3165 reads) |
+| +3 | MULTIBALL MAXIMUM | 0 SIX 6, 1 THREE 3, 2 FOUR 4, 3 FIVE 5 | `MULTIBALL_CAP` (CODE:B0E3) at the table's loading |
+| +4 | TILT SENSITIVITY | 0 NORMAL 100, 1 EARTHQUAKE 0 -> `TILT_STEP` | CODE:14C06 on a nudge (no read in the run: no nudge) |
+| +5 | RESOLUTION | 0..3 (see "The frame rate") -> `RES_CODE` 1, 2, 3, 0 | event opcode 19h only, which asks for 5 |
+
+Two more words are constants: `SLOPE_X` 0 (added to the vector's first
+word where `SLOPE_Y` goes to the second: a pull straight down the table,
+presumably) and `SERVE_SECONDS` 10 (times `FRAME_RATE` to state+0D3Eh
+while the ball waits for its launch; what counts it down not followed).
+Byte +6 holds a video mode number for the SVGA modes, not a line of the
+screen (not followed).
+
+What follows from the code, not from runs: `TILT_STEP` is added to
+state+2A78h on each new press of Space, Left Alt or Right Alt, which
+falls by 1 a frame; at C8h the tilt flag state+2A75h is set (header slot
+38, GAME_PHASE 9). With NORMAL the third nudge within 100 frames of the
+first tilts; EARTHQUAKE never tilts. `MULTIBALL_CAP` lowers the table's
+two numbers at CODE:B14E (by CODE:A311, the table's number presumably; table 1: 6, 4; 2: 0, 0; 3: 6, 0; 4: 4, 6) to
+the option's and writes the non-zero ones to word +2 of the records at
+the module header's +0ACh and +0B0h: the tables' multiball sizes,
+presumably (table 2 none). That `SLOPE_Y` is the table's pull and
+`SCROLL_DIVISOR` the scroll's smoothness is read from how they are used,
+not seen: a run with another `OPT_ANGLE` (a `-poke` of CODE:009E, or `/o`)
+would show it in the ball's speed.
 
 ### The tables and their CD tracks
 
@@ -1039,6 +1081,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      the self-patched call at CODE:298C5 (see "The self-patched call in
      a run": not patched in runs). Done 2026-09-29: the options screen's
      argument (see "The self-patched call in a run", the end); what Esc
-     does (see "Esc"). Open from it: the other option bytes; the game
+     does (see "Esc"). Done 2026-09-29: the other option bytes (see "The
+options"; open from it: a run with another table angle, the countdown
+of `SERVE_SECONDS`, the multiball records). Open: the game
      phases 0, 8, 9 of CODE:BAD6 (the others done, see "Esc"); the SVGA
      modes in the runner (FRAME_RATE then 60, presumably).

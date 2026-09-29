@@ -22,8 +22,34 @@ name       CODE:F5BE MUSIC_NEXT    ; state+2A80h: a track asked for; CODE:9E13 p
 name       CODE:CB8E FRAME_RATE    ; state+50h: frames a second, what the waits of the event and display streams are multiplied by; set by the display mode (CODE:910E) and then by CODE:9265 (run 2026-09-29, table 2: 46h at t=118.31 by CODE:979A, 3Dh at 118.34 by CODE:92C7)
 name       CODE:9265 MEASURE_RATE  ; one vertical retrace timed with PIT channel 0 (mode 0 from 0): 1234DCh / the ticks, at most 3Dh, to FRAME_RATE; so a 70 Hz mode counts 61 frames a second, and a game second lasts 61/70 s (runs: a track's replay after 159.3 s of 182.9, track 19's return after 16.6 s of 19.1)
 comment    CODE:910E the display mode's routine by OPT_RESOLUTION, in the options screen's order: CODE:9743 VGA 360x350 (FRAME_RATE 46h; the runs' mode), 97A4 SVGA 640x480 and 9822 SVGA 800x600 (both INT 10h AX=4F02h, VESA, 3Ch), 96E7 VGA 320x240 (3Ch); CODE:9265 is called after it
-name       CODE:009D OPTIONS       ; 200h bytes, read at CODE:0310 (INT 94h AH=7), cleared and written by the R option (CODE:32F16); the options screen's settings, byte +5 the resolution (run 2026-09-29: the other bytes 0 with the GOG ILLUSION.CFG; which byte is which other option not checked)
+name       CODE:009D OPTIONS       ; 200h bytes, read at CODE:0310 (INT 94h AH=7), cleared and written by the R option (CODE:32F16); the options screen's settings, one byte each in the screen's order (CODE:32C22 picks each line's text from SETSOUND.DAT by it, CODE:32C7C steps it by Enter, wrapping at the counts 2, 5, 3, 4, 2, 4 at CODE:32DE3): +0 balls per game (0 THREE, 1 FIVE), +1 OPT_ANGLE, +2 OPT_SCROLLING, +3 OPT_MULTIBALL, +4 OPT_TILT, +5 OPT_RESOLUTION; +6 a video mode number for the SVGA modes (CODE:0753, MODE_SVGA640), not a line of the screen, not followed (run 2026-09-29: all 0 with the GOG ILLUSION.CFG)
+name       CODE:009E OPT_ANGLE     ; table angle: 0 NORMAL, 1 HIGH, 2 VERY HIGH, 3 VERY LOW, 4 LOW (to SLOPE_Y by OPTIONS_APPLY)
+name       CODE:009F OPT_SCROLLING ; scrolling: 0 MEDIUM, 1 SMOOTH, 2 FAST (to SCROLL_DIVISOR by OPTIONS_APPLY)
+name       CODE:00A0 OPT_MULTIBALL ; multiball maximum: 0 SIX, 1 THREE, 2 FOUR, 3 FIVE (read by CODE:B0E3 only)
+name       CODE:00A1 OPT_TILT      ; tilt sensitivity: 0 NORMAL, 1 EARTHQUAKE (to TILT_STEP by OPTIONS_APPLY)
 name       CODE:00A2 OPT_RESOLUTION ; 0 VGA 360x350, 1 SVGA 640x480, 2 SVGA 800x600, 3 VGA 320x240 (the options screen's list; run 2026-09-29: Enter on RESOLUTION wrote 1 by CODE:32C91 and the screen showed SVGA 640x480)
+; the options in a game (2026-09-29; readers from a run on table 1, a game
+; of three balls, doskit's -rwatch on CODE:D976, 0Eh bytes, and a search of
+; build/ILLUSION.ASM for the field offsets; not in the table modules)
+code       CODE:B2E0 OPTIONS_APPLY ; called once as a table is loaded (CODE:B272): the option bytes through the word tables at CODE:B2C0.. to the state words BALLS_PER_GAME .. RES_CODE
+code       CODE:B0E3 MULTIBALL_CAP ; (from CODE:B0D8, the table's loading) the table's two numbers at CODE:B14E + 8 x (CODE:A311 - 1) (CODE:A311 the table's number 1..4, presumably, not checked; table 1: 6, 4; 2: 0, 0; 3: 6, 0; 4: 4, 6), each lowered to 6, 3, 4, 5 by OPT_MULTIBALL and written, when not 0, to word +2 of the records the module header's +0ACh and +0B0h point to: the table's multiball sizes, presumably (not checked in a run)
+name       CODE:D976 BALLS_PER_GAME ; state+0E38h: 3 or 5 (OPTIONS+0); copied to state+0D36h at the game start (CODE:2A97C) and compared with it at zone type 0 (CODE:2C5EA)
+name       CODE:D978 SLOPE_Y       ; state+0E3Ah: 3, 4, 5, 1, 2 by OPT_ANGLE (so VERY LOW 1 .. VERY HIGH 5); added each frame to the second word of the vector at [EDI] for a ball (CODE:134FF) and set in the balls' records at +3Eh (CODE:B7CC): the pull down the table, presumably (the run: read 23,690 times from the serve on)
+name       CODE:D97A SCROLL_DIVISOR ; state+0E3Ch: 3, 5, 1 by OPT_SCROLLING (MEDIUM, SMOOTH, FAST); CODE:30203 divides a distance by it (the run: 3165 reads, one a frame of play): a scroll step of a third, a fifth or all of the way, presumably
+name       CODE:D97C TILT_STEP     ; state+0E3Eh: 100 (64h) NORMAL, 0 EARTHQUAKE; CODE:14C06 adds it to state+2A78h on a nudge key's new press (Space, Left Alt, Right Alt: the bits of state+2A77h), state+2A78h falls by 1 a frame, and at C8h or more state+2A75h is set (the tilt: header slot 38, CODE:2B8ED); the add and the compare come before the fall of the same frame, so NORMAL tilts at the third nudge within 100 frames of the first, EARTHQUAKE never (by the code; the run had no nudge, no read; the mask state+2A76h not followed)
+name       CODE:D97E SLOPE_X       ; state+0E40h: always 0; the first word's counterpart of SLOPE_Y (CODE:134F2, B7C1)
+name       CODE:D980 SERVE_SECONDS ; state+0E42h: always 0Ah; times FRAME_RATE to state+0D3Eh when the ball waits for its launch (GAME_PHASE 6, CODE:2B1E8); what counts it down not followed
+name       CODE:D982 RES_CODE      ; state+0E44h: 1, 2, 3, 0 by OPT_RESOLUTION; read only by event opcode 19h (CODE:2D35E), which asks for 5
+num        CODE:B7C1
+num        CODE:B7CC
+num        CODE:134F2
+num        CODE:134FF
+num        CODE:14C06
+num        CODE:2A97C
+num        CODE:2B1E8
+num        CODE:2C5EA
+num        CODE:2D35E
+num        CODE:30203
 code       CODE:32F39 SETUP_ARGS   ; the language of SETSOUND.DAT's texts by INT 93h AH=15h (AX 'SV' 2, 'GR' or 'SG' 1, else 0: English, German, Swedish by the file's texts) to CODE:331BF; then the command tail from its first '/', at most 20h characters, upper-cased: S the sound set-up (CODE:32970), O the options screen (CODE:32DA7), R the options cleared (CODE:32F16), '?' the help text and CF set (runs 2026-09-29: '/?' printed it and exited with 32; '/o' showed "Pinball Illusions Options"). No S and no configuration yet (INT 94h AH=5, or FFFFFFFFh): the sound set-up as well
 ; names for the routines found so far (2026-09-29; what each does is in
 ; its comment above, and docs/HANDOFF.md; a name says no more than that)
@@ -256,7 +282,7 @@ comment    CODE:2D85F event opcode 15h (a slot-16 counter, a word): the current 
 comment    CODE:2D7F9 event opcode 16h (a slot-16 counter): the current player's words +6 and +16h = the counter's word +2
 comment    CODE:2D8C2 event opcode 17h (a slot-15 record, a position): unless the record is lit for the current player and not blocked (bytes +1, +2), a jump to the position: past the take that follows, in table 1's stream 4F50h
 comment    CODE:2D7BE event opcode 18h (a hole, a second hole): as opcode 8, with bit 1 set and the second hole in +34h, whose +6..+0Eh CODE:30CEC takes instead: the ball comes out at the second hole (table 1's modes: held in 4F18h, out at 4DB0h)
-comment    CODE:2D358 event opcode 19h: when state+0E44h is 5, a call of CODE:B927, a RET: no effect (in the modules as often as opcode 1Bh)
+comment    CODE:2D358 event opcode 19h: when state+0E44h (RES_CODE, 0..3) is 5, a call of CODE:B927, a RET: no effect (in the modules as often as opcode 1Bh)
 comment    CODE:2D60A event opcode 1Ah (a hole): its ball (byte +1 less one, an index into state+C107Ah) let go (bit 1 and byte +1 cleared, +34h 0) and put at 11Ch, 1FEh (CODE:29A5A; the plunger lane, presumably); balls on the table (state+0D32h) one less, to be served (state+0D3Ah) one more
 comment    CODE:2D70E event opcode 1Bh (a word, at most 0Dh): balls to be served (state+0D3Ah) added until they and those on the table (state+0D32h) are the word; state+0D2Eh FFh, watched by CODE:2CD3C: a multiball
 comment    CODE:2DBDF event opcode 1Ch (a slot-15 record or 0, a word, a position): the mode stream waits (state+0D50h, see CODE:2CD3C): the record, when lit, to state+0D66h; the word times FRAME_RATE (state+50h) to state+0D62h (0: on at once to the position; negative: no timer); the position to state+0D6Ah
