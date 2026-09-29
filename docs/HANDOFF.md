@@ -44,7 +44,8 @@ ball save in a run"); the multiball option and a multiball in a run (see
 selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
 left (see "The Info page and the greetings page"); table 1's shooting
-game on the display (see "Table 1's shooting game in a run").
+game on the display (see "Table 1's shooting game in a run"); table 4's
+sea game, in part (see "Table 4's sea game in a run").
 
 ## The earlier analysis
 
@@ -916,8 +917,8 @@ records" and "Table 2's music chooser"; in short:
   so tools/event_streams.py does not list them.
 
 Open from it: table 1's opcode-14h object (done 2026-09-29, see
-"Table 1's shooting game in a run") and table 4's (module 97E5h) not
-looked at; slot 41's lamps (the list at module 994Ah by the
+"Table 1's shooting game in a run") and table 4's (done 2026-09-29, in
+part, see "Table 4's sea game in a run"); slot 41's lamps (the list at module 994Ah by the
 player's word +12h) not checked. The run of the chooser: next section.
 
 ### Table 2's chooser in a run
@@ -1815,6 +1816,36 @@ paid to the player.
   the greetings page"); `seq` writes decimal commas under a German
   locale, which the runner's `-keys` does not read (`LC_ALL=C`).
 
+### Table 4's sea game in a run
+
+Found 2026-09-29, on Linux, from table 4's module (read in part) and runs
+(`build/vm4/`; the details in docs/bpc-module.md, "Table 4's sea game").
+Table 4's opcode-14h object (module 97E5h) is a boat on the display,
+steered with the flippers past rocks; bonuses pay 5,000,000 or
+10,000,000; Enter, once a game, clears the rocks and gives 150 frames
+of immunity; a crash ends the game with "ITEM COLLECTED / FISH".
+
+- Keys to table 4 with `-put` of the GOG configuration: `106 space`,
+  Down at 110, 110.5, 111, `112 enter` (the list is up already after
+  Space here), `136 f1`, `137 enter`. Module base: [CODE:A11D] =
+  19C490h, linear 29D3C0h. Forced as table 1's: at the first count-up
+  (linear 12F026h, t=137.32) record 5EA2h lit for player 0 (`2A3263
+  01`), zone 33FFh over the table (`2A07BF "00 00 00 00 50 01 3C 02"`),
+  counter 5F60h's word +16h 1 (`2A3336 "01 00"`, counted to 2); state+F1
+  cleared at the object's start (`-poke 2A6BAD#1 10DB5F 00`).
+- The game started at t=141.82 in every run. Without the clearing
+  poke the serve's Enter ran Enter's script at once and the game ended
+  after 322 frames. No keys: the crash (9EC8h) at 143.14, the end
+  (9C44h) at 143.92. Flippers every 0.9 s (left) and 1.3 s (right): the
+  crash at 150.92. The same and Enter at 145, 150, 155, 160: Enter's
+  script at 145.01, its end (9BC8h) at 145.37, the display empty but
+  for the boat at 146; a bonus (9F68h) at 148.51, the player's score
+  byte +7 from 0 to 5 (5,000,000); the later Enters did nothing; the
+  crash at 159.47, "ITEM COLLECTED" and "FISH" with a picture at 161.
+- Not run or not read: 9F1Dh (the extra ball and the end without a
+  crash) and A053h (10,000,000) were never reached; which flipper
+  steers which way; how the course makes rows; what ACB9h is.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1916,7 +1947,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
      objects (table 1's done 2026-09-29, see "Table 1's shooting game
-     in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
+     in a run"; table 4's in part, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix

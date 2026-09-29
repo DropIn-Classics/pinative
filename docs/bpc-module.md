@@ -272,6 +272,65 @@ in the crosshair's window is shot when it aims.
   loaded by the host into the table at FS; which file is which number
   is not checked.
 
+## Table 4's sea game
+
+Found 2026-09-29 from table 4's module and runs (docs/HANDOFF.md,
+"Table 4's sea game in a run"); read in part only. The opcode-`0x14`
+object at `0x97E5` (start `0x97ED`, update `0x9878`, code up to about
+`0xB1F3`) is a boat on the display that the flippers steer past rocks,
+picking up bonuses.
+
+- It is run by mode stream `0x8F72` (the mode of counter `0x5F60`'s
+  threshold 2, stream `0x6008`): music `0x195D5`, display `0x9022`
+  ("CONQUERING THE SEA", then "AVOID THE ROCKS AND" / "COLLECT THE
+  BONUSES"), music `0x19611`, the game, music `0x19581`, an eject from
+  hole `0x460C`, takes `0x5F28` and `0x61C8`. Counter `0x5F60` is
+  counted up by record `0x5F28` (handler `0x15`, taken by header slot
+  27's stream at the serve and by this mode); record `0x5EA2` (handler
+  `0x16`) starts the threshold's mode when zone `0x33FF`'s stream
+  (`0x4644`) takes it lit, as table 1's `0x4362` does.
+- State, from `0xACB8` (bytes unless said): `+0` a bonus shown (`0xFF`),
+  `+2`.. seven objects, one byte each (what they are in the high nibble, presumably),
+  `0xACCA` a frame count, `0xACCB` frames of immunity, `0xACCC` the
+  speed, `0xACD0` (word) the scroll, modulo `0x200`, `0xACD2` the boat's
+  lane 0..7 (word), `0xACD3` its position within the lane, `0xACD4` the
+  index into the course at `0xACFA` (4 bytes a step: the frames to the
+  next row `0xACD9`, the speed, ?, `0xACD5`), `0xACD8` Enter used
+  (`0xFF`), `0xACE4` the end flag, `0xACE5` and `0xACE6` a running
+  script (a frame count and a pointer).
+- Start: the objects cleared, `0xACD8`, `0xACB8`, `0xACE4` 0,
+  `0xACD9` 1, the first picture; the host vector kept for the update.
+  State `+0xF1` (the last key) is not cleared, so an Enter still there
+  from the serve counts at once (seen in a run).
+- Update, once a frame: while a script runs, its next step (`0x9A20`:
+  a picture a step, the script's routine at the end); else Enter
+  (state `+0xF1` = `0x1C`) the first time: script `0x9A88` (24 frames a
+  step), audio record `0x1953D`; else the frame: immunity counted down,
+  the scroll moved by half the speed, the flippers steer (`0xA2E1`:
+  state `+0x2A7B`, `+0x2A7C`, the lane changed in steps of the speed),
+  a new row of objects when `0xACD9` runs out (`0x9C91`, from the
+  course), the objects checked against the boat.
+- What meeting an object does goes through a jump table at `0x9EBF`
+  (read with BX at byte offsets from the object's value shifted right
+  by 4; which values reach which entry is not worked out). The four
+  targets that are code: `0x9EC8`, the crash: script `0x9AEC` (`0x36`
+  frames a step), audio record `0x19557`, and at its end `0x9C44`;
+  `0x9F68` and `0xA053`: the player's score + 5,000,000 (BCD at
+  `0xAD42`) or + 10,000,000 (`0xAD4A`), audio record `0x194A1`, the
+  course index + 4; `0x9F1D`: stream `0x90AE` queued (a take of slot-15
+  record `0x90CC`, handler 1: the extra ball, presumably collected at
+  once) and the end flag set. While immunity (`0xACCB`) is not 0 a
+  rock does not crash the boat (`0x9E50`, read, not run).
+- Enter's script ends in `0x9BC8`: every object whose high nibble is 0
+  (the rocks, presumably) cleared, 150 frames of immunity. Once a game.
+- `0x9C44`, the crash's end: stream `0x90BA` queued (music `0x196DD`,
+  display `0x8FC6`: a picture, "ITEM" / "COLLECTED" / "FISH", 2 s), and
+  the update ends the object. So the game always ends in "ITEM
+  COLLECTED: FISH" unless `0x9F1D` ends it first.
+- Not read: how rows are made from the course (`0x9C91`), the drawing
+  routines (`0xA067`, `0xA16E`, `0xA27B`, `0xA3EC`, `0xAF4D`, `0xB0FA`),
+  how the boat meets an object, which flipper steers which way.
+
 ## Initial shared slots
 
 The copied-header scan establishes the following host-visible groups and the
