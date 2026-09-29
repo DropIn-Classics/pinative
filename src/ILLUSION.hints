@@ -46,6 +46,18 @@ name       CODE:D87C BALL_SAVE     ; state+0D3Eh: the ball save's frames, set by
 name       CODE:D982 RES_CODE      ; state+0E44h: 1, 2, 3, 0 by OPT_RESOLUTION; read only by event opcode 19h (CODE:2D35E), which asks for 5
 name       CODE:02A1 CODE_SEL      ; ENTRY's DS, descriptor 0's selector (1Ch in runs)
 name       CODE:086C CFG_NAME      ; the configuration file's name, the command tail's first word (ENTRY; run 2026-09-29: "C:\ILLUSION.CFG"), opened by INT 94h AH=8
+name       CODE:331BF LANGUAGE     ; SETSOUND.DAT's text block, set by SETUP_ARGS from INT 93h AH=15h: 0 English, 1 German, 2 Swedish (runs 2026-09-29: 0)
+name       CODE:331C0 SETSOUND_TEXTS ; a far pointer (offset, selector at +4): LANGUAGE's table of text offsets in SETSOUND.DAT as pMAX loaded it (SETSOUND_LOAD, INT 94h AH=1; run 2026-09-29: offset 0Ch, selector 4, the file at linear 1473C0h)
+name       CODE:331BC YES_KEYS     ; a word from the texts' entry +114h (English "Yy"), compared with AL at four places: the answer keys, presumably, not followed
+name       CODE:30DB2 CFG_HEADER   ; the configuration file's first 20h bytes by INT 94h AH=5 (run 2026-09-29, the GOG file: "SB16.SDR", its NUL, then the file's bytes); a first dword FFFFFFFFh: no sound set-up yet
+name       CODE:32F36 ARG_S        ; SETUP_ARGS: /S given (the sound set-up)
+name       CODE:32F37 ARG_O        ; /O given (the options screen)
+name       CODE:32F38 ARG_R        ; /R given (the options cleared)
+code       CODE:328B4 SETSOUND_LOAD ; SETSOUND.DAT by INT 94h AH=1 (else "Error loading the Setsound language file" and exit); SETSOUND_TEXTS and YES_KEYS from it
+code       CODE:32903 SETSOUND_FREE ; its block freed, INT 92h AH=5 with SETSOUND_TEXTS's selector
+code       CODE:32F16 OPTIONS_RESET ; /R: OPTIONS cleared (80h dwords) and written back
+code       CODE:32970 SOUND_SETUP  ; the sound set-up ("FLD Sound Driver Setup Utility")
+code       CODE:32DA7 OPTIONS_SCREEN ; /O: "Pinball Illusions Options"
 comment    CODE:0310 INT 94h AH=7: OPTIONS from the configuration file's 200h bytes at +20h, stored chained: a byte XOR the stored byte four before it, the first four XOR "SN95" (runs 2026-09-29, crafted files: 200h random bytes read back exactly)
 ; 2A1h as a displacement with a register: a field offset, presumably, not CODE_SEL
 num        CODE:2636F

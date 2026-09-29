@@ -8,6 +8,7 @@
 #define PI_IMAGE_H
 
 #include <stddef.h>
+#include "archive.h"
 #include "pmem.h"
 
 /* the image's linear address and descriptor 0's selector under pMAX, as
@@ -16,8 +17,12 @@
 #define PI_SEL_CODE 0x1Cu
 
 extern PmImage pi_image;
+/* the archive in the player's ILLUSION.EXE, kept open for the files the
+ * program loads through pMAX (pmax.h) */
+extern Archive pi_archive;
 
-/* ILLUSION.386 from `game`'s ILLUSION.EXE into memory, pm_ds at CODE;
+/* ILLUSION.386 from `game`'s ILLUSION.EXE into memory, pm_ds at CODE,
+ * pi_archive open;
  * 0, or -1 with a message */
 int pi_load_image(const char *game, char *err, size_t n);
 

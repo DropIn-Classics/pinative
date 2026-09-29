@@ -26,6 +26,20 @@ void pi_stop(const char *name)
     exit(r);
 }
 
+void pi_print_dos(uint32_t at)
+{
+    for (; lrb(at) != '$'; at++)
+        putchar(lrb(at));
+    fflush(stdout);
+}
+
+void pi_exit_text(const char *text)
+{
+    fputs(text, stdout);
+    plat_shutdown();
+    exit(0);
+}
+
 void ENTRY(void)
 {
     const char *s = pmax_tail;
@@ -46,5 +60,7 @@ void ENTRY(void)
     /* INT 94h AH=8 opens it (pmax_cfg_open, main.c), AH=7 the options */
     pmax_cfg_read(N_OPTIONS);
 
-    pi_stop("SETUP_ARGS");
+    if (SETUP_ARGS())
+        return;
+    pi_stop("SVGA_CHECK");
 }

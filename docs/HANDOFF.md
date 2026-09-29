@@ -2026,6 +2026,30 @@ AH=6 writes them the same way is presumed, not checked; the header's
 first 20h bytes (the driver's name, then bytes not read) are not
 looked at here.
 
+### SETUP_ARGS in a run
+
+The same run stopped at SVGA_CHECK (linear 101683h, t=2.425941; `-mem`,
+memcmp.py against the dump at SETUP_ARGS): SETUP_ARGS leaves 28 bytes
+changed in CODE, all accounted for by the new names:
+
+- CFG_HEADER (CODE:30DB2): the GOG file's first 20h bytes, by INT 94h
+  AH=5;
+- SETSOUND_TEXTS (CODE:331C0): offset 0Ch (the English table, LANGUAGE
+  0), selector 4; YES_KEYS (CODE:331BC) 7959h, "Yy";
+- SETSOUND.DAT itself lies at linear 1473C0h, all 12,823 bytes, freed
+  but not cleared: 10h after the image's end, behind a 10h-byte header
+  at 1473B0h (01 00 00 00, 30 8C EA 00, then 3290Fh and 1Ch: the
+  file-name argument's offset and selector, presumably; the second
+  dword was there before the load too). pMAX's heap, not the program's;
+  the port puts its blocks the same way (port/src/pmax.c), only this
+  first one seen.
+
+`/?` in the original (`ILLUSION.EXE C:\ILLUSION.CFG /?`) and in the port
+(`-opt ?`): the same help text ("There are several ways to run the
+game" ...), compared line by line without the blank lines, which the
+runner's `con:` lines leave out. The original's exit code 32 (see
+"The loader in the runner") is not the port's (0), not looked into.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2165,7 +2189,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      the configuration file read as "The configuration file's options"
      says, port/src/pmax.c), the port stopping by name at the first
      routine not translated; memory equal to the run's at SETUP_ARGS.
-   - on from ENTRY: SETUP_ARGS, SVGA_CHECK, the video set-up CODE:049A,
+   - done 2026-09-29: SETUP_ARGS (port/src/setup.c; SETSOUND.DAT
+     through a pMAX heap of the port's, port/src/pmax.c): memory equal
+     at SVGA_CHECK (see "SETUP_ARGS in a run"); the /S, /O and /R
+     branches stop at SOUND_SETUP, OPTIONS_SCREEN and OPTIONS_RESET.
+   - on from SETUP_ARGS: SVGA_CHECK, the video set-up CODE:049A,
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts
      already read, each compared with memcmp.py;

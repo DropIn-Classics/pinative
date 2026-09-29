@@ -1,14 +1,17 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE] [-cfg FILE] [-mem FILE] [-entry]
+ *     pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-entry]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
  * directory or in the data folder (sys_find_game).  When there is none,
  * the installed GOG release's image is unpacked into the data folder's
  * `game` (cdimage.h; -gog names the image instead of looking for it).
- * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there).
+ * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there);
+ * -opt the letters after the '/' of the command line (the GOG release's
+ * ILLUSION.BAT passes its own arguments there: o the options screen, s the
+ * sound set-up, r the options cleared, ? the help).
  *
  * ILLUSION.386 is unpacked from the player's ILLUSION.EXE and loaded as
  * pMAX loads it (image.h), then run from ENTRY by the translated routines
@@ -80,12 +83,15 @@ int main(int argc, char **argv)
             gog = argv[++i];
         else if (!strcmp(argv[i], "-cfg") && i + 1 < argc)
             cfg = argv[++i];
-        else if (!strcmp(argv[i], "-mem") && i + 1 < argc)
+        else if (!strcmp(argv[i], "-opt") && i + 1 < argc) {
+            snprintf(pmax_tail_buf, sizeof pmax_tail_buf, "%s%s", pmax_tail, argv[++i]);
+            pmax_tail = pmax_tail_buf;
+        } else if (!strcmp(argv[i], "-mem") && i + 1 < argc)
             pi_stop_mem = argv[++i];
         else if (!strcmp(argv[i], "-entry"))
             entry = 1;
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-cfg FILE] [-mem FILE] [-entry]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-entry]\n");
             return 2;
         }
     }
