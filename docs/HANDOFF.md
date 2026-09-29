@@ -83,7 +83,7 @@ games too), in the kit with tests (rule 7).
 ## Stage 1: ILLUSION.386
 
 `python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 29,973
-instructions, 4025 labels, 17 lines as DB, 19 s on the Mac used
+instructions, 3912 labels, 17 lines as DB, 19 s on the Mac used
 (2026-09-29); gaps.py: 210 gaps, 165,070 of 0x46480 bytes not reached as
 code (see "The gaps" below). The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
@@ -196,11 +196,15 @@ jump or call to its start anywhere in the image), left as data:
 - one to three bytes after a RET or JMP (CODE:A497, A653, 32902,
   32A79, 3300F, 35E37).
 
-Labels that are not addresses: the kit takes a displacement from 100h
+Labels that are not addresses: the kit took a displacement from 100h
 up with a register for an address (METHOD.md), but here records have
-fields beyond 2900h (`MOV EDI,[ESI+28AAh]` makes a label C28AA inside
-code). 82 labels land inside instructions this way. Wants a heuristic
-for flat 32-bit code in doskit, or `num` hints.
+fields beyond 2900h (`MOV EDI,[ESI+28AAh]` made a label C28AA inside
+code), and buffers are written at offsets like `[EDI+49Ah]`. Since
+doskit 0cf3171 (2026-09-29) a displacement with a register that lands
+in reached code, at an instruction or inside one, is written as a
+number: 113 labels fewer (the 82 inside instructions among them), still
+IDENTICAL, the gaps unchanged. Those that land in data are still labels
+and may be field offsets too (not looked at); a `num` hint for each.
 
 Seen on the way (in doskit's commits): the image's segment-register
 stores to memory carry 66h (`66 8C ...`, four of them), which the source
@@ -239,7 +243,7 @@ are offsets, which the analysis does not find by itself; names).
      emulated, still to decide.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
-   once more is known, the copy protection first); the field
-   offsets taken for addresses (a heuristic for flat 32-bit code in
-   doskit, or `num` hints); offsets among the 32-bit immediates
+   once more is known, the copy protection first); displacements with
+   a register that land in data (field offsets or addresses, by eye);
+   offsets among the 32-bit immediates
    (ptrscan.py); names (doskit/docs/METHOD.md).
