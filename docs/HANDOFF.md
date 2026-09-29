@@ -42,7 +42,8 @@ seen in the ball's speed and the ball save (see "The table angle and the
 ball save in a run"); the multiball option and a multiball in a run (see
 "The multiball in a run"); the work on Linux (see "Start here"); the
 selector in CODE:3B4B, the chooser's Info page and a hidden greetings
-page (see "The Info page and the greetings page").
+page, the chooser's keys and how its pages are left (see "The Info page
+and the greetings page").
 
 ## The earlier analysis
 
@@ -1715,9 +1716,37 @@ GREETINGS_TEXT, the comments at CODE:4532 and 505C.
   at 111.56, the Law 'N Justice page on screen with its picture and
   high scores. A key before the menu loop starts is taken for the
   menu's start (Info is right of the list, not below it).
-- Not done: the other Info pages (CODE:18F9, how it changes not
-  looked at), what CODE:1904 does in the menu loop, how the greetings
-  page is left.
+- The menu's keys (MENU_KEYS, CODE:3492, one a frame from the ring at
+  CODE:1906): Down/Up move MENU_ROW (CODE:18F9, the table, 0..3),
+  Right/Left MENU_INFO (CODE:18FB); Enter or Space with MENU_ON starts
+  the fade out (MENU_FADE, CODE:18FE), whose end sets MENU_DONE
+  (CODE:1916) and ends MENU_LOOP (CODE:3969); F1..F4 choose table 1..4
+  at once; Esc sets ESC_KEY (CODE:18FF). After MENU_LOOP, CODE:505C calls
+  INFO_PAGE for MENU_ROW while MENU_INFO is set, else goes on with
+  MENU_ROW in AL at CODE:526D (FFh on Esc, the way out to DOS).
+- The menu has a stage before it (CHOOSER_WAIT, CODE:38C6): the backdrop
+  with changing captions and no list, from t=104.21 after Space at 100
+  (which only ends the credits). Any of Esc, Enter, Space, F1..F4, or
+  KEY_HISTORY's four keys, sets WAIT_END (CODE:1904, what the earlier
+  note called "the menu loop" there); a few frames later the list comes
+  up (CODE:505C). That is why a key before the list is not taken as a
+  choice.
+- The Info and greetings pages read keys through PAGE_KEYS (CODE:3465),
+  which heeds only Esc: Esc fades them out (33 frames) and returns to
+  MENU_LOOP with the cursor on the same row.
+- Runs (`build/menu/`, 2026-09-29, the GOG `ILLUSION.CFG` by `-put`):
+  `100 space, 106 enter, 108 down, 109 down, 110 right, 111 enter, 118
+  esc`: MENU_ROW 1, 2 at 108.00, 109.01; INFO_PAGE at 111.56, the
+  Extreme Sports page ("Press ESC to exit."); Esc at 118.02, MENU_LOOP
+  at 118.73, Extreme Sports still marked. The greetings keys as above
+  and `112 esc`: CODE:505C and GREETINGS_PAGE at 108.19 (the earlier
+  run's 108.53 not accounted for), MENU_LOOP again at 112.74. `100
+  space, 106 enter, 108 f3`: CODE:35F8 at 108.00, AL=2 at CODE:526D at
+  108.57, Extreme Sports on screen at 139.
+- Not done: the captions (CODE:1890, the records at CODE:1898 and the
+  three per-row tables at CODE:18C8, 18D8, 18E8, drawn through far
+  pointers at +18h/+1Eh), the attract cycle of CODE:36F4 (CODE:1919,
+  1917 = 300 frames).
 - A note for byte searches: CODE:x is file offset x + 24h in
   ILLUSION.386 (checked on CODE:4532, 4886), not + 28h.
 
