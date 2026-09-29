@@ -15,6 +15,7 @@ raw        CODE:068A
 raw        CODE:2870
 raw        CODE:A3C1
 raw        CODE:27CA4              ; FS:[0] with 67h
+raw        CODE:29044              ; ES:[0] with 67h
 raw        CODE:30E49
 raw        CODE:31D3D
 raw        CODE:32A7C
@@ -111,3 +112,5 @@ rwords     CODE:300B9 8            ; CODE:300A0; index the low three bits of a b
 rwords     CODE:308C7 2            ; CODE:308AD
 code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, with the selector saved from CS at CODE:A36A
 code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX (CODE:4DB3); RET
+words      CODE:29912 4 CODE       ; called in turn at CODE:298A7 through the pointer at CODE:2982E, which holds 29912h in the file; CODE:29873 (not reached yet) sets it to 29922h, a like table of four after this one
+words      CODE:7AC0 0C0 CODE stride=8 ; records of 8 bytes from CODE:7ABC to 80BCh, a dword ascending (presumably a time) and a handler: CODE:704E calls [ESI+4] while [CODE:8124] reaches the first dword ([CODE:8128] set to 7ABCh at CODE:789A)
