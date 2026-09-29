@@ -19,7 +19,9 @@ handlers"). The offsets among the 32-bit immediates have hints (see
 and the game's frame rate found (see "Table 2's chooser in a run");
 the command-line options and Esc are found (see "The self-patched call
 in a run", the end, and "Esc"); a jingle requested in a run (see "A
-jingle in a run"); what each option does in a game (see "The options").
+jingle in a run"); what each option does in a game (see "The options");
+the jingle's effect in the WAV, and the runner's breakpoints no longer
+change a run (see "The jingle in the WAV").
 
 ## The earlier analysis
 
@@ -940,7 +942,8 @@ them after relocation: a CODE offset, 1D3170h + 4B66h). Seen:
   unknown port; the runner knows the DSP's 8-bit commands and says it
   is a DSP 1.05, the driver is `SB16.SDR`. Why: the runner had no SB16
   (see "The Sound Blaster in the runner"), fixed in doskit since. So
-  the jingle is requested; this run not repeated with the fix.
+  the jingle is requested; repeated with the fix, see "The jingle in
+  the WAV".
 
 The records' positive word +2 (a throwaway count over the four modules'
 slot-34 arrays, up to the first record whose word +0 is not 4; 44, 47,
@@ -987,6 +990,54 @@ a run to t=140 with `100 space`, `106 enter`: 122 s, a second start at
 t=104.19). Looked at as numbers only (loudness and zero crossings a
 second: a fade-in over 7 s, about 1400-3400 crossings a second, not
 noise); not listened to.
+
+### The jingle in the WAV
+
+Runs of 2026-09-29, on macOS, with doskit c44cf02 and then 69b5070
+(the runner's fix below). The run of "A jingle in a run" again: `-cd
+-cue` on the Mac layout of "The GOG release on the Mac" (without `-cd`
+the table did not come by t=142, "Loading" on the screen), the same
+poke, `-log` on CODE:3007A, MUSIC_REQUEST, CODE:9EBA (as linear
+addresses, base 100F30h: run.py names only ILLUSION.386's addresses,
+not ILLUSION.EXE's), `-wav`; and a control run without the poke.
+
+- The keys moved: the intro now lasts to t=101 (320x290 up to t=100,
+  the chooser's 304x224 from t=102; the runs before c44cf02 had mode
+  0Dh at t=95), so `100 space` fell into the intro and `106 enter` did
+  nothing. That the working Sound Blaster makes the intro longer is
+  presumably so, not checked. Used: `106 space`, `112 enter`, `136 f1`,
+  `137 enter`. The table's module transfer starts at t=130.10 (16-bit
+  stereo 16000 Hz again, but a block of 3840 units, the chooser's
+  19200), track 2 at t=130.08.
+- As on Windows: the poke at the 700th call of CODE:14DE2 (t=140.05),
+  CODE:3007A with DI=5085h at t=140.188, MUSIC_REQUEST, CODE:9EBA
+  (command 0Ah) at t=140.188. The control run has no call of
+  CODE:3007A or CODE:9EBA up to t=150; both have MUSIC_REQUEST at
+  t=136.01 and 138.30 (record words not looked at).
+- The WAVs (mono 16000 Hz, the runner's mix) are the same sample for
+  sample up to t=140.24 (counted back from the end at t=150), 50 ms
+  after the command. Then, loudness per 0.25 s: 4877 against 2143 in
+  the control run at t=140.24, 3167 against 1724, then about the same
+  level, near silence from t=141.74 to 142.2 (74, 0, 571 against 1432,
+  1362, 1667), then music that stays different. A jump of the module
+  to order 0Eh, as the record asks, would sound like that, presumably;
+  but the poke also changes the play (the award, the ball), so not all
+  of the difference is the jingle. Not listened to (in `-wav` of such a
+  run from 1:45 on, sample 1680734).
+
+The first comparison differed already at t=136, before the poke: the
+runner's `-log`, `-poke` and `-shot` changed the run (at t=139 a plain
+run, one with `-log` on MUSIC_REQUEST and one with the poke not yet due
+had three memory hashes). A breakpoint ended the runner's batch of
+instructions early and a new batch began, so the points where it ticks
+the devices and takes interrupts moved; a `-log` in a tight loop kept
+interrupts out altogether; shots bounded the batches too. Fixed in
+doskit 69b5070 (a test in its selftest): now the four give the same
+hash, and the plain run's is the one it had before the fix. So the
+runs before this fix that used `-log`, `-poke` or `-shot` may have run
+a little otherwise than without them; their findings are what the
+code did in those runs, the timings to the millisecond perhaps not
+what a run without looking gives.
 
 ### The frame rate
 
@@ -1107,9 +1158,12 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      objects. Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
-     the runner"). Open from it: the jingle run again with the fix, the
-     WAV listened to; what the number in a record's positive word +2
-     means.
+     the runner"). Done 2026-09-29: the jingle run again with the fix
+     (see "The jingle in the WAV"; the runner's breakpoints fixed on
+     the way). Open from it: the WAV listened to; the jingle alone (a
+     run that requests record 11F15h without changing the play, e.g. a
+     poke of the request itself); what the number in a record's
+     positive word +2 means.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
