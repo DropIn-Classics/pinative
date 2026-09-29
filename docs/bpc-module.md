@@ -248,8 +248,8 @@ slot address, even when the instruction reaches it through runtime state.
 | 40 | `0xF484` | Callable transition hook invoked at `0x2AA6D`; nontrivial only for table 2. |
 | 41 | `0xF488` | Callable transition hook invoked at `0x2BD61`; implemented by tables 1 and 2 and stubbed by tables 3 and 4. |
 | 42 | module-local | Null in all four modules. |
-| 43 | module-local | Pointer to a table-local descriptor. Startup writes the configured multiball capacity to its word at `+2`, capped per table at 6, unused, 6, and 4. |
-| 44 | module-local | Pointer to a second table-local descriptor. Startup writes the configured multiball capacity to its word at `+2`, capped per table at 4, unused, unused, and 6. |
+| 43 | module-local | Pointer to an event opcode 1Bh (multiball) command in a mode stream (table 1 8FC8h, 3 6EA2h, 4 809Ah; table 2 points to zeros). At loading `MULTIBALL_CAP` replaces its ball count (word `+2`) by the option MULTIBALL MAXIMUM, at most 6, -, 6, 4 by table (checked in runs on table 1, 2026-09-29, see docs/HANDOFF.md). |
+| 44 | module-local | As slot 43, a second multiball command (table 1 8598h, 4 8786h; tables 2 and 3 point to zeros): the option, at most 4, -, -, 6 by table. |
 
 The host-visible layouts of the five object registries are described below.
 Some module-private fields remain deliberately unnamed because no main-image

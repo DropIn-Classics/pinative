@@ -39,7 +39,8 @@ timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
 "The tilt in a run"); game phase 0, set by no one (see "Game phase 0"); the
 SVGA modes in the runner (see "The SVGA modes in a run"); the table angle
 seen in the ball's speed and the ball save (see "The table angle and the
-ball save in a run").
+ball save in a run"); the multiball option and a multiball in a run (see
+"The multiball in a run"); the work on Linux (see "Start here").
 
 ## The earlier analysis
 
@@ -88,6 +89,25 @@ is marked there as to be checked again in the hints.
   call in a run"): `-put '\ILLUSION.CFG' "C:\GOG Games\Pinball
   Illusions\ILLUSION.CFG" -cue "C:\GOG Games\Pinball
   Illusions\game.inst"` (its `MUSIC\` holds all 50 audio tracks).
+- On Linux (2026-09-29, Debian 13, gcc 14.2, Python 3.13 with the
+  distribution's `python3-capstone` 5.0.7; the GOG Linux installer's
+  `~/GOG Games/Pinball Illusions/data/`): `isox.py` on its `game.gog`,
+  `extract --all` in 66 s, the four SHA-256 matched; check.py `all ok`
+  in 18 s; runner and port build with `sh`. gcc warns 328 times in the
+  runner (323 strict aliasing from `dosrun.h`'s register macros); built
+  with `-fno-strict-aliasing` a run to t=160 had the same RAM and VRAM
+  hashes, so not a problem for these runs. A run goes about 4.6
+  emulated seconds a second (t=160 in 35 s). The cue sheet there is
+  `data/game.ins` (not `.inst`), `MUSIC\Track02..51.ogg` beside it:
+  `-cue "$G/game.ins"` with `-put '\ILLUSION.CFG' "$G/ILLUSION.CFG"`
+  and the arguments `ILLUSION.EXE 'C:\ILLUSION.CFG' /`. Table 1 with
+  `-cue`: track 2 played at t=130.08, the table in the screenshots. The
+  run of "The table angle and the ball save in a run" (NORMAL, no
+  `-cue`) repeated with `-watch` on GAME_PHASE: saved at 140.24,
+  143.07, 146.06 and also at 150.01, lost for good at 155.965 (the
+  macOS notes: 140.23, 143.05, 146.05, "ran out about 147", 155.95).
+  Whether the Mac run had the save at 150 too (launch + 610 frames at
+  70 Hz + three pauses of 1.3 s is about 150.9) was not checked there.
 
 ## The game's files
 
@@ -571,8 +591,8 @@ falls by 1 a frame; at C8h the tilt flag state+2A75h is set (header slot
 first tilts; EARTHQUAKE never tilts. `MULTIBALL_CAP` lowers the table's
 two numbers at CODE:B14E (by CODE:A311, the table's number presumably; table 1: 6, 4; 2: 0, 0; 3: 6, 0; 4: 4, 6) to
 the option's and writes the non-zero ones to word +2 of the records at
-the module header's +0ACh and +0B0h: the tables' multiball sizes,
-presumably (table 2 none). That `SLOPE_Y` is the table's pull and
+the module header's +0ACh and +0B0h: the ball counts of two multiball
+commands per table (table 2 none; see "The multiball in a run"). That `SLOPE_Y` is the table's pull and
 `SCROLL_DIVISOR` the scroll's smoothness is read from how they are used,
 not seen for `SCROLL_DIVISOR`; `SLOPE_Y` seen in the ball's speed and
 `SERVE_SECONDS` found to be the ball save (see "The table angle and the
@@ -1608,6 +1628,56 @@ comment on event opcode 0Bh (CODE:2D210).
   every frame down to 51, and is dark for the last 50. Event opcode 0Bh
   sets the same count (a save of its word's seconds); not run.
 
+### The multiball in a run
+
+Found 2026-09-29, on Linux, from the modules (tools/event_streams.py)
+and runs (keys `106 space`, `112 enter`, `136 f1`, `137 enter`, no
+flipper; the GOG `ILLUSION.CFG` by `-put`, no `-cue`; `build/multiball/`,
+30 to 45 s each). Hints: MULTIBALL_CAP, OPT_MULTIBALL, MULTIBALL_ON,
+BALLS_ON_TABLE, BALLS_TO_SERVE.
+
+- Header slots 43 and 44 (+0ACh, +0B0h) point to event opcode 1Bh
+  (`multiball`) commands in mode streams, and word +2 of the record is
+  the command's ball count (its word operand): table 1 8FC8h (stream
+  8F62h, from event 4356h, slot-15 record 439Ah's handler 11h; 3 in
+  the file) and 8598h (stream 8530h, threshold 8 of counter 421Eh; 6);
+  table 3 6EA2h (stream 6E7Eh; 3); table 4 809Ah (803Ah; 3) and 8786h
+  (8734h; 3). Table 2's two slots and table 3's slot 44 point to zeros,
+  which MULTIBALL_CAP leaves alone (its numbers there are 0). The other
+  opcode 1Bh commands (2 or 3 balls, 13 of them over the four tables)
+  are not touched.
+- So MULTIBALL_CAP sets those counts to min(table's number, option),
+  raising a count as well as lowering it: with SIX (the GOG
+  configuration) table 1's 3 and 6 become 6 and 4. Seen: `-log` at
+  MULTIBALL_CAP (t=129.597) and `-dump` of the two words (module base
+  linear 2D40A0h, as in the Windows runs): 6 and 4 after it; with
+  OPT_MULTIBALL poked to 1 (THREE) at its first instruction, 3 and 3.
+- Stream 8F62h forced: the earlier forcing of threshold 1 (see "A
+  mode's track in a run": record 4362h lit, zone 3447h over the table,
+  at CODE:2E0F6's first pass) and event 42DEh's pointer (linear 2D8384h:
+  loaded as 1D3170h + the module offset) poked to 8F62h. The zone is
+  put back at event opcode 1Bh's first call (CODE:2D70E, linear
+  12E63Eh); left over the table (a first run), the multiball stalled
+  from t=151.5 with one ball and five to serve (every ball caught by the
+  zone's object, presumably; not looked at). State+0D2Eh
+  to 0D3Fh dumped every 0.25 s:
+  - opcode 1Bh at t=145.17, after the stream's 7 s wait; ball_save 1Eh
+    before it: BALL_SAVE 1823 at 145.25;
+  - SIX: MULTIBALL_ON FFh, BALLS_ON_TABLE + BALLS_TO_SERVE 6 while
+    the save ran (lost balls go back to be served), 6 on the table at
+    163.0; the save out at about 171.3 (1830 frames at 70 a second,
+    26.1 s: the game-second of "The frame rate"); the six drained with
+    no flipper by 175.25, MULTIBALL_ON 0 at one ball (174.75); ball 2
+    at 178.5;
+  - THREE: the sum 3, at most 3 on the table, MULTIBALL_ON 0 at one
+    ball (172.25).
+- Not done: tables 3 and 4 and table 1's stream 8530h in a run (read
+  only); who clears MULTIBALL_ON (seen cleared at one ball; the writer
+  not looked at); the other bytes of the dump (state+0D2Fh, 0D30h,
+  0D34h, 0D3Ch, 0D3Dh) are left unnamed; the screenshots
+  (`build/multiball/g_*.png`) show one ball at a time as the view
+  follows a ball, so the counts come from the dump, not the picture.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1732,7 +1802,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      a run": not patched in runs). Done 2026-09-29: the options screen's
      argument (see "The self-patched call in a run", the end); what Esc
      does (see "Esc"). Done 2026-09-29: the other option bytes (see "The
-options"; open from it: the multiball records; done 2026-09-29: the table
+options"; open from it: the multiball records, done 2026-09-29, see "The
+multiball in a run"; done 2026-09-29: the table
 angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
 "The table angle and the ball save in a run"). The game
      phase 0 of CODE:BAD6 done 2026-09-29 (see "Game phase 0"; 8 see "The
