@@ -37,7 +37,9 @@ the player record's names checked in a run (see "The player record
 in a run"); the slot-16 counters' timers (see "The slot-16 counters'
 timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
 "The tilt in a run"); game phase 0, set by no one (see "Game phase 0"); the
-SVGA modes in the runner (see "The SVGA modes in a run").
+SVGA modes in the runner (see "The SVGA modes in a run"); the table angle
+seen in the ball's speed and the ball save (see "The table angle and the
+ball save in a run").
 
 ## The earlier analysis
 
@@ -557,7 +559,8 @@ the state (CODE:CB3E, state+0E38h..0E44h, reached through [CODE:0014];
 Two more words are constants: `SLOPE_X` 0 (added to the vector's first
 word where `SLOPE_Y` goes to the second: a pull straight down the table,
 presumably) and `SERVE_SECONDS` 10 (times `FRAME_RATE` to state+0D3Eh
-while the ball waits for its launch; what counts it down not followed).
+while the ball waits for its launch: the ball save's length, see "The
+table angle and the ball save in a run").
 Byte +6 holds a video mode number for the SVGA modes, not a line of the
 screen (`OPT_SVGA_MODE`, see "The SVGA modes in a run").
 
@@ -571,8 +574,9 @@ the option's and writes the non-zero ones to word +2 of the records at
 the module header's +0ACh and +0B0h: the tables' multiball sizes,
 presumably (table 2 none). That `SLOPE_Y` is the table's pull and
 `SCROLL_DIVISOR` the scroll's smoothness is read from how they are used,
-not seen: a run with another `OPT_ANGLE` (a `-poke` of CODE:009E, or `/o`)
-would show it in the ball's speed.
+not seen for `SCROLL_DIVISOR`; `SLOPE_Y` seen in the ball's speed and
+`SERVE_SECONDS` found to be the ball save (see "The table angle and the
+ball save in a run").
 
 ### The tables and their CD tracks
 
@@ -1568,6 +1572,42 @@ OPT_SVGA_MODE, SVGA_CHECK, SVGA_FIND, the comment on MODE_SVGA640.
   routine sets FRAME_RATE 3Ch too; no VESA needed, not run); S3's and
   other cards' own modes (the runner has only VESA).
 
+### The table angle and the ball save in a run
+
+Runs 2026-09-29, on macOS (as in "The player record in a run": the
+bundle's `ILLUSION.CFG` by `-put`, no `-cue`; keys `106 space`, `112
+enter`, `136 f1`, `137 enter`, no flipper; `build/angle/`, 25 to 40 s
+each). Linear addresses (the loader's hints do not name the game's):
+CODE:x is 100F30h + x. Hints: SLOPE_Y, SERVE_SECONDS, BALL_SAVE, the
+comment on event opcode 0Bh (CODE:2D210).
+
+- The table angle: `OPT_ANGLE` poked to 0..4 at `OPTIONS_APPLY` (`-poke
+  10C210 100FCE 0n`), the first ball's record (state+10AEh, linear
+  10EB1Ch) dumped every 7 ms. `SLOPE_Y` was 3, 4, 5, 1, 2 and so was the
+  record's +3Eh. In the ball's free fall into the launch lane at the
+  serve (t=136.01 to 136.14) its word +10h grew by 24, 32, 40, 8, 16 a
+  frame: 8 x `SLOPE_Y`. So the option is the pull down the table, as
+  read; the 8 is presumably CODE:1352D's add running 8 times a frame
+  (not counted). How the ball's path changes was not compared (the
+  first lost ball came at 155.95, 159.18 and 148.03 with NORMAL, VERY
+  HIGH and VERY LOW: blind play, so says nothing).
+- `SERVE_SECONDS` is the length of a ball save: the serve (header slot
+  34's record, CODE:2B1DC) writes 10 x 61 = 610 frames to state+0D3Eh
+  (now `BALL_SAVE`), and play counts it down one a frame from the
+  launch (t=138.269). A ball lost while it is not 0 is served again:
+  GAME_PHASE 7 ("DON'T MOVE", already known), 1.3 s, then the ball is
+  launched with no key and play goes on with the count where it was.
+  Blind play on table 1 lost the ball at 140.23, 143.05 and 146.05,
+  each saved; the save ran out about 147, and the loss at 155.95 was the
+  real one. With `SERVE_SECONDS` poked to 30 (at the serve, `-poke
+  12C10C 10E8B0 "1E 00"`): six saves up to t=162, the 1830 frames ran
+  out at 176.27, 38.0 s after the launch as phase 7 does not count,
+  the ball lost for good at 177.46.
+- Read, not looked at: the save's lamp (header slot 25's second
+  pointer) blinks every 4 frames while more than 100 frames are left,
+  every frame down to 51, and is dark for the last 50. Event opcode 0Bh
+  sets the same count (a save of its word's seconds); not run.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1692,8 +1732,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      a run": not patched in runs). Done 2026-09-29: the options screen's
      argument (see "The self-patched call in a run", the end); what Esc
      does (see "Esc"). Done 2026-09-29: the other option bytes (see "The
-options"; open from it: a run with another table angle, the countdown
-of `SERVE_SECONDS`, the multiball records). The game
+options"; open from it: the multiball records; done 2026-09-29: the table
+angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
+"The table angle and the ball save in a run"). The game
      phase 0 of CODE:BAD6 done 2026-09-29 (see "Game phase 0"; 8 see "The
      player record in a run", 9 "The tilt in a run", the others "Esc"),
      so every phase is known. Done 2026-09-29: the SVGA modes in the
