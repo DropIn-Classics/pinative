@@ -2135,10 +2135,13 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      selector per descriptor, 32-bit accessors, `pm_write`; the runner's
      `-mem`; `memcmp.py --base`; symmap.py with 32-bit offsets). The
      game's numbers: see "The image in memory at its entry".
-   - the port loads `ILLUSION.386` from the player's `ILLUSION.EXE`
-     (the archive's decoder in C, as tools/illfiles.py reads it; the
-     SHA-256 from symmap.py's header) at 100F30h with selector 1Ch, and
-     its memory compared with the run's at ENTRY;
+   - done 2026-09-29: the port loads `ILLUSION.386` from the player's
+     `ILLUSION.EXE` (port/src/archive.c, the decoder as tools/illfiles.py
+     has it; the SHA-256 from port/src/gen/names.h) at 100F30h with
+     selector 1Ch; its memory at ENTRY equal to the run's (port/README.md,
+     "Checked"). Not looked at: whether pMAX takes a loose
+     `ILLUSION.386` before the archive's (the loader opens one), which the
+     port does not;
    - the main loop (GAME_PHASE's dispatch at CODE:BAD6), a routine not
      yet translated stopping the port by its name; then the parts
      already read, each compared with memcmp.py;

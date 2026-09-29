@@ -8,7 +8,12 @@ repository.
 ## State
 
 Started 2026-09-29 from doskit's template: finds or unpacks the game's
-files and shows a text screen. Nothing of the game is translated yet.
+files and shows a text screen. Since 2026-09-29 it unpacks
+`ILLUSION.386` from the player's `ILLUSION.EXE` (src/archive.c, the
+archive as tools/illfiles.py reads it) and loads it into doskit's
+`pmem.h` memory as pMAX does (src/image.c: linear 100F30h, selector 1Ch;
+the SHA-256 of src/gen/names.h checked). Nothing of the game is
+translated yet.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
 of the GOG image when it is unpacked); built with build.sh on macOS
 2026-09-29, the image unpacking not tried.
@@ -18,6 +23,8 @@ of the GOG image when it is unpacked); built with build.sh on macOS
     sh port/build.sh          # macOS, Linux (SDL2 for the window)
     port\build.bat            # Windows (MSVC)
     port/build/pinative -game game
+    port/build/pinative-headless -game game -entrymem FILE
+                              # memory as at ILLUSION.386's entry, then ends
 
 Print Screen writes the picture shown into the next free
 `screenshot_NNNN.png` in the current folder (doskit's `shot.h`); the
@@ -26,4 +33,11 @@ headless build writes the pictures `DK_SHOTS` names, as
 
 ## Checked
 
-(what was compared with the original, where and how)
+- 2026-09-29, Linux (gcc 14.2): the memory `-entrymem` writes against
+  dosrun's `-mem` at ENTRY (linear 1011D3h; docs/HANDOFF.md, "The image
+  in memory at its entry"): `memcmp.py src/ILLUSION.hints A B --base
+  100F30`, CODE and TAIL 0 bytes differ.
+- 2026-09-29, Linux: src/archive.c's unpacking of all 125 entries equal
+  to tools/illfiles.py's `extract --all` (a scratch program, not in the
+  repository), 0.9 s against 66 s.
+- Not built with MSVC (build.bat changed alike) or on macOS since.

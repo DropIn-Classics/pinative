@@ -1,7 +1,7 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE]
+ *     pinative [-game DIR | -gog FILE] [-entrymem FILE]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
@@ -9,12 +9,16 @@
  * the installed GOG release's image is unpacked into the data folder's
  * `game` (cdimage.h; -gog names the image instead of looking for it).
  *
- * Nothing is ported yet: the program shows where it found the game and
- * waits for Esc.
+ * ILLUSION.386 is unpacked from the player's ILLUSION.EXE and loaded as
+ * pMAX loads it (image.h); -entrymem writes the memory then, as at the
+ * program's entry, for tools/memcmp.py (doskit's pmem.h) and ends.  Nothing
+ * is translated yet: the program shows where it found the game and waits
+ * for Esc.
  */
 #include <stdio.h>
 #include <string.h>
 #include "cdimage.h"
+#include "image.h"
 #include "platform.h"
 #include "sys.h"
 #include "textmode.h"
@@ -62,8 +66,8 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
 
 int main(int argc, char **argv)
 {
-    const char *given = NULL, *gog = NULL;
-    char game[SYS_PATH];
+    const char *given = NULL, *gog = NULL, *entrymem = NULL;
+    char game[SYS_PATH], err[256];
     int i;
 
     for (i = 1; i < argc; i++) {
@@ -71,8 +75,10 @@ int main(int argc, char **argv)
             given = argv[++i];
         else if (!strcmp(argv[i], "-gog") && i + 1 < argc)
             gog = argv[++i];
+        else if (!strcmp(argv[i], "-entrymem") && i + 1 < argc)
+            entrymem = argv[++i];
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-entrymem FILE]\n");
             return 2;
         }
     }
@@ -85,12 +91,25 @@ int main(int argc, char **argv)
         plat_shutdown();
         return 1;
     }
+    if (pi_load_image(game, err, sizeof err) != 0) {
+        plat_message(err);
+        plat_shutdown();
+        return 1;
+    }
+    if (entrymem) {
+        i = pm_write(entrymem);
+        if (i != 0)
+            fprintf(stderr, "pinative: %s cannot be written\n", entrymem);
+        plat_shutdown();
+        return i ? 1 : 0;
+    }
     tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
     tm_frame(1, 1, 78, 5, TM_ATTR(TM_WHITE, TM_BLUE));
     tm_text(3, 2, "Pinball Illusions", TM_ATTR(TM_YELLOW, TM_BLUE));
     tm_text(3, 3, "The game's files:", TM_ATTR(TM_LIGHTGREY, TM_BLUE));
     tm_text(3, 4, game, TM_ATTR(TM_WHITE, TM_BLUE));
-    tm_text(3, 8, "Nothing is ported yet.  Esc ends the program.", TM_ATTR(TM_LIGHTGREY, TM_BLUE));
+    tm_text(3, 6, "ILLUSION.386 unpacked and loaded.", TM_ATTR(TM_LIGHTGREY, TM_BLUE));
+    tm_text(3, 8, "Nothing is translated yet.  Esc ends the program.", TM_ATTR(TM_LIGHTGREY, TM_BLUE));
     while (plat_pump()) {
         int b, esc = 0;
         while ((b = plat_read_scancode()) >= 0)
