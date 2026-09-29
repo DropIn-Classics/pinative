@@ -19,6 +19,11 @@ of the GOG image when it is unpacked); built with build.sh on macOS
     port\build.bat            # Windows (MSVC)
     port/build/pinative -game game
 
+Print Screen writes the picture shown into the next free
+`screenshot_NNNN.png` in the current folder (doskit's `shot.h`); the
+headless build writes the pictures `DK_SHOTS` names, as
+`DK_SHOTS="150:build/a.png 299:build/b.png"`.
+
 ## Checked
 
 (what was compared with the original, where and how)
