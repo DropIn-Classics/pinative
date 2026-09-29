@@ -412,6 +412,48 @@ Who asks for them (found 2026-09-29; hints `MUSIC_REQUEST`,
   request was followed by an IOCTL output 03h (audio channel control,
   CD_VOLUME). The events whose records carry a track were not hit.
 
+Which events play them (found 2026-09-29 from the four modules' data
+with a throwaway script over their relocations, and the handlers named in
+the hints: opcode 9 at CODE:2DA7B, `EVENT_QUEUE`, CODE:2D9DE, 2DCA1,
+2DD8A, 2E5A2; not seen in a run):
+
+- every opcode 13h whose record has a track is in a long event stream
+  (17 to 73 commands) that is started by opcode 9 only: the table's
+  modes, presumably. Opcode 9 makes it the running mode stream (state
+  +0D5Eh) unless one runs already (state +0D4Fh). Near its end each such
+  stream has an opcode 13h with a record of track 0 (record 3 in table
+  1, 2 in table 2, ...): what that does to the music is not found
+  (`MUSIC_REQUEST` then writes 0 to `MUSIC_NEXT`; its switch on word +2,
+  CODE:2F91C, not followed);
+- the opcode 9 is in a short stream reached in one of two ways, both
+  from a slot-15 record (docs/bpc-module.md), whose word +2Ch picks one
+  of the 28 handlers at CODE:2DA0A. Handler 6 (and 10h, 12h, which call
+  it) counts the slot-16 counter at the record's +34h up for the
+  current player; the counter's threshold action reached queues its
+  dword +4 (the notes' "presentation pointer": an event stream) through
+  `EVENT_QUEUE`. Handler 11h queues the stream at +34h itself. Handlers
+  13h and 1Ah have a non-counter at +34h too (not looked at);
+- per table (counter or slot-15 record: module offsets; "n: t" = the
+  threshold n gives track t):
+  - 1: counter 421Eh 1: 4, 3: 13, 4: 10, 5: 11, 6: 6, 7: 5, 8: 3
+    (threshold 2 no track); counter 52A4h 2, 5, 9, 14: 7 (two streams);
+    counter 6A34h 4: 7; record 439Ah (handler 11h): 12;
+  - 2: counter 5B7Eh 6: 22; counter 55E4h 5: 25; record 927Ah: 19;
+    track 15 (record 12) has no pointer to it; records 0..2 are copied
+    at run time from records 3..5, 6..8 or 9..11 (the pointers at module
+    9D9Eh, by a word of the array at 9D88h, presumably by player), so record
+    2, which most of table 2's modes end with, is track 14 only after
+    the third; tracks 16, 17, 20, 21, 23, 24 are in no record;
+  - 3: counter 82CAh 1: 32, 2: 35, 3: 33, 4: 29, 5: 27, 6: 30; counter
+    7A7Ch 1..4: 31 and 28 (both in each), 5: 36; records 690Ch: 30,
+    8456h: 37, 4C7Ch: 38; record 14 (37) also after a word 10h at
+    71FCh (not parsed);
+  - 4: counter 5F60h 1: 41, 2: 44, 3: 42, 4: 45, 5: 40, 6: 43; counter
+    486Ch 2: 46; counter 6282h 3: 49; records 6456h: 47, 64EAh: 50.
+  With the slot-35 and slot-37 tracks that is every track in a record
+  but table 2's 15. What a slot-15 record is on the table (a target, a
+  lane?) is not found; a run that hits one of them would show a play.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -475,8 +517,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: the other three tables in the runner and each
      table's first CD track (see "The tables and their CD tracks").
      done 2026-09-29: who asks for the other tracks (see "The tables
-     and their CD tracks"); not seen in a run: an event that plays
-     one (the table module's streams parsed would say which);
+     and their CD tracks"); done 2026-09-29: which events play them,
+     from the modules' data (same section); not seen in a run: a play
+     of a mode's track (hit the objects the counters count);
      x87 is not emulated, not needed up to t=240.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look

@@ -25,6 +25,15 @@ comment    CODE:2AA90 header slot 36's record (track 0, byte +0Ah 2 in all four 
 comment    CODE:2B1DC header slot 34's record, record 0 (track 0; run, table 1: at t=130.0, the F1 start, 135.8 and 147.2)
 comment    CODE:2B8ED header slot 38's record while state+2A75h is set (track 0 in all four tables); runs every frame in a game
 comment    CODE:3007A by the type of the record at [CODE:0000] (its first byte AND 7): 4, an audio record, to MUSIC_REQUEST; 2 to CODE:9F2C (run, table 1: record 42, track 0, came from none of the other callers logged; this way, presumably)
+; the tracks of the table's modes (2026-09-29, from the four modules' data
+; and the handlers below; no such play seen in a run yet)
+comment    CODE:2DA7B event opcode 9: unless state+0D4Fh is set, its dword operand (an event stream) becomes the running mode stream (state+0D5Eh, state+0D4Fh FFh); in the modules the stream with the mode's opcode 13h (its CD track) is started only this way
+comment    CODE:2D9DE the word +2Ch of the slot-15 record at [CODE:0008] picks one of the handlers at CODE:2DA0A (0: none)
+comment    CODE:2DCA1 handler 6 of CODE:2DA0A: the record's dword +34h is a slot-16 counter; the current player's word +6 of it counted up, at the limit (word +4) its stream +48h to EVENT_QUEUE; then CODE:2DD8A
+comment    CODE:2DD8A the counter's threshold actions (12 bytes from +50h): the one reached has its dword +4, an event stream, go to EVENT_QUEUE (at CODE:2DD75)
+comment    CODE:2E5A2 handler 11h of CODE:2DA0A: the record's dword +34h is an event stream, to EVENT_QUEUE
+comment    CODE:2D7BE event opcode 18h: its first operand (a slot-15 record) gets its bit 1 set and the second operand in its dword +34h, and is pushed on the list at state+2A64h
+name       CODE:2FE8E EVENT_QUEUE  ; [CODE:0000] into the ring of 64 dwords at [state+2A1Eh], the index state+2A1Ah
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 
 ; 16-bit addresses without a register (67h): no source form in a USE32

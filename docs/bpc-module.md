@@ -252,6 +252,7 @@ Slot 15 contains a fixed 52-byte host-visible timed-effect state. Reset routine
 | `+0x2C` | Value operand passed to the host value/score path at `0x2FBBF`; the precise gameplay unit is unresolved. |
 | `+0x2E` | Signed countdown, reset to `-1` and set from a duration scaled by runtime state. |
 | `+0x30` | Runtime active-list next pointer. |
+| `+0x34` | Present in longer records: a slot-16 counter or an event stream, by the handler the word at `+0x2C` selects from the 28 at `0x2DA0A` (checked 2026-09-29 in the hints: handler 6 counts the counter, 11h queues the stream; see docs/HANDOFF.md, "The tables and their CD tracks"). |
 
 Only `+0x04`, `+0x08`, `+0x0C`, `+0x10`, `+0x14`, and `+0x18` carry file
 relocations within the fixed state, and every non-null on-disk value in those
