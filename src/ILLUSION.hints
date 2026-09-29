@@ -12,6 +12,8 @@ raw        CODE:0667
 raw        CODE:0670
 raw        CODE:0679
 raw        CODE:068A
+raw        CODE:A3C1
+raw        CODE:27CA4              ; FS:[0] with 67h
 raw        CODE:30E49
 raw        CODE:31D3D
 raw        CODE:32A7C
@@ -19,3 +21,14 @@ raw        CODE:32A9D
 raw        CODE:35B40
 ; FS before 66h (64 66 AD), where the assembler writes 66h first
 raw        CODE:31649
+; a DS prefix where DS is the default (3E 0F B7 ...)
+raw        CODE:164B4
+
+; INT 93h AX=0, presumably pMAX's exit (not checked): what follows is data
+; (CODE:BA9B writes the twelve bytes at CODE:BA83 to the DAC from colour FCh)
+stop       CODE:BA81
+
+; code reached through pointers
+code       CODE:A39C               ; far jump at CODE:A38C through CODE:A2BB, with the selector INT 93h AH=8 gave at CODE:A37A (base presumably that of CODE: the code there uses CODE's variables; not checked)
+words      CODE:BAD6 0A CODE       ; called at CODE:B98E by the number in CODE:CBCC while below 0Ah
+code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX; RET

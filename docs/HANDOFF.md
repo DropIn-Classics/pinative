@@ -4,7 +4,7 @@ State of 2026-09-29: the repository was made from doskit's template on
 top of an earlier analysis (docs/*.md other than this file). The game's
 files are listed. The main program, `ILLUSION.386`, is in stage 1:
 `src/ILLUSION.hints` rebuilds it byte for byte (doskit reads pMAX images
-since 2026-09-29), with almost no hints yet (see "Stage 1" below).
+since 2026-09-29), with few hints yet (see "Stage 1" below).
 
 ## The earlier analysis
 
@@ -82,17 +82,32 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 3761
-instructions (11,405 of 0x46480 bytes reached as code), 509 labels,
-10 lines as DB, 15 s on the Mac used (2026-09-29). The hints so far:
-the two descriptors as segments (`CODE` the whole image, code and data;
-`TAIL` the empty one at its end), the entry point's name, and the 10
-`raw` lines:
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 17,990
+instructions, 2273 labels, 13 lines as DB, 17 to 34 s on the Mac used
+(2026-09-29); gaps.py: 195 gaps, 219,721 of 0x46480 bytes not reached
+as code. The hints so far: the two descriptors as segments (`CODE` the
+whole image, code and data; `TAIL` the empty one at its end), the entry
+point's name, the pointers found so far, a `stop` and the 13 `raw`
+lines:
 
-- nine instructions with a 16-bit address and no register (67h, e.g.
+- ten instructions with a 16-bit address and no register (67h, e.g.
   `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
   ask for that address size;
-- CODE:31649 `64 66 AD`: FS before 66h, the one such order.
+- CODE:31649 `64 66 AD`: FS before 66h, the one such order;
+- CODE:164B4: a DS prefix where DS is the default.
+
+Code reached through pointers so far:
+
+- CODE:A39C, where the program goes on after start-up: the code at CODE:A323 makes a
+  selector with INT 93h AH=8 (CX=200000h) and jumps there with a far JMP
+  through CODE:A2BB. That the selector's base is CODE's is presumed (the
+  code there uses CODE's variables), not checked.
+- CODE:4DB7: pushed as a return address before a routine that ends in
+  `XCHG [ESP],EBX; RET`.
+- CODE:BAD6: ten near pointers called in turn by the number in CODE:CBCC
+  (CODE:B976 onward) while it is below 0Ah; at 0Ah it goes to CODE:BA7D,
+  `MOV AX,0; INT 93h` (presumably pMAX's exit, not checked) followed by
+  data, hence a `stop` hint (new in doskit for this).
 
 Seen on the way (in doskit's commits): the image's segment-register
 stores to memory carry 66h (`66 8C ...`, four of them), which the source
@@ -100,10 +115,10 @@ now writes as `MOV WORD PTR [..],DS`; a pointer variable at CODE:8128
 is read and then addresses memory (`MOV ESI,[8128h]`), and the kit had
 taken the constant stored into it (CODE:7ABC) for code: about 2000
 "instructions" of data, now a data label. The earlier scanner reached
-12,018 bytes; not compared with the 11,405 here.
+12,018 bytes; not compared (the kit reached 11,405 then, 68,151 now).
 
 Not done: everything the method's stage 1 asks beyond the byte identity
-(gaps.py: 41 gaps; the `ptr`/`dptr` of the many 32-bit immediates that
+(gaps.py: 195 gaps; the `ptr`/`dptr` of the many 32-bit immediates that
 are offsets, which the analysis does not find by itself; names).
 
 ## Next
@@ -117,6 +132,9 @@ are offsets, which the analysis does not find by itself; names).
      `MOV DS,AX` without 66h, `MOV AX,DS` with it; ALU reg,reg in the
      `reg, r/m` form; 16-bit addresses (67h) occur. One `64 66` order
      and one sreg store without 66h are exceptions (raw hints later).
+   - done 2026-09-29: ALU EAX,imm8 in the 83h form (the
+     accumulator form with imm32 was the kit's mistake, seven places
+     here); `stop` hint (disasm.py) for a call that does not return.
    - done 2026-09-29: the pMAX image as a program for disasm.py and
      build.py (`pmax` hint, descriptors as segments, selector
      relocations as SEG fixups, write_pmax), tests/flat in doskit's
