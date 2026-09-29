@@ -151,6 +151,197 @@ static int CMD_INIT(NsRegs *r)
     return 0;
 }
 
+/* CODE:2595: NOTE_IN to NOTE_OUT */
+static void NOTE_CONVERT(void)
+{
+    uint16_t ax = (uint16_t)((rb(D_NOTE_IN) & 0x0F) << 8 | rb(D_NOTE_IN + 1)), bx;
+    uint32_t edx = 0;
+
+    if (ax != 0)
+        for (;;) {
+            bx = rw(D_PERIODS + edx);
+            if (bx == 0) {
+                ww(D_NOTE_OUT, 0);
+                ww(D_NOTE_OUT + 2, 0);
+                return;
+            }
+            edx += 2;
+            if (ax == bx)
+                break;
+        }
+    wb(D_NOTE_OUT, (uint8_t)(edx >> 1));
+    wb(D_NOTE_OUT + 1, (uint8_t)((rb(D_NOTE_IN) & 0xF0) | rb(D_NOTE_IN + 2) >> 4));
+    wb(D_NOTE_OUT + 2, rb(D_NOTE_IN + 2) & 0x0F);
+    wb(D_NOTE_OUT + 3, rb(D_NOTE_IN + 3));
+}
+
+/* CODE:2614 */
+static void PATTERNS_COUNT(void)
+{
+    uint32_t o = D_ORDERS + rd(D_SLOT_OFF), i;
+    uint8_t ah = rb(o);
+
+    for (i = 0; i < 0x80; i++)
+        if (rb(o + i) > ah)
+            ah = rb(o + i);
+    wb(D_NPATTERNS, (uint8_t)(ah + 1));
+}
+
+/* a big-endian word of the file's */
+static uint16_t be16(uint32_t off)
+{
+    return (uint16_t)(rb(off) << 8 | rb(off + 1));
+}
+
+/* MOD_LOAD's ends at CODE:2169 (unloaded, error 1) and CODE:215F (error 2);
+ * CODE:2136's error 3 (a read failed) cannot come, callbacks 7 and 9 clear
+ * CF always */
+static int load_error(uint8_t err, int unload)
+{
+    if (unload)
+        HCB_UNLOAD();
+    wb(D_LOAD_ERROR, err);
+    return 1;
+}
+
+/* CODE:1C28: 1 for CF */
+static int MOD_LOAD(uint16_t es, uint32_t edx)
+{
+    uint32_t slot = rd(D_SLOT_OFF), base, n, i, k;
+    uint16_t ds = rw(D_DRV_DS), sel;
+    uint8_t cl;
+
+    if (HCB_LOAD(es, edx))
+        return load_error(2, 0);
+    ww(D_MOD_HANDLE, (uint16_t)edx);  /* BX, which callback 6 leaves */
+
+    /* the signature at 438h: 31 samples with one, 15 without */
+    HCB_SEEK(0x438);
+    HCB_READ(ds, D_DMA_FILLER_SEL, 4);
+    ww(D_SAMPLE_HDRS_SIZE, 0x3A2);
+    ww(D_SIG_SIZE, 4);
+    ww(D_NSAMPLES, 0x1F);
+    if (rd(D_DMA_FILLER_SEL) != 0x2E4B2E4Du && rd(D_DMA_FILLER_SEL) != 0x34544C46u) {
+        ww(D_SAMPLE_HDRS_SIZE, 0x1C2);
+        ww(D_SIG_SIZE, 0);
+        ww(D_NSAMPLES, 0x0F);
+    }
+    HCB_SEEK(0);
+    HCB_READ(ds, D_SONG_TITLE, 0x14);
+    HCB_READ(ds, D_SAMPLE_HDRS, rw(D_SAMPLE_HDRS_SIZE));
+    HCB_READ(ds, D_DMA_FILLER_SEL, 2);
+    cl = rb(D_DMA_FILLER_SEL + 1) & 0x7F;
+    if (cl >= rb(D_DMA_FILLER_SEL))
+        cl = 0;
+    wb(D_RESTART_POS, cl);
+    ww(D_SONG_LENGTH + slot, rb(D_DMA_FILLER_SEL));
+    HCB_READ(ds, D_ORDERS + slot, 0x80);
+    PATTERNS_COUNT();
+
+    /* the patterns, each note converted */
+    HCB_SEEK((uint16_t)(rw(D_SAMPLE_HDRS_SIZE) + 0x96 + rw(D_SIG_SIZE)));
+    n = rb(D_NPATTERNS) * 0x400u;
+    if (HCB_ALLOC(n, &sel))
+        return load_error(1, 1);
+    ww(D_PATTERNS_SEL + slot, sel);
+    HCB_READ(sel, 0, n);
+    base = pmax_base(sel);
+    for (i = 0; i < n; i += 4) {
+        wd(D_NOTE_IN, lrd(base + i));
+        NOTE_CONVERT();
+        lwd(base + i, rd(D_NOTE_OUT));
+    }
+    HCB_SEEK(n + rw(D_SAMPLE_HDRS_SIZE) + rw(D_SIG_SIZE) + 0x96);
+
+    /* the sample records from the headers */
+    for (k = 0; k < rw(D_NSAMPLES); k++) {
+        uint32_t h = D_SAMPLE_HDRS + k * 0x1E, r = D_SLOTS + slot + k * 0x10;
+        uint16_t ax, bx;
+
+        ww(r + 0x0E, (uint16_t)(rb(h + 0x18) * 0x48));
+        ww(r + 8, rb(h + 0x19));
+        ax = (uint16_t)(be16(h + 0x16) << 1);
+        ww(r + 6, ax);
+        ww(r + 0x0A, ax);
+        if (ax < 3) {
+            /* none: the channels' buffer, one byte */
+            ww(r, rw(D_CHAN_BUF_SEL));
+            ww(r + 6, 1);
+            ww(r + 2, 0);
+            ww(r + 4, 1);
+            ww(r + 0x0A, 1);
+            ww(r + 8, 0);
+            continue;
+        }
+        ax = be16(h + 0x1A);
+        bx = be16(h + 0x1C);
+        if (rw(D_SIG_SIZE) != 0) {
+            ax = (uint16_t)(ax << 1);
+            bx = (uint16_t)(bx << 1);
+        }
+        if (bx == 0)
+            bx = 1;
+        ww(r + 2, ax);
+        ww(r + 0x0C, bx);
+        bx = (uint16_t)(bx + ax);
+        ww(r + 4, bx);
+        if (bx > 2)
+            ww(h + 6, bx);          /* into the header's name, as the original */
+    }
+
+    /* the samples, each followed by 800h bytes of its loop (0 without) */
+    for (k = 0; k < rw(D_NSAMPLES); k++) {
+        uint32_t r = D_SLOTS + slot + k * 0x10, edi, ebx;
+        uint8_t ah;
+
+        if (rw(r + 6) < 3)
+            continue;
+        if (HCB_ALLOC(rw(r + 0x0A) + 0x800u, &sel))
+            return load_error(1, 1);
+        ww(r, sel);
+        HCB_READ(sel, 0, rw(r + 0x0A));
+        base = pmax_base(sel);
+        edi = rw(r + 6);
+        ebx = rw(r + 2);
+        ah = rw(r + 4) >= 3 ? 0xFF : 0;
+        for (i = 0; i < 0x800; i++) {
+            lwb(base + edi++, lrb(base + ebx++) & ah);
+            if ((uint16_t)ebx >= rw(r + 4))
+                ebx = rw(r + 2);
+        }
+    }
+
+    wd(D_ROW_OFFSET, 0);
+    ww(D_PAT_OFFSET, (uint16_t)(rb(D_ORDERS + slot) << 10));
+    HCB_UNLOAD();
+    wb(D_SPEED, 6);
+    return 0;
+}
+
+/* CODE:0D2B: 1 for CF, the result in r->eax */
+static int CMD_LOAD_MODULE(NsRegs *r)
+{
+    uint32_t slot;
+
+    if (rb(D_PLAYING) != 0) {
+        r->eax = 0;
+        return 1;
+    }
+    slot = (r->ebx & 0xFF) * 0x275;
+    wd(D_SLOT_OFF, slot);
+    if (rb(D_SLOT_LOADED + slot) == 0xFF) {
+        r->eax = 0;
+        return 1;
+    }
+    wb(D_SLOT_LOADED + slot, 0xFF);
+    wb(D_C2D64, 0);
+    if (MOD_LOAD(r->es, r->edx)) {
+        r->eax = rb(D_LOAD_ERROR);
+        return 1;
+    }
+    return 0;
+}
+
 int ns_call(uint16_t cs, NsRegs *r)
 {
     uint32_t save = pm_ds;
@@ -164,6 +355,9 @@ int ns_call(uint16_t cs, NsRegs *r)
     switch (r->eax) {
     case 0:
         cf = CMD_INIT(r);
+        break;
+    case 4:
+        cf = CMD_LOAD_MODULE(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

@@ -32,11 +32,12 @@ python3 tools/sdr_inspect.py build/files/SB16.SDR
 Eleven decoded drivers share this dispatcher and its 19 commands:
 `ADLIB`, `GUS`, `INTERNAL`, `NOSOUND`, `PAS16`, `SB16`, `SB20`, `SBLASTER`,
 `SBPRO`, `SM2`, and `THING`. Handler offsets vary, but their instruction
-shapes and state transitions align. `SNDSCAPE.SDR` is anomalous in the
-inspected release: its offset-zero jump targets `0x123D`, where the decoded
-bytes are not a valid instance of this dispatcher. The archive stream decodes
-cleanly to its declared 16,095 bytes, so the tool rejects that resource rather
-than guessing a repair.
+shapes and state transitions align. `SNDSCAPE.SDR` seemed anomalous: its
+offset-zero jump targets `0x123D`, where the bytes the old decoder gave were
+not a valid instance of this dispatcher. That decoder was wrong from its byte
+`0x1D5` (docs/HANDOFF.md, "pMAX's decoder"); unpacked as pMAX does, it has
+the dispatcher (at `0x1258`, the table at `0x12AE`) like the others
+(tools/sdr_inspect.py, 2026-09-29; its handlers not compared).
 
 ## Command ABI
 

@@ -69,6 +69,9 @@ name       CODE:635E HOST_DS       ; DS kept by CHOOSER_LOAD
 name       CODE:6358 DRIVER_SEL    ; the sound driver's block (INT 94h AH=1 by the name in DRIVER_CFG; run: 4)
 name       CODE:6360 DRIVER_CFG    ; the configuration header again (INT 94h AH=5): the driver's name first; the driver's command 0 gets it as ES:EBX
 name       CODE:8134 DRIVER_ENTRY  ; a far pointer: offset 0, the selector INT 93h AH=8 makes of DRIVER_SEL (run: 0Ch)
+name       CODE:80BC INTRO_MOD_NAME ; "intro\MOD.INT", the module SOUND_START has the driver load into slot 0 (command 4, its result not looked at)
+name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
+name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0
 code       CODE:61D9 CALLBACKS_CS  ; each selector word of HOST_CALLBACKS set to CS
 code       CODE:6244 HCB_ALLOC     ; host callback 0: EBX bytes by INT 92h AH=0Ah (the name "Used by MS32"), the selector in BX (run 2026-09-29: NOSOUND's 800h bytes got 2Ch)

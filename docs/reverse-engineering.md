@@ -92,12 +92,17 @@ range.
   the little-endian DOS host representation.
 - pMAX batches both common-prefix normalization and E3 underflow bits. Keeping
   its deferred-underflow behavior is necessary; a textbook arithmetic decoder
-  diverges after the first few symbols.
+  diverges after the first few symbols. With common-prefix bits and pending
+  underflow bits, it shifts one bit, clears the pending count and looks
+  again (read from pMAX's code in a run's memory, 2026-09-29; the decoder
+  before that differed there and got 10 of the 125 entries wrong, see
+  docs/HANDOFF.md, "pMAX's decoder").
 
-The decoder (tools/illfiles.py) is checked by two format invariants:
+The decoder (tools/illfiles.py) was first checked by two format invariants:
 `INTRO\\PCSKY.FLD` begins with a VGA palette whose channels are all 0 through
 63, and `DATA\\S001\\MUSIC.MOD` contains the ProTracker `M.K.` signature at
-offset 1080.
+offset 1080. Since 2026-09-29 it follows pMAX's steps, and `INTRO\\MOD.INT`
+unpacks equal to the bytes pMAX left in a run's memory.
 
 ## `ILLUSION.386`
 

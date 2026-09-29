@@ -10,17 +10,19 @@ repository.
 Started 2026-09-29 from doskit's template: finds or unpacks the game's
 files and shows a text screen. Since 2026-09-29 it unpacks
 `ILLUSION.386` from the player's `ILLUSION.EXE` (src/archive.c, the
-archive as tools/illfiles.py reads it) and loads it into doskit's
+archive as tools/illfiles.py reads it; both unpack as pMAX does since
+2026-09-29, docs/HANDOFF.md, "pMAX's decoder") and loads it into doskit's
 `pmem.h` memory as pMAX does (src/image.c: linear 100F30h, selector 1Ch;
 the SHA-256 of src/gen/names.h checked). Translated: ENTRY and
 SETUP_ARGS (src/entry.c, src/setup.c; the configuration file and
 SETSOUND.DAT through src/pmax.c, in place of pMAX's services) and
 SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
 (src/video.c), CHOOSER_LOAD's start and SOUND_START (src/sound.c; the
-CD check in src/cd.c) and the sound driver's command 0 (src/nosound.c,
-NOSOUND.SDR's command in C; the host callbacks it calls in
-src/hostcb.c), up to its command 4 at CODE:7138, where the port stops
-(`Stopped before SOUND_START: the driver's command 4`). The port loads
+CD check in src/cd.c) and the sound driver's commands 0 and 4
+(src/nosound.c, NOSOUND.SDR's commands in C, command 4 loading
+`intro\MOD.INT`; the host callbacks they call in src/hostcb.c), up to
+CHOOSER_LOAD's files after CODE:75B6, where the port stops
+(`Stopped before CHOOSER_LOAD's files`). The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
@@ -73,4 +75,12 @@ headless build writes the pictures `DK_SHOTS` names, as
   bytes differ, and the three blocks it allocates (800h bytes at
   14A8D0h, the DMA buffer at 13120h, the volume table at 14B0E0h)
   equal byte for byte.
+- 2026-09-29, Linux: at the end of SOUND_START (dosrun `-break
+  1084E6#1 -mem`, NOSOUND.SDR): CODE, TAIL and the driver's block 0
+  bytes differ; all 32 blocks of pMAX's heap chain (the driver, its
+  three blocks, the patterns and 28 samples of MOD.INT), the DMA
+  buffer and MOD.INT's freed bytes at FA8060h equal byte for byte.
+- 2026-09-29, Linux: src/archive.c's unpacking of all 125 entries equal
+  to tools/illfiles.py's `extract --all` again after both followed
+  pMAX's decoder (a scratch program), 1.7 s.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

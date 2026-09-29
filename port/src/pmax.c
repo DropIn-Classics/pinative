@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game.h"
+#include "gen/names.h"
 #include "image.h"
 #include "pmax.h"
 #include "pmem.h"
@@ -80,19 +81,25 @@ int pmax_cfg_header(uint32_t off)
  * bytes and on 16 bytes.  With policy 2 (INT 92h AH=8 BL=2) a block comes
  * from DOS memory: in the run the first at linear 13120h (docs/HANDOFF.md,
  * "The driver's command 0 in a run"); the port puts the next ones after
- * it the same way, not checked.  Policy 1 (from the top, MOD.INT at
- * FA8060h) is not done yet.  The headers themselves are pMAX's and not
- * written.
+ * it the same way, not checked.  With policy 1 a block is cut from the
+ * top: the heap's chain ends at FEFFF0h, and in the run MOD.INT (47F88h
+ * bytes) lay at FA8060h, so that its size rounded to 16 ended there
+ * (docs/HANDOFF.md, "The driver's command 4 in a run"); the port puts the
+ * next ones below it the same way, not checked.  The headers themselves
+ * are pMAX's and not written.
  *
- * Selectors: the lowest free of 04h, 0Ch, 14h ... (steps of 8), with 14h
- * (CS), 1Ch (DS), 24h and the video memory's 48h taken from the start; as
- * the runs had 4, 0Ch, 34h, 44h, not checked beyond. */
+ * Selectors: the lowest free of 04h, 0Ch, 14h ... (steps of 8, the local
+ * table's), with 14h (CS), 1Ch (DS) and 24h taken from the start; the
+ * video memory's 48h is another table's (bit 2 clear) and takes none of
+ * them: the runs had 4, 0Ch, 2Ch ... 44h, 4Ch ... 12Ch (docs/HANDOFF.md,
+ * "The driver's command 4 in a run"). */
 
 #define MAX_BLOCKS 64
 #define MAX_SELS 256
 
 #define LOW_START 0x13120u
 #define LOW_END 0xA0000u
+#define HEAP_TOP 0xFEFFF0u
 
 static struct { uint32_t base, size; uint16_t sel; int used; } blocks[MAX_BLOCKS];
 static uint8_t policy;
@@ -103,7 +110,7 @@ static void sels_init(void)
     static int done;
     if (!done) {
         sels[0x14 / 8].used = sels[0x1C / 8].used = sels[0x24 / 8].used = 1;
-        sels[0x48 / 8].used = 1;
+        sels[0x14 / 8].base = sels[0x1C / 8].base = pi_image.desc[ILLUSION_CODE].base;
         done = 1;
     }
 }
@@ -131,13 +138,29 @@ static uint32_t block_alloc(uint32_t size, uint16_t *sel)
     if (policy == 2) {
         at = LOW_START;
         end = LOW_END;
+    } else if (policy == 1) {
+        /* the highest address below every block in use above it that the
+         * new one fits after */
+        uint32_t r = (size + 15) & ~15u;
+        int moved;
+
+        at = HEAP_TOP - r;
+        do {
+            moved = 0;
+            for (k = 0; k < MAX_BLOCKS; k++)
+                if (blocks[k].used && at < blocks[k].base + blocks[k].size + 0x10
+                    && blocks[k].base < at + r + 0x10) {
+                    at = blocks[k].base - 0x10 - r;
+                    moved = 1;
+                }
+        } while (moved);
     } else if (policy != 0) {
-        pi_stop("pMAX: an allocation with policy 1 (from the top)");
+        pi_stop("pMAX: an allocation with another policy");
     }
 
     /* the lowest address after every block in use that the new one fits
      * before the next (first fit over the used blocks, by address) */
-    for (;;) {
+    while (policy != 1) {
         int moved = 0;
         for (k = 0; k < MAX_BLOCKS; k++)
             if (blocks[k].used && at < blocks[k].base + blocks[k].size + 0x10
@@ -196,6 +219,8 @@ uint16_t pmax_alias(uint16_t sel)
 uint32_t pmax_base(uint16_t sel)
 {
     int k = sel / 8;
+
+    sels_init();
     return (sel & 7) == 4 && k < MAX_SELS && sels[k].used ? sels[k].base : 0;
 }
 

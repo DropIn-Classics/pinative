@@ -50,7 +50,9 @@ lives run out"); table 4's
 sea game (see "Table 4's sea game in a run"); table 3 has no
 opcode-14h object (see "Table 3's opcode-14h record"); the hole's
 stale sound read gives nothing in a run (see "The hole's sound in a
-run").
+run"); pMAX's own unpacker read in a run's memory, and the archive's
+decoder (tools/illfiles.py, port/src/archive.c) corrected after it: 10
+of the 125 entries had come out wrong (see "pMAX's decoder").
 
 ## The earlier analysis
 
@@ -62,7 +64,8 @@ Python 3.12 on Windows, 2026-09-29; 54 on macOS, Python 3.9, with the
 drop-target banks' test, 2026-09-29). Run on `build/files/` 2026-09-29 they
 accept all four tables (`DATA\S00n`, `SOURCE\T00n.BPC`/`.REL`) and every
 driver but `SNDSCAPE.SDR` ("no EAX jump-table dispatch", the driver the
-notes already call anomalous); `cfg_inspect.py` is not run, there is no
+notes already call anomalous; accepted since the decoder's correction of
+2026-09-29, see "pMAX's decoder"); `cfg_inspect.py` is not run, there is no
 `ILLUSION.CFG` here. `asset_inspect.py` now takes the archive's names
 (`HIDE1.M`, `STAGE.C`, the old extractor wrote `HIDE1_M`).
 
@@ -2134,6 +2137,97 @@ the whole memory is pMAX's own (below the image, the block headers, and
 bytes near the top of memory the run left there before the image was
 loaded, presumably pMAX's unpacking; not looked into).
 
+### The driver's command 4 in a run
+
+The run with NOSOUND.SDR in the header (build/pm/nosound.cfg by `-put`,
+no `-cue`) stopped at the end of SOUND_START (CODE:75B6, linear
+1084E6h; `-mem`), against the port stopped there (`-cfg
+build/pm/nosound.cfg -mem`), 2026-09-29, Linux:
+
+- command 4 (CMD_LOAD_MODULE, then MOD_LOAD; names in src/NOSOUND.hints)
+  gets `intro\MOD.INT` (INTRO_MOD_NAME) through host callback 6: pMAX
+  loads the whole file (47F88h bytes, selector 44h) from the top of the
+  heap, its data at FA8060h so that the size rounded to 16 ends at
+  FEFFF0h; the header's last word there is 2 though callback 6 asks for
+  policy 1 (INT 92h AH=8 BL=1), not looked into. Callback 6 leaves BX
+  (MOD_HANDLE is 80BCh, the name's offset);
+- "M.K." at 438h: 31 samples; NPATTERNS 2Ah (the highest entry of all
+  80h orders, + 1), SONG_LENGTH 37h, RESTART_POS 0; the patterns (A800h
+  bytes, selector 4Ch) and 28 sample blocks (54h to 12Ch, each its
+  length + 800h bytes, the loop repeated after it) cut from the bottom,
+  first fit, after the volume table; MOD.INT freed at the end (selector
+  44h free again). Each note is rewritten by NOTE_CONVERT (the period's
+  index in PERIODS + 1, the sample, the effect, its parameter);
+- selectors: 48h, the video memory's, is not one of the local table's
+  (bit 2 clear) and does not keep 4Ch from being given: the port had
+  marked it taken and gave 54h for the patterns until this was seen;
+- equal in the port: CODE and TAIL (memcmp.py src/ILLUSION.hints ...
+  --base 100F30), the driver's block (src/NOSOUND.hints, --base
+  1473C0), all 32 blocks of the heap's chain, the DMA buffer at 13120h
+  and MOD.INT's freed bytes at FA8060h. Only once MOD.INT itself was
+  equal (see "pMAX's decoder").
+
+The result of command 4 is not looked at by SOUND_START (CLC after the
+call); SOUND_JUMP (CODE:1550) set to 4CF2h at its end.
+
+### pMAX's decoder
+
+The first comparison above showed the samples wrong from 42Eh into the
+first one: the run's MOD.INT in memory differs from the file
+tools/illfiles.py (and port/src/archive.c, which was checked only
+against it) unpacks from byte B06Ah on, where ours turns to noise and
+the run's goes on as a waveform. B06Ah is 29 codes after the LZW
+table's first reset (at output B04Dh); the symbol there came out one too
+high.
+
+pMAX's unpacker is not in ILLUSION.EXE's bytes as stored: the loader
+(the MZ image, at linear 760h in the run, segment 76h) is equal to the
+file only in its first F4h bytes; 18836 of its 21264 bytes differ, so it
+decrypts or unpacks itself (not followed). In the run's memory
+(build/pm/ns_75b6_new.mem, not in the repository) it is 16-bit code with
+32-bit operands; offsets in segment 76h (the variables' DS taken to be
+76h too, presumably):
+
+- 0076:378A the unpacking: 340E (coder state), 3447 (INT 21h AX=4200h
+  to the entry, then INT 91h AH=5 with ECX 7D00h, presumably a read of
+  that many bytes; 373A does it again when they are used up), 33C6
+  (the table: 8-byte entries, next code and alphabet 100h), 3783 (skips
+  4 bytes, presumably the entry's second size dword), 3715 (code and
+  the bit buffer from four big-endian words); per code 34ED (the symbol), 3475 (the new
+  interval), 3552 (normalization), then the alphabet + 1; the table
+  full at 1F3Fh: 33C6 again (38AF);
+- variables: 335D high, 3361 low, 3365 code, 3369 the alphabet's size,
+  336D the next code, 3379 the bit buffer, 337D its count of bits used
+  (a byte), 3381 the pending underflow bits.
+
+Where ours differed, all in the normalization (3552): with leading bits
+of low and high alike and pending bits, pMAX shifts one bit, clears the
+pending count and looks again (so it may take an underflow step in the
+same call); ours shifted all alike bits and kept the pending count until
+a call with no bit alike. And an underflow step that crosses the bit
+buffer's end refills twice and does not refill again at 16. The
+dictionary, the symbol and the interval arithmetic were the same.
+BSR with a zero source leaves its destination (as dosrun does); pMAX's
+ECX carries over there, and the new decoders keep that too, unseen in
+these files.
+
+Written after it (tools/illfiles.py's Decoder, port/src/archive.c): the
+unpacked MOD.INT equal to the run's bytes at FA8060h, ILLUSION.386 still
+with its SHA-256, and archive.c equal to illfiles.py for all 125
+entries (a scratch program). Ten entries come out other than before (the
+first differing byte): `CHOOSER\FILE1.DAT` 6C80Fh, `INTRO\MOD.INT`
+B06Ah, `INTRO\INTROPIX.MGL` 45847h, `DATA\S001\FILE3.DAT` 462F9h,
+`SOURCE\FILE8.DAT` F2DC1h, `DATA\S002\FILE4.DAT` 1BA88Bh,
+`DATA\S003\MUSIC2.MOD` 19619h, `DATA\S003\FILE5.DAT` 3A8ECh,
+`DATA\S004\FILE6.DAT` 1DAD03h, `SNDSCAPE.SDR` 1D5h. So `build/files/`
+must be unpacked again (`extract --all`); what was read from those ten
+before (the earlier notes on SNDSCAPE.SDR, the FILEn.DAT sizes'
+remarks, table 3's second music) wants a second look.
+tools/sdr_inspect.py accepts SNDSCAPE.SDR now (the dispatcher at 1258h,
+the table at 12AEh), as the other eleven. Past the archive's end the
+decoders read zeros; pMAX's word read gives something else there (its
+buffer position), not checked, as no entry seen needs it.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2304,9 +2398,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      NOSOUND.SDR), INT 93h AH=8's alias (0Ch), CALLBACKS_CS; memory
      equal at CODE:711D (see "The driver loaded, in a run"). Done
      2026-09-29: NOSOUND's command 0 (port/src/nosound.c; see "The
-     driver's command 0 in a run"). Next: NOSOUND's command 4
-     (CODE:1C28, the MOD loader), with host callbacks 6 to 9 and pMAX's
-     allocation from the top (policy 1), which port/src/pmax.c stops at.
+     driver's command 0 in a run"). Done 2026-09-29: NOSOUND's command 4
+     (MOD_LOAD, CODE:1C28), host callbacks 6 to 9 and pMAX's allocation
+     from the top; memory equal at CODE:75B6, the end of SOUND_START (see
+     "The driver's command 4 in a run"). Next: CHOOSER_LOAD's files
+     (cube.rix, tube.rix ...: INT 94h AH=1 after CODE:75B6), where the
+     port stops now.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
@@ -2316,7 +2413,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      13120h, DOS memory (the trace after callback 3 at driver CODE:1258).
      Selectors: the lowest free of 04h, 0Ch, ... in steps of 8, with 14h,
      1Ch, 24h taken from the start; 48h (video) apart. port/src/pmax.c
-     does only the bottom-up case so far.
+     does policies 0, 1 and 2 (only the first block of each seen for 1
+     and 2).
    - on from HISCORE_INIT: CODE:757D,
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts

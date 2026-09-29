@@ -54,8 +54,14 @@ static int SOUND_START(void)
     if (ns_call(rw(N_DRIVER_ENTRY + 4), &r))
         pi_stop("SOUND_START: the driver failed (CODE:7152)");
 
-    /* command 4: intro\MOD.INT into slot 0 */
-    pi_stop("SOUND_START: the driver's command 4");
+    /* command 4: INTRO_MOD_NAME into slot 0 (what it returns is not
+     * looked at) */
+    r.eax = 4;
+    r.ebx = 0;
+    r.es = pi_image.desc[ILLUSION_CODE].sel;
+    r.edx = N_INTRO_MOD_NAME;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+    wd(N_SOUND_JUMP, 0x4CF2);
     return 0;
 }
 

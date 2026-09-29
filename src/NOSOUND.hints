@@ -36,7 +36,32 @@ name       CODE:3274 DMA_SIZE      ; FRAME_BYTES2 * NBUF (run: 14ACh)
 code       CODE:1214 DMA_ALLOC     ; DMA_SIZE bytes by host callback 1, its linear base by callback 3; one that crosses a 64 KB line is freed, a filler up to the line allocated (DMA_FILLER_SEL), the buffer again, the filler freed; the buffer cleared, its selector to DMA_SEL and its base to DMA_LINEAR
 name       CODE:325E DMA_SEL       ; run: 34h
 name       CODE:3266 DMA_LINEAR    ; run: 13120h
-name       CODE:21A0 DMA_FILLER_SEL
+name       CODE:21A0 DMA_FILLER_SEL ; also MOD_LOAD's scratch: the file's 4 bytes at 438h (its signature), later its song length and restart bytes
 code       CODE:053D VOLTAB_MAKE   ; 8202h bytes by INT 92h AH=0Ah ("Volume table"), selector to VOLTAB_SEL: 41h rows of 100h words, row v entry b = (signed b) * v
 name       CODE:327E VOLTAB_SEL    ; run: 3Ch
 name       CODE:0956 RESULT        ; EAX a command returns through CODE:095A (CF clear) or CODE:0988 (CF set)
+code       CODE:1C28 MOD_LOAD      ; command 4's work: the module file named at ES:EDX through host callbacks 6 (load), 9 (seek), 7 (read), 8 (unload) into the slot at SLOT_OFF; CF and LOAD_ERROR 1 (no memory), 2 (no file), 3 (a read failed)
+name       CODE:2195 LOAD_ERROR    ; MOD_LOAD's error, command 4's EAX with CF
+name       CODE:2196 MOD_HANDLE    ; BX after host callback 6 (the name's offset's low word: callback 6 leaves BX; the other callbacks do not read it)
+name       CODE:2198 NOTE_IN       ; a pattern's 4-byte note as the file has it, for NOTE_CONVERT
+name       CODE:219C NOTE_OUT      ; NOTE_CONVERT's result: the note's index in PERIODS + 1 (0 none), the sample, the effect, its parameter
+name       CODE:21AC SAMPLE_HDRS_SIZE ; 3A2h (31 samples of 1Eh) for "M.K." or "FLT4" at 438h, else 1C2h (15)
+name       CODE:21AE SIG_SIZE      ; 4 with a signature, else 0 (also: loop start and length in words, doubled)
+name       CODE:21B0 NSAMPLES      ; 1Fh or 0Fh
+name       CODE:21B2 NPATTERNS     ; PATTERNS_COUNT's: the highest pattern in the order list + 1
+name       CODE:21B5 PAT_OFFSET    ; MOD_LOAD: the first order's pattern * 400h (the pattern playing, presumably; not followed)
+name       CODE:21B7 ROW_OFFSET    ; MOD_LOAD: 0 (presumably the row within the pattern; not followed)
+name       CODE:21C1 SAMPLE_HDRS   ; the file's sample headers (1Eh bytes each: name, length, finetune, volume, loop start, loop length; words big-endian)
+name       CODE:2581 SONG_TITLE    ; the file's first 14h bytes
+name       CODE:2C2D RESTART_POS   ; the file's restart byte AND 7Fh, 0 when not below the song length
+name       CODE:2C2F SPEED         ; 6 after MOD_LOAD (the ticks per row, presumably; not followed)
+name       CODE:2D64 C2D64         ; cleared by command 4
+name       CODE:2D67 SLOT_OFF      ; the slot command 4 (and others) works on, times 275h
+name       CODE:2D73 SLOTS         ; module slots of 275h bytes: 1Fh sample records of 10h (+0 selector, +2 loop start, +4 loop end, +6 length, +8 volume, +0Ah length, +0Ch loop length, +0Eh finetune * 48h), then SLOT_LOADED, ORDERS, SONG_LENGTH, PATTERNS_SEL
+name       CODE:2F63 SLOT_LOADED   ; + SLOT_OFF: FFh once command 4 has loaded (or tried) the slot; a second command 4 fails with EAX 0
+name       CODE:2F64 ORDERS        ; + SLOT_OFF: the file's 80h-byte order list
+name       CODE:2FE4 SONG_LENGTH   ; + SLOT_OFF: the file's song length (a word)
+name       CODE:2FE6 PATTERNS_SEL  ; + SLOT_OFF: the patterns' block, NPATTERNS * 400h bytes by host callback 0, each note converted by NOTE_CONVERT
+code       CODE:2595 NOTE_CONVERT  ; NOTE_IN to NOTE_OUT: the period (12 bits) looked up in PERIODS; one not there gives a note all 0
+code       CODE:2614 PATTERNS_COUNT ; NPATTERNS from the slot's ORDERS (all 80h bytes, not only the song length's)
+name       CODE:2ABD PERIODS       ; the periods NOTE_CONVERT looks up, words, 0 at the end

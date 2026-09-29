@@ -72,12 +72,14 @@ class Archive:
 
 
 class Decoder:
-    """NLZW: LZW codes through a uniform arithmetic coder (pi_inspect.c)."""
+    """NLZW: LZW codes through a uniform arithmetic coder.  The coder's
+    steps are pMAX's own, read in a run's memory (docs/HANDOFF.md, "pMAX's
+    decoder"), down to its register use where a BSR finds no bit."""
 
     def __init__(self, data, pos):
         self.data, self.pos = data, pos
         self.low, self.high, self.total = 0, M32, 256
-        self.bit_count, self.pending = 0, 0
+        self.count, self.pending = 0, 0
         w = [self.word() for _ in range(4)]
         self.code = (w[0] << 16) | w[1]
         self.bits = (w[2] << 16) | w[3]
@@ -86,14 +88,21 @@ class Decoder:
         p = self.pos
         self.pos += 2
         if p + 2 > len(self.data):
-            return 0        # the DOS decoder reads padding bits past EOF
+            return 0        # past the file's end: not checked against pMAX
         return (self.data[p] << 8) | self.data[p + 1]
 
+    @staticmethod
+    def bsr(r, v):
+        """BSR: the highest bit set, r kept when there is none"""
+        return v.bit_length() - 1 if v else r
+
     def refill(self):
-        self.bit_count -= 16
-        self.bits = (self.bits | (self.word() << self.bit_count)) & M32
+        self.count = (self.count - 16) & 0xFF
+        self.bits = (self.bits | (self.word() << (self.count & 31))) & M32
 
     def shift(self, n):
+        """SHLD/SHL by n (mod 32) of code:bits, high (ones in) and low"""
+        n &= 31
         if n == 0:
             return
         self.code = ((self.code << n) | (self.bits >> (32 - n))) & M32
@@ -101,54 +110,80 @@ class Decoder:
         self.high = ((self.high << n) | (M32 >> (32 - n))) & M32
         self.low = (self.low << n) & M32
 
-    def consume(self, n):
-        if self.bit_count + n >= 32:
-            first = 32 - self.bit_count
-            self.shift(first)
-            self.bit_count = 32
-            self.refill()
-            self.refill()
-            self.bit_count = n - first
-            self.shift(n - first)
-        else:
-            self.bit_count += n
-            self.shift(n)
-        if self.bit_count >= 16:
-            self.refill()
+    def cross(self, n):
+        """the first n bits of `bits` read, and two words more when they run out"""
+        self.count = (self.count - n) & 0xFF
+        first = (32 - self.count) & 0xFF
+        self.shift(first)
+        self.count = 32
+        self.refill()
+        self.refill()
+        return (n - first) & 0xFF
 
-    def normalize(self):
+    def flip(self):
+        self.code ^= 0x80000000
+        self.high ^= 0x80000000
+        self.low ^= 0x80000000
+
+    def normalize(self, ecx):
+        """ecx: the register as pMAX has it at the call (the symbol)"""
         while True:
-            diff = self.high ^ self.low
-            equal = 32 - diff.bit_length()
-            if equal:
-                self.consume(equal)
+            ecx = self.bsr(ecx, self.high ^ self.low) ^ 0x1F
+            cl = ecx & 0xFF
+            if cl == 0:
+                # no leading bit alike: the bits after the first where low
+                # is 01... and high 10..., shifted out and counted as pending
+                ebx = (~self.low << 1) & M32
+                ecx = self.bsr(ecx, ebx)
+                ebx = self.bsr(ebx, (self.high << 1) & M32)
+                if ecx & 0xFF < ebx & 0xFF:
+                    ecx = (ecx & ~0xFF) | (ebx & 0xFF)
+                ecx ^= 0x1F
+                cl = ecx & 0xFF
+                if cl == 0:
+                    return
+                self.pending = (self.pending + ecx) & M32
+                self.count = (self.count + cl) & 0xFF
+                if self.count < 32:
+                    self.shift(cl)
+                    self.flip()
+                    if self.count >= 16:
+                        self.refill()
+                    return
+                cl = self.cross(cl)
+                if cl:
+                    self.count = (self.count + cl) & 0xFF
+                    self.shift(cl)
+                self.flip()
                 return
             if self.pending:
-                self.consume(1)
+                # pending bits: one bit, then look again
+                self.shift(1)
+                self.count = (self.count + 1) & 0xFF
                 self.pending = 0
+                if self.count >= 16:
+                    self.refill()
                 continue
-            lo = ((~self.low) << 1) & M32
-            hi = (self.high << 1) & M32
-            top = max(lo.bit_length() - 1 if lo else 0, hi.bit_length() - 1 if hi else 0)
-            n = 31 - top
-            if n == 0:
-                return
-            self.pending += n
-            self.consume(n)
-            self.code ^= 0x80000000
-            self.high ^= 0x80000000
-            self.low ^= 0x80000000
+            # the leading bits alike shifted out
+            self.count = (self.count + cl) & 0xFF
+            if self.count >= 32:
+                cl = self.cross(cl)
+                self.count = cl
+            self.shift(cl)
+            if self.count >= 16:
+                self.refill()
             return
 
     def symbol(self):
         span = self.high - self.low + 1
-        s = ((self.code - self.low + 1) * self.total - 1) // span
+        a = (self.code - self.low + 1) & M32 or 1 << 32
+        s = (a * self.total - 1) // span
         if s >= self.total:
             raise ValueError('NLZW: symbol out of range')
         low = self.low
         self.high = (low + (span * (s + 1)) // self.total - 1) & M32
         self.low = (low + (span * s) // self.total) & M32
-        self.normalize()
+        self.normalize(s)
         self.total += 1
         return s
 

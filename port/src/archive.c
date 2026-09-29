@@ -89,13 +89,15 @@ const ArcEntry *arc_find(const Archive *a, const char *name)
 }
 
 /* ---- NLZW: a uniform arithmetic coder whose alphabet grows by one a
- * symbol, carrying LZW codes */
+ * symbol, carrying LZW codes.  The coder's steps are pMAX's own, read in a
+ * run's memory (the loader decrypts itself; docs/HANDOFF.md, "pMAX's
+ * decoder"), down to its register use where a BSR finds no bit. */
 
 typedef struct {
     const uint8_t *data;
     size_t len, pos;
-    uint32_t low, high, total, code, bits;
-    int bit_count, pending;
+    uint32_t high, low, code, bits, pending, total;
+    uint8_t count;              /* the bits of `bits` gone into `code` */
 } Dec;
 
 static uint32_t word(Dec *d)
@@ -103,91 +105,117 @@ static uint32_t word(Dec *d)
     size_t p = d->pos;
     d->pos += 2;
     if (p + 2 > d->len)
-        return 0;               /* the DOS decoder reads padding past the end */
+        return 0;               /* past the file's end: not checked against pMAX */
     return (uint32_t)(d->data[p] << 8 | d->data[p + 1]);
+}
+
+/* BSR: the highest bit set to *r; *r kept when there is none */
+static void bsr(uint32_t *r, uint32_t v)
+{
+    int b = 31;
+    if (!v)
+        return;
+    while (!(v >> b & 1))
+        b--;
+    *r = (uint32_t)b;
 }
 
 static void refill(Dec *d)
 {
-    d->bit_count -= 16;
-    d->bits |= word(d) << d->bit_count;      /* bit_count 0..16 here */
+    d->count -= 16;
+    d->bits |= word(d) << (d->count & 31);
 }
 
-static void shift(Dec *d, int n)
+/* SHLD/SHL by n (mod 32) of code:bits, high (ones in) and low */
+static void shift(Dec *d, unsigned n)
 {
+    n &= 31;
     if (n == 0)
         return;
-    if (n >= 32) {
-        /* a whole word: when high and low agree in all their bits */
-        d->code = d->bits;
-        d->bits = 0;
-        d->high = 0xFFFFFFFFu;
-        d->low = 0;
-        return;
-    }
     d->code = d->code << n | d->bits >> (32 - n);
     d->bits <<= n;
     d->high = d->high << n | 0xFFFFFFFFu >> (32 - n);
     d->low <<= n;
 }
 
-static void consume(Dec *d, int n)
+/* the first n bits of `bits` read, and two words more when they run out */
+static uint8_t cross(Dec *d, uint8_t n)
 {
-    if (d->bit_count + n >= 32) {
-        int first = 32 - d->bit_count;
-        shift(d, first);
-        d->bit_count = 32;
-        refill(d);
-        refill(d);
-        d->bit_count = n - first;
-        shift(d, n - first);
-    } else {
-        d->bit_count += n;
-        shift(d, n);
-    }
-    if (d->bit_count >= 16)
-        refill(d);
+    uint8_t first;
+
+    d->count -= n;
+    first = (uint8_t)(32 - d->count);
+    shift(d, first);
+    d->count = 32;
+    refill(d);
+    refill(d);
+    return (uint8_t)(n - first);
 }
 
-static int top_bit(uint32_t v)
+static void flip(Dec *d)
 {
-    int b = -1;
-    while (v) {
-        b++;
-        v >>= 1;
-    }
-    return b;
+    d->code ^= 0x80000000u;
+    d->high ^= 0x80000000u;
+    d->low ^= 0x80000000u;
 }
 
-static void normalize(Dec *d)
+/* ecx: the register as pMAX has it at the call (the symbol) */
+static void normalize(Dec *d, uint32_t ecx)
 {
     for (;;) {
-        int equal = 31 - top_bit(d->high ^ d->low), top, k;
-        if (equal > 32)
-            equal = 32;
-        if (equal) {
-            consume(d, equal);
+        uint32_t ebx;
+        uint8_t cl;
+
+        bsr(&ecx, d->high ^ d->low);
+        ecx ^= 0x1F;
+        cl = (uint8_t)ecx;
+        if (cl == 0) {
+            /* no leading bit alike: the bits after the first where low is
+             * 01... and high 10..., shifted out and counted as pending */
+            ebx = ~d->low << 1;
+            bsr(&ecx, ebx);
+            bsr(&ebx, d->high << 1);
+            if ((uint8_t)ecx < (uint8_t)ebx)
+                ecx = (ecx & ~0xFFu) | (uint8_t)ebx;
+            ecx ^= 0x1F;
+            cl = (uint8_t)ecx;
+            if (cl == 0)
+                return;
+            d->pending += ecx;
+            d->count += cl;
+            if (d->count < 32) {
+                shift(d, cl);
+                flip(d);
+                if (d->count >= 16)
+                    refill(d);
+                return;
+            }
+            cl = cross(d, cl);
+            if (cl) {
+                d->count += cl;
+                shift(d, cl);
+            }
+            flip(d);
             return;
         }
         if (d->pending) {
-            consume(d, 1);
+            /* pending bits: one bit, then look again */
+            shift(d, 1);
+            d->count++;
             d->pending = 0;
+            if (d->count >= 16)
+                refill(d);
             continue;
         }
-        top = top_bit(~d->low << 1);
-        k = top_bit(d->high << 1);
-        if (k > top)
-            top = k;
-        if (top < 0)
-            top = 0;
-        k = 31 - top;
-        if (k == 0)
-            return;
-        d->pending += k;
-        consume(d, k);
-        d->code ^= 0x80000000u;
-        d->high ^= 0x80000000u;
-        d->low ^= 0x80000000u;
+        /* the leading bits alike shifted out */
+        d->count += cl;
+        if (d->count >= 32) {
+            cl = cross(d, cl);
+            d->count = cl;
+        }
+        shift(d, cl);
+        if (d->count >= 16)
+            refill(d);
         return;
     }
 }
@@ -196,14 +224,15 @@ static void normalize(Dec *d)
 static int symbol(Dec *d)
 {
     uint64_t span = (uint64_t)d->high - d->low + 1;
-    uint64_t s = (((uint64_t)d->code - d->low + 1) * d->total - 1) / span;
+    uint32_t a = d->code - d->low + 1;         /* 0 only for code - low = FFFFFFFFh */
+    uint64_t s = ((a ? a : 0x100000000u) * (uint64_t)d->total - 1) / span;
     uint32_t low = d->low;
 
     if (s >= d->total)
         return -1;
     d->high = (uint32_t)(low + span * (s + 1) / d->total - 1);
     d->low = (uint32_t)(low + span * s / d->total);
-    normalize(d);
+    normalize(d, (uint32_t)s);
     d->total++;
     return (int)s;
 }

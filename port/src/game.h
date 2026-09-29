@@ -39,5 +39,9 @@ int HCB_ALLOC(uint32_t size, uint16_t *bx);
 int HCB_ALLOC_LOW(uint32_t size, uint16_t *bx);
 void HCB_FREE(uint16_t bx);
 uint32_t HCB_LINEAR(uint16_t bx);
+int HCB_LOAD(uint16_t ds, uint32_t ebx);
+void HCB_READ(uint16_t ds, uint32_t edi, uint32_t ecx);
+void HCB_UNLOAD(void);
+void HCB_SEEK(uint32_t edx);
 
 #endif
