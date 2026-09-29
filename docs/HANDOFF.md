@@ -2050,6 +2050,52 @@ game" ...), compared line by line without the blank lines, which the
 runner's `con:` lines leave out. The original's exit code 32 (see
 "The loader in the runner") is not the port's (0), not looked into.
 
+### The CD check and the driver's start in a run
+
+CODE:757D first calls CODE:7082 through the checksummed jump CODE:4CF2
+(the dword at CODE:9073 less the byte sum at CODE:6A20, see the hints).
+CODE:7082: MSCDEX (CODE:35B52, CODE:35B7D, CODE:35C58), the
+configuration header again to CODE:6360 (INT 94h AH=5), the driver it
+names loaded by INT 94h AH=1 and made callable (INT 93h AH=8, DX
+409Ah), the host callback table at CODE:618D given CS (CODE:61D9), the
+driver's command 0 (FS:EDI the table, ES:EBX CODE:6360) and command 4
+(slot 0, `intro\MOD.INT`, CODE:80BC); CODE:1550 = CODE:4CF2 at the end.
+
+Runs 2026-09-29 (GOG `ILLUSION.CFG`, `-cue`; stopped after the call,
+CODE:75B6 = linear 1084E6h, t=6.655899; `-mem`, memcmp.py against the
+dump at CODE:757D): 257 bytes in 29 runs change in CODE, video memory
+not at all:
+
+- CODE:1550 = 4CF2h; the eleven selector words of the table at
+  CODE:618D 1Ch -> 14h; CODE:61D3 dword 47F88h and CODE:61D7 word 44h
+  (the host callback 6's cursor and the loaded file's selector: MOD.INT
+  is 47F88h bytes);
+- CODE:6354 48h (INT 93h AH=5's selector, the video memory's,
+  presumably), CODE:6358 4 (the driver's block), CODE:635E 1Ch (DS),
+  CODE:6360.. the header, CODE:8134/8138 the driver's entry 0:0Ch (the
+  code selector INT 93h AH=8 made);
+- the CD's state: CODE:35EDE..35F0A, the track table CODE:35F1F..35FEA,
+  CODE:3631B 3 (drive D:).
+
+The same run with `NOSOUND.SDR` in the header (a copy of the GOG file,
+the name changed): the image at the same point differs from SB16's only
+in the name (CFG_HEADER and CODE:6360), CODE:61D3/61D7 included. So what
+the start leaves in the image does not depend on the driver: the
+module is loaded through the host's callbacks (6 and 7), which are the
+game's code.
+
+pMAX's heap, from the same runs (`-intwatch 92`, the memory dumps): the
+driver's block at linear 1473C0h again (selector 4), MOD.INT at
+FA8060h, near the top of memory, behind a header `01 FF 00 00`, the
+size 47F90h, then 629Ch and 1Ch 0002h (the name's offset and selector
+and, presumably, the allocation policy 2 of host callback 1: INT 92h
+AH=8 BL=2 before the allocation). So pMAX allocates from the bottom
+(policy 0) and from the top (policy 2); the selectors seen are 4, 0Ch
+(the alias), 44h (MOD.INT) and 48h (video). How pMAX numbers its
+selectors is not worked out; the port's heap (port/src/pmax.c) knows
+only the bottom-up case, which matched for SETSOUND.DAT and
+LOADING_PIC's block.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
