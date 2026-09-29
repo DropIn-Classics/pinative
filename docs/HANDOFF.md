@@ -1983,6 +1983,30 @@ scratch folder (`game.inst`, `game.gog`, `MUSIC/Track02..51.ogg`); `-cd
 -cue FOLDER/game.inst` then prints 51 tracks, lead-out 64:13:38, track 2
 at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
 
+### The image in memory at its entry
+
+For the port's memory (doskit's `pmem.h`, 2026-09-29): a run (Linux,
+the GOG `ILLUSION.CFG` by `-put`, arguments `ILLUSION.EXE
+'C:\ILLUSION.CFG' /`) stopped at ENTRY, linear 1011D3h (reached at
+t=2.331472 as 0014:02A3, DS 18h, SS 58h), with doskit's new `-mem`
+(`build/pm/entry.mem`):
+
+- the image is at linear 100F30h, its 46480h bytes equal to the file's
+  with all 24 selector relocations set to 1Ch (checked byte for byte);
+  so descriptor 0's selector is 1Ch, not the CS 14h the code runs with
+  (both have base 100F30h, presumably; the descriptor tables not read);
+- the 8 bytes after the image are not all 0: a dword 1 and a dword
+  EA8C30h at 1473B0h, presumably pMAX's heap header (1473B0h + EA8C30h
+  is FEFFE0h, near the 16 MB end; not followed); 100000h..100F2Fh holds
+  pMAX's own bytes (3219 not 0). Neither is the program's; the port does
+  not model them;
+- `memcmp.py src/ILLUSION.hints A B --base 100F30` compares CODE (and
+  the empty TAIL) of two such dumps.
+
+Not found yet: where INT 92h's memory (the 2F0800h bytes ENTRY asks
+for) lies, which the port needs where the game keeps data outside the
+image.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2105,3 +2129,21 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      hint at CODE:30996; see "The hole's sound in a run": the original
      plays nothing there and skips that frame's draw, the fix plays the
      hole's own record 7 times an eject).
+5. The port (stage 3), in steps (planned 2026-09-29):
+   - done 2026-09-29: the port's memory in doskit (`pmem.h`: 16 MB of
+     linear memory, the pMAX image loaded at a linear address with a
+     selector per descriptor, 32-bit accessors, `pm_write`; the runner's
+     `-mem`; `memcmp.py --base`; symmap.py with 32-bit offsets). The
+     game's numbers: see "The image in memory at its entry".
+   - the port loads `ILLUSION.386` from the player's `ILLUSION.EXE`
+     (the archive's decoder in C, as tools/illfiles.py reads it; the
+     SHA-256 from symmap.py's header) at 100F30h with selector 1Ch, and
+     its memory compared with the run's at ENTRY;
+   - the main loop (GAME_PHASE's dispatch at CODE:BAD6), a routine not
+     yet translated stopping the port by its name; then the parts
+     already read, each compared with memcmp.py;
+   - stage 1 for `SOURCE\T001.BPC` before table 1's code is needed;
+   - not read yet and wanted: the ball's physics and collisions
+     (CODE:1352D, the map DROP_MASK writes, header slot 18), the
+     flippers' movement, the drawing and scrolling; whether any of it
+     uses the x87, which the runner does not emulate.
