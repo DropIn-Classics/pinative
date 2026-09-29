@@ -25,6 +25,30 @@ comment    CODE:910E the display mode's routine by OPT_RESOLUTION, in the option
 name       CODE:009D OPTIONS       ; 200h bytes, read at CODE:0310 (INT 94h AH=7), cleared and written by the R option (CODE:32F16); the options screen's settings, byte +5 the resolution (run 2026-09-29: the other bytes 0 with the GOG ILLUSION.CFG; which byte is which other option not checked)
 name       CODE:00A2 OPT_RESOLUTION ; 0 VGA 360x350, 1 SVGA 640x480, 2 SVGA 800x600, 3 VGA 320x240 (the options screen's list; run 2026-09-29: Enter on RESOLUTION wrote 1 by CODE:32C91 and the screen showed SVGA 640x480)
 code       CODE:32F39 SETUP_ARGS   ; the language of SETSOUND.DAT's texts by INT 93h AH=15h (AX 'SV' 2, 'GR' or 'SG' 1, else 0: English, German, Swedish by the file's texts) to CODE:331BF; then the command tail from its first '/', at most 20h characters, upper-cased: S the sound set-up (CODE:32970), O the options screen (CODE:32DA7), R the options cleared (CODE:32F16), '?' the help text and CF set (runs 2026-09-29: '/?' printed it and exited with 32; '/o' showed "Pinball Illusions Options"). No S and no configuration yet (INT 94h AH=5, or FFFFFFFFh): the sound set-up as well
+; names for the routines found so far (2026-09-29; what each does is in
+; its comment above, and docs/HANDOFF.md; a name says no more than that)
+name       CODE:29889 FRAME_STEP
+name       CODE:14DE2 BALLS_STEP
+name       CODE:9DC7 MUSIC_UPDATE
+name       CODE:9CEA MUSIC_COUNTDOWN
+name       CODE:2C1DA ZONES_CHECK
+name       CODE:2D080 EVENT_RUN
+name       CODE:2CD3C MODE_RUN
+name       CODE:2F35C DISPLAY_RUN
+name       CODE:2FEDB DISPLAY_QUEUE
+name       CODE:2D18F EVENT_OPCODES
+name       CODE:2F625 DISPLAY_OPCODES
+name       CODE:2DA0A TAKE_HANDLERS
+name       CODE:3007A RECORD_DISPATCH
+name       CODE:2FBBF TAKE_PAY
+name       CODE:2BD95 BONUS_ADD
+name       CODE:2A4B1 BONUS_CLEAR
+name       CODE:4FF9 CHOOSER
+name       CODE:B9B9 DRV_FRAME
+name       CODE:9743 MODE_VGA360
+name       CODE:97A4 MODE_SVGA640
+name       CODE:9822 MODE_SVGA800
+name       CODE:96E7 MODE_VGA320
 comment    CODE:9D3C the track's time up, a return set: CD volume 0, the driver's command 8 with the order index and slot of CODE:9CE6/9CE8 (run 2026-09-29, table 2: at t=151.03, after track 19 of the music chooser)
 comment    CODE:9E13 a track in MUSIC_NEXT: the record's order index and module slot kept in CODE:9CE6/9CE8 (the module music to return to), the module request cleared, the track played, CD volume C0h; when its time is up (CODE:9CEA) the driver's command 8 with them, the CD volume 0 (9CE6 0: the track again)
 comment    CODE:9E83 the module request (state+2A84h): positive (2 in the records) the driver's command 0Ah (temporary module playback, docs/audio-driver.md: a jingle over the music, presumably) with BX the order index, CX the module slot, the CD volume 0 first when bit 2 of CODE:CB97 is set; negative: CD volume 0, the track's countdown CODE:9DBD stopped (-1), command 8 (the module from that order index); 0: nothing

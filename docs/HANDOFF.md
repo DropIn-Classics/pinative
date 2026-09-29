@@ -338,8 +338,12 @@ taken the constant stored into it (CODE:7ABC) for code: about 2000
 "instructions" of data, now a data label. The earlier scanner reached
 12,018 bytes; not compared (the kit reached 11,405 then, 68,151 now).
 
-Not done: names (the `ptr`/`dptr` of the 32-bit immediates are done,
-see "Offsets among the immediates").
+Names: besides the few given with their findings, 22 routines and tables
+named 2026-09-29 from what their comments say (a block after
+`SETUP_ARGS` in the hints: FRAME_STEP, the stream runners, the opcode
+and handler tables, the four display modes, ...); build.py IDENTICAL.
+Most routines have no name yet (METHOD.md: a name when what it does is
+known).
 
 ## The loader in the runner
 
@@ -929,7 +933,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
-     sessions (METHOD.md), keeping build.py IDENTICAL. Done 2026-09-29:
+     sessions (METHOD.md), keeping build.py IDENTICAL (22 given
+     2026-09-29, see "The gaps", the end). Done 2026-09-29:
      the self-patched call at CODE:298C5 (see "The self-patched call in
      a run": not patched in runs). Done 2026-09-29: the options screen's
      argument (see "The self-patched call in a run", the end). Open from
