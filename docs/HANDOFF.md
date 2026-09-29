@@ -2061,3 +2061,14 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      player record in a run", 9 "The tilt in a run", the others "Esc"),
      so every phase is known. Done 2026-09-29: the SVGA modes in the
      runner (see "The SVGA modes in a run"; FRAME_RATE 59 or 60).
+4. For the port (written 2026-09-29, at the user's suggestion): the
+   original's slips as options, off by default, so that the default
+   plays as the original does (scores and extra balls alike). Found so
+   far, both through the shared cell CODE:0004 that host routines use
+   as a work cell:
+   - table 1's shooting game: the 25-hit extra ball (see "Table 1's
+     shooting game when the lives run out"); the fix keeps the state
+     pointer across host vector +18h, so byte +8 is read from the state;
+   - the hole's sound record read from a stale [CODE:0004]+10h (the
+     hint at CODE:30996; what it plays not checked, so whether the fix
+     changes anything audible is open).
