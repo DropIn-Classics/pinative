@@ -140,12 +140,12 @@ passes one to the host callback at offset `+4`. The main image consumes slot
 at `0x9D83`, while its byte at `+0x0A` is stored at `0xCB97`.
 
 The fields, from `MUSIC_REQUEST` (`0x2F85C`) and the music update at
-`0x9DC7` (checked 2026-09-29 in the hints; not seen in a run):
+`0x9DC7` (checked 2026-09-29 in the hints; the plays in runs: docs/HANDOFF.md):
 
 | Offset | Meaning |
 | ---: | --- |
 | `+0` | 4, the record type (`0x3007A` dispatches by it) |
-| `+2` | the sound driver's request: 0 none; positive (2 in the records) driver command `0x0A`, a temporary module playback over the music (a jingle, presumably); negative (`FFFE`, `FFFF`, handled alike) command 8, the module music from the order index; a negative one first keeps the flags and the asked-for track in state `+0x5A`, `+0x2A82` (read by no one found) |
+| `+2` | the sound driver's request: 0 none; positive (1, 2, 3, 6, 7, 8 in the four modules' records; the main program reads only the sign, at `0x9E83`) driver command `0x0A`, a temporary module playback over the music (a jingle, presumably; one seen requested in a run 2026-09-29, table 1's record 34 at the skill-shot display, docs/HANDOFF.md); negative (`FFFE`, `FFFF`, handled alike) command 8, the module music from the order index; a negative one first keeps the flags and the asked-for track in state `+0x5A`, `+0x2A82` (read by no one found) |
 | `+4` | the order index in the music module (driver `BL`) |
 | `+6` | the module slot (driver `CL`): 0 `data\s00n\music.mod`, 1 `music2.mod` (both loaded at the table's start; table 4, which has no slot-30 string, uses 0 only) |
 | `+8` | a CD track, 0 none; with a track, `+4`/`+6` are the module music to return to when the track's time is up (order index 0: the track again). The table's first track (slot 35, `0x9BCA`) is played with the return cleared, so it repeats, as seen in the runs |

@@ -18,7 +18,8 @@ handlers"). The offsets among the 32-bit immediates have hints (see
 "Offsets among the immediates"). Table 2's music chooser seen in a run,
 and the game's frame rate found (see "Table 2's chooser in a run");
 the command-line options and Esc are found (see "The self-patched call
-in a run", the end, and "Esc").
+in a run", the end, and "Esc"); a jingle requested in a run (see "A
+jingle in a run").
 
 ## The earlier analysis
 
@@ -788,8 +789,9 @@ records" and "Table 2's music chooser"; in short:
 
 - An audio record drives two players: the CD (word +8, a track) and the
   sound driver's tracker module (words +2, +4, +6). Word +2 is the
-  driver's request: 2 command 0Ah (temporary playback, a jingle
-  presumably), negative (FFFEh, FFFFh) command 8 (the module music from
+  driver's request: positive command 0Ah (temporary playback, a jingle
+  presumably; 1, 2, 3, 6, 7 or 8 in the records, only the sign is read,
+  see "A jingle in a run"), negative (FFFEh, FFFFh) command 8 (the module music from
   an order index), 0 none; +4 is the order index, +6 the module slot (0
   `music.mod`, 1 `music2.mod`, both loaded when a table starts; table
   4 has one module). With a track, +4/+6 are where the module music
@@ -849,7 +851,8 @@ pokes, at the 700th call of CODE:14DE2 (linear 115D12h, t=134.37):
 
 The other requests in the run (t=130.02, the F1 start; 131.36, the
 serve) went through CODE:9EDB (a negative word +2: command 8), none
-through CODE:9EBA (command 0Ah, the jingle): not seen yet.
+through CODE:9EBA (command 0Ah, the jingle): not seen in that run (see
+"A jingle in a run").
 
 Where the jingles come from (2026-09-29, statically: the four modules'
 slot-34 records and tools/event_streams.py; not run): the records with
@@ -863,7 +866,50 @@ record's +18h, presumably shown when the record is taken. The blind
 runs took record 41E6h 27 times and logged no command 0Ah; its +18h
 not looked at. A run that forces a take of, say, table 1's record 43D2h
 (its +18h stream 445Ch plays record 34) with `-log` on CODE:9EBA would
-show one.
+show one: done, next section.
+
+### A jingle in a run
+
+Run 2026-09-29, on Windows (table 1: `100 space`, `106 enter`, `130
+f1`, `131 enter`, no flipper; `-log` on CODE:3007A, MUSIC_REQUEST,
+CODE:9EBA, 9EDB; `-wav`; shots at t=135, 136, 138). The module's base
+was 1D3170h again ([CODE:A11D], linear 10B04Dh, dumped in a run before).
+Record 43D2h is taken by event stream 4B8Ch (zone 352Fh of slot 11,
+object 4B66h), and the ball runs through slot 5's zones after the
+launch, so the poke put a slot-5 zone there: at the 700th call of
+CODE:14DE2 (linear 115D12h, t=134.05), `2D74F5 "00 00 00 00 50 01 3C 02
+01 00 D6 7C 1D 00"`, zone 3455h (type 1, object 4950h) made to cover the
+whole table with type 1 and object 4B66h (its pointer as the module has
+them after relocation: a CODE offset, 1D3170h + 4B66h). Seen:
+
+- t=134.18: CODE:3007A with the record at module 11F15h (DI=5085h, the
+  low word; the runner prints 16-bit registers), MUSIC_REQUEST, then
+  CODE:9EBA: the driver's command 0Ah. Record 11F15h is slot 34's record
+  34: type 4, word +2 = 3, order index 0Eh, module slot 1
+  (`music2.mod`), no track. So display opcode 10h -> CODE:3007A ->
+  MUSIC_REQUEST -> command 0Ah is seen once;
+- the score display: "skillshot" (an animation, t=135), then
+  "5.000.000" (t=136), "DON'T MOVE" (t=138), as stream 445Ch has it
+  (play, `anim_wait @A5EA`, a number). With header slots 27 and 28
+  (the streams zone type 0 queues, both `light_for @43D2`), record 43D2h
+  is the skill-shot award, presumably;
+- the WAV stayed empty (the 44-byte header only): the runner's Sound
+  Blaster got no transfer it plays. A 12-s run with `-v` showed no
+  unknown port; the runner knows the DSP's 8-bit commands and says it
+  is a DSP 1.05, the driver is `SB16.SDR`; why nothing played is not
+  looked at (a doskit question, rule 7). So the jingle is requested,
+  not heard.
+
+The records' positive word +2 (a throwaway count over the four modules'
+slot-34 arrays, up to the first record whose word +0 is not 4; 44, 47,
+41, 41 records): 1, 2, 3, 6, 7, 8 (table 1: 2 x18, 3 x6, 6 x1; table 2:
+2 x22; table 3: 2 x23; table 4: 1, 2 x10, 3 x8, 6, 7, 8). MUSIC_REQUEST
+stores it to state+2A84h, which CODE:9E83 only tests for zero and sign
+and then clears (the stores of 0 after CODE:9E13 and CODE:9EDB are the
+only other uses in build/ILLUSION.ASM, besides the FFFEh CODE:2B345
+stores, the Esc path that sets GAME_PHASE 1): what the number means, if anything, is not found (the table
+modules' code not searched for it). The hint on CODE:9E83 and
+docs/bpc-module.md had "2 in the records"; corrected.
 
 ### The frame rate
 
@@ -981,7 +1027,10 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: table 2's music (see "The audio records and
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
-     objects; a jingle (driver command 0Ah) in a run.
+     objects. Done 2026-09-29: a jingle (driver command 0Ah) requested
+     in a run (see "A jingle in a run"). Open from it: why the runner's
+     Sound Blaster plays nothing (doskit); what the number in a
+     record's positive word +2 means.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
