@@ -1,0 +1,21 @@
+; ILLUSION.386, the main program: a pMAX flat image, unpacked from the
+; archive in ILLUSION.EXE by tools/illfiles.py (extract --all).
+pmax       build/files/ILLUSION.386
+segment    CODE 0 CODE             ; descriptor 0: the whole image, code and data
+segment    TAIL 1 BSS              ; descriptor 1: base at the image's end, size 0; its use not known
+
+name       CODE:02A3 ENTRY         ; the header's entry point
+
+; 16-bit addresses without a register (67h): no source form in a USE32
+; segment, the assembler would write a 32-bit address
+raw        CODE:0667
+raw        CODE:0670
+raw        CODE:0679
+raw        CODE:068A
+raw        CODE:30E49
+raw        CODE:31D3D
+raw        CODE:32A7C
+raw        CODE:32A9D
+raw        CODE:35B40
+; FS before 66h (64 66 AD), where the assembler writes 66h first
+raw        CODE:31649

@@ -2,8 +2,9 @@
 
 State of 2026-09-29: the repository was made from doskit's template on
 top of an earlier analysis (docs/*.md other than this file). The game's
-files are listed; no program is in stage 1 yet: that waits for 32-bit
-support in doskit (decided 2026-09-29, see below).
+files are listed. The main program, `ILLUSION.386`, is in stage 1:
+`src/ILLUSION.hints` rebuilds it byte for byte (doskit reads pMAX images
+since 2026-09-29), with almost no hints yet (see "Stage 1" below).
 
 ## The earlier analysis
 
@@ -30,6 +31,9 @@ is marked there as to be checked again in the hints.
 - `game/` holds `ILLUSION.EXE` and `INSTALL.EXE`, the two files of the
   GOG image's ISO volume (SHA-256 in docs/reverse-engineering.md, checked
   against these copies 2026-09-29); it is not in the repository.
+- `python3 tools/illfiles.py extract --all` first: the hints read
+  `build/files/ILLUSION.386` (`pmax build/...`), so check.py and the
+  pre-commit hook fail on a checkout where it is not unpacked.
 - `python3 tools/illfiles.py list` lists the archive in ILLUSION.EXE,
   `extract --all` unpacks it into `build/files/` (80 s on the Mac used;
   all 125 entries come out at their directory sizes, 124 files as
@@ -76,6 +80,32 @@ doskit's stage 1 (disasm.py, tasm.py, build.py) and its runner are
 Decided 2026-09-29: doskit gets 32-bit support (it is wanted for later
 games too), in the kit with tests (rule 7).
 
+## Stage 1: ILLUSION.386
+
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 3761
+instructions (11,405 of 0x46480 bytes reached as code), 509 labels,
+10 lines as DB, 15 s on the Mac used (2026-09-29). The hints so far:
+the two descriptors as segments (`CODE` the whole image, code and data;
+`TAIL` the empty one at its end), the entry point's name, and the 10
+`raw` lines:
+
+- nine instructions with a 16-bit address and no register (67h, e.g.
+  `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
+  ask for that address size;
+- CODE:31649 `64 66 AD`: FS before 66h, the one such order.
+
+Seen on the way (in doskit's commits): the image's segment-register
+stores to memory carry 66h (`66 8C ...`, four of them), which the source
+now writes as `MOV WORD PTR [..],DS`; a pointer variable at CODE:8128
+is read and then addresses memory (`MOV ESI,[8128h]`), and the kit had
+taken the constant stored into it (CODE:7ABC) for code: about 2000
+"instructions" of data, now a data label. The earlier scanner reached
+12,018 bytes; not compared with the 11,405 here.
+
+Not done: everything the method's stage 1 asks beyond the byte identity
+(gaps.py: 41 gaps; the `ptr`/`dptr` of the many 32-bit immediates that
+are offsets, which the analysis does not find by itself; names).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -87,10 +117,20 @@ games too), in the kit with tests (rule 7).
      `MOV DS,AX` without 66h, `MOV AX,DS` with it; ALU reg,reg in the
      `reg, r/m` form; 16-bit addresses (67h) occur. One `64 66` order
      and one sreg store without 66h are exceptions (raw hints later).
-   - next: the pMAX image as a program for disasm.py and build.py
-     (header, descriptors, selector relocations as SEG fixups), a test
-     program of the kit's own in that form, then gaps.py for it;
+   - done 2026-09-29: the pMAX image as a program for disasm.py and
+     build.py (`pmax` hint, descriptors as segments, selector
+     relocations as SEG fixups, write_pmax), tests/flat in doskit's
+     selftest, gaps.py and ptrscan.py for 32-bit programs. What
+     write_pmax cannot know it writes as ILLUSION.386 has it: the
+     header's first word 0, format 1, allocation = image size, the
+     entry as an image offset (descriptor 0 has base 0, so either way);
    - then the runner: protected mode or pMAX's services (INT 90h..94h)
      emulated, still to decide.
-2. Stage 1 for the main program: segments, hints, build.py and gaps.py
-   until IDENTICAL (doskit/docs/METHOD.md).
+2. Stage 1 for the main program, on from the above: gaps.py's 41 gaps
+   (code reached only through pointers: e.g. the two tables of 11 far
+   pointers at CODE:618D and CODE:98FE, written as `DF` lines, whose
+   targets are not reached as code yet; presumably the sound drivers'
+   eleven host callbacks of docs/audio-driver.md, not checked), offsets
+   among the 32-bit immediates (ptrscan.py), names
+   (doskit/docs/METHOD.md). A heuristic for offsets in flat 32-bit code
+   would belong in doskit.
