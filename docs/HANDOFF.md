@@ -78,8 +78,19 @@ games too), in the kit with tests (rule 7).
 
 ## Next
 
-1. 32-bit support in doskit: a flat 32-bit image as a program for
-   disasm.py/tasm.py/build.py (use32, the pMAX layout: header,
-   descriptors, selector relocations), then gaps.py for it.
+1. 32-bit support in doskit, in steps:
+   - done 2026-09-29: tasm.py assembles USE32 segments (x86enc32.py;
+     doskit selftest step 0, tests/enc32). Every jump shortest, no NOP
+     padding, as ILLUSION.386's reachable code shows (all 62 near Jcc
+     and 6 near JMP out of short reach; no NOPs). Seen there, the
+     encoder follows it: prefixes in the order REP, 66h, segment, 67h;
+     `MOV DS,AX` without 66h, `MOV AX,DS` with it; ALU reg,reg in the
+     `reg, r/m` form; 16-bit addresses (67h) occur. One `64 66` order
+     and one sreg store without 66h are exceptions (raw hints later).
+   - next: the pMAX image as a program for disasm.py and build.py
+     (header, descriptors, selector relocations as SEG fixups), a test
+     program of the kit's own in that form, then gaps.py for it;
+   - then the runner: protected mode or pMAX's services (INT 90h..94h)
+     emulated, still to decide.
 2. Stage 1 for the main program: segments, hints, build.py and gaps.py
    until IDENTICAL (doskit/docs/METHOD.md).
