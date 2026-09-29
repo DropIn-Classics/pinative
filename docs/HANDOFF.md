@@ -82,15 +82,15 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 17,990
-instructions, 2273 labels, 13 lines as DB, 17 to 34 s on the Mac used
-(2026-09-29); gaps.py: 195 gaps, 219,721 of 0x46480 bytes not reached
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 25,457
+instructions, 3618 labels, 14 lines as DB, 17 to 37 s on the Mac used
+(2026-09-29); gaps.py: 203 gaps, 183,268 of 0x46480 bytes not reached
 as code. The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
-point's name, the pointers found so far, a `stop` and the 13 `raw`
+point's name, the pointers found so far, a `stop` and the 14 `raw`
 lines:
 
-- ten instructions with a 16-bit address and no register (67h, e.g.
+- eleven instructions with a 16-bit address and no register (67h, e.g.
   `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
   ask for that address size;
 - CODE:31649 `64 66 AD`: FS before 66h, the one such order;
@@ -108,6 +108,25 @@ Code reached through pointers so far:
   (CODE:B976 onward) while it is below 0Ah; at 0Ah it goes to CODE:BA7D,
   `MOV AX,0; INT 93h` (presumably pMAX's exit, not checked) followed by
   data, hence a `stop` hint (new in doskit for this).
+- tables of near pointers: CODE:910E (4), CODE:268FE (4), CODE:26957
+  and CODE:26967 (4 each, by the byte at CODE:A311 less one),
+  CODE:27723 (6), CODE:30D78 (2; its index range not checked); the far
+  jump back to CS at CODE:A4A3 (to CODE:A4A9).
+- 20 computed jumps: a dword constant less the byte sum of a stretch of
+  the image (CODE:4CE8, 4CF2, 7438 and one inline at CODE:4D90),
+  presumably against a changed program. The targets were worked out
+  from the file's bytes (build/cksum.py, a throwaway script, not kept);
+  all 20 are at a routine's first instruction after a RET or a gap's
+  start, four more were reached already. CODE:7AB6 sums over the far
+  pointers start-up writes and gives no address from the file: left out.
+
+Not reached yet, seen: word tables of offsets relative to the table
+(`MOV SI,[EDI*2+T]; LEA EBP,[EDI+T]; JMP EBP`, e.g. CODE:1183F,
+CODE:13784, CODE:2C3DD, CODE:2F91C, CODE:300B9, CODE:308C7), the index
+being the previous entry kept in a variable (CODE:0020..0028), so
+presumably chains of states; no hint for them in the kit yet. Calls
+through the sound driver's entry (far pointers at CODE:8134, CODE:98A0)
+leave the image.
 
 Seen on the way (in doskit's commits): the image's segment-register
 stores to memory carry 66h (`66 8C ...`, four of them), which the source

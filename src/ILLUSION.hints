@@ -12,6 +12,7 @@ raw        CODE:0667
 raw        CODE:0670
 raw        CODE:0679
 raw        CODE:068A
+raw        CODE:2870
 raw        CODE:A3C1
 raw        CODE:27CA4              ; FS:[0] with 67h
 raw        CODE:30E49
@@ -24,11 +25,46 @@ raw        CODE:31649
 ; a DS prefix where DS is the default (3E 0F B7 ...)
 raw        CODE:164B4
 
+; computed jumps (CODE:4CE8, CODE:4CF2, CODE:7438 and inline): a dword
+; constant less the byte sum of a stretch of the image, presumably to make
+; a changed program go astray. Worked out from the file's bytes; that
+; nothing changes those bytes before the sum is taken is presumed.
+; CODE:7AB6 sums 55E3h bytes from CODE:4CE8, through the far pointers
+; start-up writes at CODE:A2BB..A2C6, and gets no address in the image
+; from the file's bytes: left out.
+code       CODE:236A               ; computed at CODE:503B: the dword at CODE:22DA less the sum of the 1158h bytes at CODE:448B
+code       CODE:23CA               ; computed at CODE:4D5C: the dword at CODE:2322 less the sum of the DEh bytes at CODE:2613
+code       CODE:24F8               ; computed at CODE:4DC7: the dword at CODE:232E less the sum of the 8Ch bytes at CODE:26F1
+code       CODE:2503               ; computed at CODE:4DDC: the dword at CODE:233A less the sum of the 93h bytes at CODE:277D
+code       CODE:26FD               ; computed at CODE:5009: the dword at CODE:22AA less the sum of the 8DDh bytes at CODE:4D06
+code       CODE:2810               ; computed at CODE:4E06: the dword at CODE:2352 less the sum of the 360h bytes at CODE:28F5
+code       CODE:28B8               ; computed at CODE:4E1B: the dword at CODE:2316 less the sum of the 164h bytes at CODE:24AF
+code       CODE:28F5               ; computed at CODE:521C: the dword at CODE:2292 less the sum of the EFh bytes at CODE:50A9
+code       CODE:33AC               ; computed at CODE:4E65: the dword at CODE:230A less the sum of the 126h bytes at CODE:2389
+code       CODE:33B8               ; computed at CODE:4D41: the dword at CODE:22F2 less the sum of the 8DDh bytes at CODE:4D06
+code       CODE:33F5               ; computed at CODE:5256: the dword at CODE:2286 less the sum of the 10h bytes at CODE:5130
+code       CODE:38C6               ; computed at CODE:5057: the dword at CODE:22B6 less the sum of the 35Ah bytes at CODE:5289
+code       CODE:39C8               ; computed at CODE:4E50: the dword at CODE:229E less the sum of the 58h bytes at CODE:5140
+code       CODE:4CB6               ; computed at CODE:5026: the dword at CODE:22E6 less the sum of the 13Ch bytes at CODE:505C
+code       CODE:698A               ; computed at CODE:78D9: the dword at CODE:908B less the sum of the 16F6h bytes at CODE:6A20
+code       CODE:6E49               ; computed at CODE:795A: the dword at CODE:9043 less the sum of the 97h bytes at CODE:7341
+code       CODE:6FC0               ; computed at CODE:78EE: the dword at CODE:9097 less the sum of the 16F6h bytes at CODE:6A20
+code       CODE:7082               ; computed at CODE:75A2: the dword at CODE:9073 less the sum of the 16F6h bytes at CODE:6A20
+code       CODE:72BB               ; computed at CODE:7A0F: the dword at CODE:907F less the sum of the 16F6h bytes at CODE:6A20
+code       CODE:7341               ; computed at CODE:7895: the dword at CODE:904F less the sum of the 88Ch bytes at CODE:7230
+
 ; INT 93h AX=0, presumably pMAX's exit (not checked): what follows is data
 ; (CODE:BA9B writes the twelve bytes at CODE:BA83 to the DAC from colour FCh)
 stop       CODE:BA81
 
 ; code reached through pointers
-code       CODE:A39C               ; far jump at CODE:A38C through CODE:A2BB, with the selector INT 93h AH=8 gave at CODE:A37A (base presumably that of CODE: the code there uses CODE's variables; not checked)
-words      CODE:BAD6 0A CODE       ; called at CODE:B98E by the number in CODE:CBCC while below 0Ah
-code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX; RET
+code       CODE:A39C               ; far jump at CODE:A396 through CODE:A2BB, with the selector INT 93h AH=8 gave at CODE:A381 for BX=CS (base presumably that of CODE: the code there uses CODE's variables; not checked)
+words      CODE:BAD6 0A CODE       ; called at CODE:B993 by the number in CODE:CBCC while below 0Ah
+words      CODE:910E 4 CODE        ; called at CODE:919D by the byte at CODE:00A2 (four pointers up to the code at CODE:911F)
+words      CODE:27723 6 CODE       ; called by the word at [[CODE:0000]+4] (CODE:27833, 2786E, 278C2); six by the three parallel tables of data pointers after it (CODE:2773B, 27753, 2776B, 18h apart)
+words      CODE:268FE 4 CODE       ; jumped to at CODE:26015 by the low two bits of EDI
+words      CODE:26957 4 CODE       ; called at CODE:26946 by the byte at CODE:A311 less one (compared with 4 elsewhere; values 1..4 presumed)
+words      CODE:26967 4 CODE       ; called at CODE:269AC, the same way
+words      CODE:30D78 2 CODE       ; jumped to at CODE:30D76 by the word at [ESI+0Eh]; two pointers, zeros after them (the index range not checked)
+code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, with the selector saved from CS at CODE:A36A
+code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX (CODE:4DB3); RET
