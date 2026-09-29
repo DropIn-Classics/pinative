@@ -45,7 +45,7 @@ selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
 left (see "The Info page and the greetings page"); table 1's shooting
 game on the display (see "Table 1's shooting game in a run"); table 4's
-sea game, but for its drawing (see "Table 4's sea game in a run").
+sea game (see "Table 4's sea game in a run").
 
 ## The earlier analysis
 
@@ -917,8 +917,7 @@ records" and "Table 2's music chooser"; in short:
   so tools/event_streams.py does not list them.
 
 Open from it: table 1's opcode-14h object (done 2026-09-29, see
-"Table 1's shooting game in a run") and table 4's (done 2026-09-29, but
-for its drawing, see "Table 4's sea game in a run"); slot 41's lamps (the list at module 994Ah by the
+"Table 1's shooting game in a run") and table 4's (done 2026-09-29, see "Table 4's sea game in a run"); slot 41's lamps (the list at module 994Ah by the
 player's word +12h) not checked. The run of the chooser: next section.
 
 ### Table 2's chooser in a run
@@ -1863,9 +1862,18 @@ crash ends the game with "ITEM COLLECTED / FISH".
   position up from 0Ch to 7Ch and the lane 7 to 0 at 143.50, again 0
   to 1 at 144.05; the scroll +2 a frame, a row every 4 frames; the
   crash (9EC8h) at 145.07.
-- Not run: the rows at speed 8, immunity after Enter against a rock
-  already there, the arrow on the screen; the pictures and the rest of
-  the drawing are not read.
+- The drawing read the same day (docs/bpc-module.md, "Table 4's sea
+  game": five of the eight columns around the boat in perspective, a
+  swell table, the arrow). Runs (`build/vm4b/`): a 5,000,000 bonus put
+  three columns right of the boat (`-poke 2A6C38#1 2A807E 21`): ACB6h
+  0Ch from 142.0, a right arrow at the display's right end, the boat in
+  the middle, a band at the bottom at 141.9 and 142.5 but not 142.1
+  (the swell). The course poked to step 8 (`... 2A8094 20`): speed 8, a
+  row every 2 frames (0.028 s), the scroll +4 a frame. A rock at row 14
+  in the boat's column with immunity poked to 150 (`... 2A807B 0E`,
+  `... 2A808B 96`): the crash at 141.89 all the same.
+- Not checked: which file the pictures come from, what each picture
+  looks like beyond the boat, the arrow and the band.
 
 ### The GOG release on the Mac
 
@@ -1968,7 +1976,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
      objects (table 1's done 2026-09-29, see "Table 1's shooting game
-     in a run"; table 4's but for its drawing, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
+     in a run"; table 4's, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix

@@ -278,8 +278,7 @@ Found 2026-09-29 from table 4's module (a throwaway capstone script with
 the relocations marked) and runs (docs/HANDOFF.md, "Table 4's sea game
 in a run"). The opcode-`0x14` object at `0x97E5` (start `0x97ED`, update
 `0x9878`, code up to about `0xB1F3`) is a boat on the display that the
-flippers steer past rocks, picking up bonuses. Not read: the drawing
-routines (`0xA16E`, `0xA3EC`, `0xAF4D`, `0xB0FA` and what they call).
+flippers steer past rocks, picking up bonuses.
 
 - It is run by mode stream `0x8F72` (the mode of counter `0x5F60`'s
   threshold 2, stream `0x6008`): music `0x195D5`, display `0x9022`
@@ -296,7 +295,7 @@ routines (`0xA16E`, `0xA3EC`, `0xAF4D`, `0xB0FA` and what they call).
   columns, one object each: the high nibble its kind (0 a rock, 2 a
   5,000,000 bonus, 4 a 10,000,000 bonus, 6 the extra ball), the low
   nibble its row 1..15 down the water, 0 an empty column; `0xACC2`..
-  `0xACC9` held a copy of them in a run (who writes it not looked at);
+  `0xACC9` a copy of them for the drawing;
   `0xACCA` a frame count; `0xACCB` frames of immunity; `0xACCC` the
   speed; `0xACCD` the running move's step (signed); `0xACCE` (dword)
   the row count; `0xACD0` (word) the scroll, modulo `0x200`; `0xACD2`
@@ -370,8 +369,44 @@ routines (`0xA16E`, `0xA3EC`, `0xAF4D`, `0xB0FA` and what they call).
   `0xACB6` is 0 when it is in the boat's column, else 6 or 18 by side,
   6 more by the distance round (not worked out further); the drawing
   (`0xA9C7`) then shows the picture of the 6-byte entry at `0xAC98` +
-  `0xACB6` on three frames of four, presumably an arrow to the bonus
-  (not looked at on the screen).
+  `0xACB6` (a dword picture number, a word x) on three frames of four:
+  6 and 24 picture `0x0F` at x 16, 12 and 18 picture `0x10` at x 128.
+  An arrow to the bonus: with the bonus three columns right of the boat
+  `0xACB6` was 12 and the arrow at the display's right end pointed
+  right (seen in a run).
+- The drawing, once a frame after the row. `0xA16E`: the columns copied
+  to `0xACC2`..`0xACC9` (so that five columns from any lane can be read
+  in one run of bytes), and five words at `0xACDA`: -256, -128, 0, 128,
+  256, each less the eased position (the byte table at `0xAF4D`, 128
+  steps from 0 to `0x7E`, slow at both ends). `0xA3EC`, on the host's
+  display buffer (160 dots a line, the colours `0xFC` + the picture's
+  value, 0 transparent in the sprites; the host vector's `+0x28`
+  called first, presumably to point ES at it):
+  - a band of water at the bottom, lines `0x0A` + h to 15 while h < 6,
+    from picture `0x2C` + the row count mod 4; h is the byte at `0xAD4A`
+    + the scroll, a 512-byte table rising and falling between 0 and 15
+    (a swell, presumably);
+  - the five columns lane - 1 .. lane + 3 (`0xACB9` + lane on), the
+    boat's in the middle and drawn last: the picture of each object by
+    its whole value (dwords at `0xAA98`: rocks `0x12`..`0x1F`, 5,000,000
+    `0x08`..`0x0E`, 10,000,000 `0x01`..`0x07`, extra ball `0x30`..`0x36`,
+    one picture for a row or two, presumably growing), at x `0x30` + a
+    row's x / 2 + the column's word x times (row + `0x12`) / `0x3E`, as
+    wide as the row's width less 8 (the word pairs at `0xAA54`: 48/16
+    for rows 1..3 down to 0/64 for 14, 15), from source line (15 - h)
+    >> (3 - row / 4): nearer rows move more with the swell;
+  - the boat, picture `0x11`, at x `0x48`, line 8, 16 wide;
+  - the arrow (above).
+  The blits: `0xAFD5` (a whole 160 x 16 picture, from Enter's and the
+  crash's scripts), `0xB024` (the water band), `0xB076` and `0xB0FA`
+  (sprites of 16 lines, clipped at x 0 and 160; `0xB1EB`, set to 8 or
+  16, is read by neither), `0xB17E` (the display cleared to `0xFC`,
+  every frame before the rest) and `0xB1B1` (at the start, `0x1400`
+  bytes at ES = EAX cleared). Which file the picture numbers come from
+  is not checked (presumably `DATA\S004\SPECIAL\VM_DATA.MGL`, loaded by
+  the host into the table at FS). The word table at `0xA25B` (`0x100`,
+  then `0x1D2` down by 15 to `0x100`) is put in a register by `0xA16E`
+  and read by nothing.
 - Enter's script ends in `0x9BC8`: every object whose high nibble is 0
   (the rocks) cleared, 150 frames of immunity. Once a game.
 - `0x9C44`, the crash's end: stream `0x90BA` queued (music `0x196DD`,
