@@ -59,7 +59,8 @@ is marked there as to be checked again in the hints.
   builds with MSVC (`doskit/tools/run/build.bat`), check.py `all ok` in
   25 s. A run goes about three emulated seconds a second (t=400 in
   125 s). The configuration file and the cue sheet straight from the
-  install: `-put '\ILLUSION.CFG' "C:\GOG Games\Pinball
+  install (in Git Bash with `MSYS_NO_PATHCONV=1`, see "The self-patched
+  call in a run"): `-put '\ILLUSION.CFG' "C:\GOG Games\Pinball
   Illusions\ILLUSION.CFG" -cue "C:\GOG Games\Pinball
   Illusions\game.inst"` (its `MUSIC\` holds all 50 audio tracks).
 
@@ -212,8 +213,9 @@ read:
 - CODE:523B writes EBX to [290FBh+7CBh] = CODE:298C6, the immediate of
   `MOV EBX,14DE2h; CALL EBX` at CODE:298C5; EBX is [[CODE:5DCB]+13h] +
   [CODE:55E3], and CODE:5DCB is what the dead copy-protection pieces
-  write (see "The gaps"). The call's target is computed at run time,
-  presumably by the protection; not followed, not seen in a run.
+  write (see "The gaps"). It does so only when the byte at CODE:037C is
+  1: the 0 before the text CODE:0372 prints, named by no other
+  instruction in the image. See "The self-patched call in a run".
 
 After it, ptrscan.py lists two candidates, both numbers by the above
 (CODE:3D34, a count; CODE:523B). Not looked at: immediates below 100h,
@@ -228,6 +230,43 @@ record at [CODE:0014] (CB3Eh or 12844h; `[ESI+2946h]`, `[ESI+294Ah]`,
 docs/bpc-module.md has as the table module's header copied to F3E4h;
 `CALL [EAX]` at [CODE:A11D]+9Ch, the module's base (the same notes).
 Not checked in a run.
+
+### The self-patched call in a run
+
+Runs of 2026-09-29, on Windows (hints: the comments on CODE:523B, 4FF9,
+50A9, 29889, 14DE2; `-log` on each step, `-watch` on CODE:298C6, linear
+12A7F6h with the base 100F30h as before):
+
+- the chooser leaves by Esc (`-key 100 esc`): CODE:4FF9 at t=97.6,
+  CODE:505C, 50A9, 5198, 51D6 at t=101.11, CODE:5246; CODE:523B not
+  reached, the program exits with 32;
+- table 1 (`100 space`, `106 enter`, `130 f1`, `131 enter`, Esc at 150
+  and 165, to t=185): CODE:51D6 at t=106.56 (the CD stop noted in "The
+  loader in the runner" is this routine's CD_STOP), CODE:523B not
+  reached; CODE:298C6 written once, by the loader at t=2.28 (the image
+  put in place), with 14DE2h; CODE:298C5 and CODE:14DE2 each 4276 times
+  from t=124.12 to t=185, about 70 a second. The two Esc presses left
+  the table on screen (not followed).
+
+So the patch is dead in this release, presumably, as the protection's
+pieces are (CODE:037C stays 0: in the Esc run, `-watch` on it, linear
+1012ACh, only the loader's CS 30h wrote it, 0 both times, at t=2.28 and
+t=101.12; the table run did not watch it). CODE:4FF9..5288 is the chooser, not only the
+program's end: it runs at every choice of a table. Read on the way, not
+run for: CODE:29889 is the frame step (the four routines at
+[CODE:2982E], a wait for CODE:BAD1 = FFh, which the driver's
+command-0Fh routine CODE:B9B9 sets, then 14DE2h and three more);
+CODE:14DE2 calls CODE:14DD6 for each ball on the table. CODE:50A9 picks
+one of three keyboard tables (QWERTY, QWERTZ, AZERTY) by a country code
+from INT 93h AH=15h (presumably the keyboard's; the runs got QWERTY) for
+CODE:2B0A2, upper-case.
+
+Seen by chance: Git Bash turns the lone `/` argument into a path
+(`MSYS_NO_PATHCONV=1` stops it); the game then showed its options
+screen ("Pinball Illusions Options": balls per game, table angle,
+scrolling, multiball maximum, tilt sensitivity, resolution) instead of
+the intro. Which character of the argument asks for it is not checked
+(the GOG set-up passes `/o`).
 
 ### The gaps
 
@@ -829,6 +868,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      1's and 4's opcode-14h objects.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
-     selector in CODE:3B4B; the self-patched call at CODE:298C5 (a run
-     with `-watch` on CODE:298C6); names for the routines found in these
-     sessions (METHOD.md), keeping build.py IDENTICAL.
+     selector in CODE:3B4B; names for the routines found in these
+     sessions (METHOD.md), keeping build.py IDENTICAL. Done 2026-09-29:
+     the self-patched call at CODE:298C5 (see "The self-patched call in
+     a run": not patched in runs). Open from it: the options screen's
+     argument; what Esc does during a game.
