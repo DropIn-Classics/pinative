@@ -49,6 +49,12 @@ name       CODE:9743 MODE_VGA360
 name       CODE:97A4 MODE_SVGA640
 name       CODE:9822 MODE_SVGA800
 name       CODE:96E7 MODE_VGA320
+; Esc on a table (2026-09-29; run on table 1, see docs/HANDOFF.md, "Esc")
+name       CODE:CBCC GAME_PHASE    ; state+8Eh: the number by which CODE:BAD6's routines are called each round (CODE:B993), 0..9: F1 in the attract mode sets 2 (CODE:2A7FD), Esc during play 3 (CODE:2BAB5), Esc in CODE:2B1DC's routine 1 (CODE:2B345), CODE:2B1DC 4 (on to CODE:2B76E, play); which phase is which beyond these not followed
+name       CODE:CBCB QUIT_TABLE    ; state+8Dh: FFh leaves the table for the chooser (run: written by CODE:2BABB at t=140.01, Esc during play; the chooser's screens followed)
+comment    CODE:2A8AB Esc in the attract mode: the text "REALLY QUIT TABLE?" (CODE:2A93E) while the frame step goes on, until KEY_DOWN+15h (scan code 15h, Y on a QWERTY keyboard: yes, QUIT_TABLE FFh) or another key (LAST_KEY; on with the attract mode) (run: Esc at t=124 showed the text, Space at 127 went on; Y not tried there)
+comment    CODE:2B63B the same question for Esc at CODE:2B56D (the routine at CODE:2B543, its callers not followed; presumably while the ball waits for its launch, not run): Y QUIT_TABLE FFh, another key back to CODE:2B543
+comment    CODE:2BAB5 Esc during play (CODE:2B76E): QUIT_TABLE FFh and GAME_PHASE 3 at once, no question (run: Esc at t=140 in a game, the screen dark at 141, the chooser's table menu after Space at 144; Esc there at 150: "Thank you for playing Pinball Illusions CD." and exit code 32)
 comment    CODE:9D3C the track's time up, a return set: CD volume 0, the driver's command 8 with the order index and slot of CODE:9CE6/9CE8 (run 2026-09-29, table 2: at t=151.03, after track 19 of the music chooser)
 comment    CODE:9E13 a track in MUSIC_NEXT: the record's order index and module slot kept in CODE:9CE6/9CE8 (the module music to return to), the module request cleared, the track played, CD volume C0h; when its time is up (CODE:9CEA) the driver's command 8 with them, the CD volume 0 (9CE6 0: the track again)
 comment    CODE:9E83 the module request (state+2A84h): positive (2 in the records) the driver's command 0Ah (temporary module playback, docs/audio-driver.md: a jingle over the music, presumably) with BX the order index, CX the module slot, the CD volume 0 first when bit 2 of CODE:CB97 is set; negative: CD volume 0, the track's countdown CODE:9DBD stopped (-1), command 8 (the module from that order index); 0: nothing

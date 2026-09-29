@@ -16,7 +16,9 @@ tools/event_streams.py lists every stream of a module (see "The event
 language"); what the 28 handlers of a take do is read (see "The slot-15
 handlers"). The offsets among the 32-bit immediates have hints (see
 "Offsets among the immediates"). Table 2's music chooser seen in a run,
-and the game's frame rate found (see "Table 2's chooser in a run").
+and the game's frame rate found (see "Table 2's chooser in a run");
+the command-line options and Esc are found (see "The self-patched call
+in a run", the end, and "Esc").
 
 ## The earlier analysis
 
@@ -472,6 +474,33 @@ an open for writing failed when `build/run/state` did not exist yet
 billion instructions (0d71ad0); setjmp's signal mask made runs under PE
 45 times slower on macOS (4a9ac3a); INT 21h AH=57h (a file's date and
 time, the set-up sets it) was missing (6a34e22).
+
+### Esc
+
+Found 2026-09-29, on Windows (hints `GAME_PHASE`, `QUIT_TABLE` and the
+comments on CODE:2A8AB, 2B63B, 2BAB5). A run on table 1 (keys `100
+space`, `106 enter`, `124 esc`, `127 space`, `130 f1`, `131 enter`, `140
+esc`, `144 space`, `150 esc`, `154 y`; `-watch` on QUIT_TABLE, linear
+10DAFBh; a shot a second):
+
+- Esc in the attract mode (t=124): "REALLY QUIT TABLE?" on the score
+  display, the table goes on moving; Space (t=127) back to the attract
+  mode. By the code, Y (scan code 15h, KEY_DOWN+15h) says yes; not tried.
+- Esc during play (t=140): QUIT_TABLE FFh at once (CODE:2BABB), no
+  question; the screen dark at t=141, the chooser's table menu after
+  Space (t=144); Esc there (t=150) ends the program ("Thank you for
+  playing Pinball Illusions CD.", exit code 32), as in the Esc run of
+  "The self-patched call in a run".
+- by the code only: the same question at CODE:2B63B (the routine at
+  CODE:2B543, presumably while the ball waits for its launch), and Esc
+  in CODE:2B1DC's routine sets GAME_PHASE 1 (CODE:2B345).
+
+`GAME_PHASE` (state+8Eh, CODE:CBCC) is the number that picks one of the
+ten routines at CODE:BAD6 each round ("Code reached through pointers":
+the ten near pointers): F1 sets 2, Esc during play 3, CODE:2B1DC sets 4
+and 4 is CODE:2B76E, the play. What the other phases are is not
+followed; the Y key on a QWERTZ or AZERTY keyboard (scan code 15h is Z
+on QWERTZ) not looked at.
 
 ### The tables and their CD tracks
 
@@ -937,6 +966,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      2026-09-29, see "The gaps", the end). Done 2026-09-29:
      the self-patched call at CODE:298C5 (see "The self-patched call in
      a run": not patched in runs). Done 2026-09-29: the options screen's
-     argument (see "The self-patched call in a run", the end). Open from
-     it: what Esc does during a game; the other option bytes; the SVGA
+     argument (see "The self-patched call in a run", the end); what Esc
+     does (see "Esc"). Open from it: the other option bytes; the game
+     phases of CODE:BAD6; the SVGA
      modes in the runner (FRAME_RATE then 60, presumably).
