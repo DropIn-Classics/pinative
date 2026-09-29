@@ -35,7 +35,7 @@ animations"); the timed lamp, a drop-target bank and a hole
 seen in a run (see "The lamps, a drop-target bank and a hole in a run");
 the player record's names checked in a run (see "The player record
 in a run"); the slot-16 counters' timers (see "The slot-16 counters'
-timers").
+timers"); table 4's random awards (see "Table 4's random awards").
 
 ## The earlier analysis
 
@@ -1458,6 +1458,35 @@ macOS (as in "The player record in a run"; `build/names/c1.txt`,
   step was 1,000,000 and the value 0 (CODE:2CBA6). COUNTER_TIMERS ran
   826 times up to t=150.
 
+### Table 4's random awards
+
+Read 2026-09-29 from the code and table 4's module, one run on macOS
+for the counter (as in "The player record in a run";
+`build/names/r1.txt`). Hints: CODE:2E51D, DRV_TICK, CODE:2F7DE.
+
+- The number handler 1Ah picks by is the low byte of CODE:BAD4, which
+  DRV_TICK counts once a frame: 838 writes by CODE:B9AA from t=130.11
+  (the table's start) to 142, 70.5 a second. So the award depends on
+  the frame of the take, not on a random-number generator.
+- Table 4's record 5662h has 8 entries of 32 numbers each, all given
+  once (flag bit 0): light 5728h (handler 1, an extra ball, and
+  5,000,000 to the bonus when taken), take 4F3Ah (handler 6 on counter
+  4F72h), take 5790h (10,000,000), 575Ch (1,000,000), 57C4h
+  (25,000,000), and three streams with nothing but their end. A take
+  pays only a record lit for the current player (event opcode 5), so
+  whether the four takes pay depends on their state then; not looked
+  at.
+- Once all eight are given, the loop at CODE:2E56D (the number plus
+  5Dh, coprime to 256) would never end. As read it is not reached:
+  5662h is lit only by threshold 15 of counter 55F6h (handler 6 of
+  record 541Eh counts it), which fires when the player's word +16h is
+  15; that word is reset only at the game start (CODE:29FFA; the
+  counter's flag bit 0 keeps it over balls at CODE:2A113) and the
+  counter has no limit (word +4 0), so once per player and game, eight
+  at most. The entries' bit 1 is cleared only at the game start
+  (CODE:2A0C2) and is shared by the players. Not run: blind play does
+  not reach threshold 15.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1552,9 +1581,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      handlers"). Done 2026-09-29: a run that checks the names
      (score, bonus, multiplier, extra ball; see "The player record in a
      run"). Done 2026-09-29: who reads a slot-16 counter's word +26h (see "The
-     slot-16 counters' timers"). Open from it: table 4's
-     random awards. Where CODE:BAD4 is counted: DRV_TICK (see "Offsets
-     among the immediates"), how often not checked.
+     slot-16 counters' timers"). Done 2026-09-29: table 4's
+     random awards and how often CODE:BAD4 is counted (see "Table 4's
+     random awards").
    - done 2026-09-29: table 2's music (see "The audio records and
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
