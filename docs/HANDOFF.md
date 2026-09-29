@@ -36,7 +36,8 @@ seen in a run (see "The lamps, a drop-target bank and a hole in a run");
 the player record's names checked in a run (see "The player record
 in a run"); the slot-16 counters' timers (see "The slot-16 counters'
 timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
-"The tilt in a run"); game phase 0, set by no one (see "Game phase 0").
+"The tilt in a run"); game phase 0, set by no one (see "Game phase 0"); the
+SVGA modes in the runner (see "The SVGA modes in a run").
 
 ## The earlier analysis
 
@@ -558,7 +559,7 @@ word where `SLOPE_Y` goes to the second: a pull straight down the table,
 presumably) and `SERVE_SECONDS` 10 (times `FRAME_RATE` to state+0D3Eh
 while the ball waits for its launch; what counts it down not followed).
 Byte +6 holds a video mode number for the SVGA modes, not a line of the
-screen (not followed).
+screen (`OPT_SVGA_MODE`, see "The SVGA modes in a run").
 
 What follows from the code, not from runs: `TILT_STEP` is added to
 state+2A78h on each new press of Space, Left Alt or Right Alt, which
@@ -1396,7 +1397,8 @@ s of 182.9 (182.9 x 61/70 = 159.4), track 19's return after 16.6 s of
 19.1 (16.6). That the cap is meant so (and not, say, a 60 Hz rate plus
 a margin) is not known; a port that wants the original's timing counts
 61 a second at 70 Hz frames. The four mode routines' other effects
-(CODE:D890, D892, 9B8E, B922) are not looked at.
+(CODE:D890, D892, 9B8E, B922) are not looked at. The SVGA modes: 60 Hz,
+FRAME_RATE 59 or 60 (see "The SVGA modes in a run").
 
 ### The player record in a run
 
@@ -1535,6 +1537,37 @@ GAME_PHASE, CODE:BAFE, CODE:BB0A.
   CODE:269D7 computes a ball's +72h) goes to DS:72h. A debug tool,
   presumably, and phase 0 a debug pause; both dead in this release.
 
+### The SVGA modes in a run
+
+Read 2026-09-29 from the code, then runs on macOS with doskit's new
+VESA (doskit: `4F00h`..`4F03h`, modes 100h, 101h, 103h with an SVGA
+card's registers; its selftest checks them in VGAMODE.EXE). Hints:
+OPT_SVGA_MODE, SVGA_CHECK, SVGA_FIND, the comment on MODE_SVGA640.
+
+- At the start SVGA_CHECK (CODE:0753) looks for a mode when the
+  resolution is SVGA: an S3 BIOS, else VESA (4F00h and the block's
+  "VESA": modes 101h / 103h), else the BIOS modes 14h..7Fh one by one
+  with a check of the registers. Nothing found: back to VGA 360x350 and
+  the configuration file written so. The runner had no VESA, so SVGA
+  could not be chosen in it before.
+- The SVGA mode routines set that mode and then program the card as VGA
+  360 does: planar, 84 bytes (336 pixels) a line, the split for the
+  32-line display. So SVGA shows more of the table's height (448 or 568
+  lines instead of 318), not more width; on a real monitor the 336
+  pixels presumably sit in the middle of the 640 or 800 (the retrace is
+  moved; not seen, the runner shows only the pixels displayed).
+- Runs (keys `106 space`, `112 enter`, `136 f1`, `137 enter`; `-poke
+  101683 100FD2 01` or `02`: OPT_RESOLUTION at SVGA_CHECK's first
+  instruction; `build/svga/`, 20 s each): INT 10h AX=4F00h at t=2.4,
+  OPT_SVGA_MODE 1; at the table's start (t=124.04) the mode routine,
+  FRAME_RATE 3Ch, then MEASURE_RATE 3Bh (640x480, 59.94 Hz) or 3Ch
+  (800x600, 60.3 Hz); the table in 336x480 and 336x600 pictures (the
+  ball, the display's "DON'T MOVE"); the runner's `-vgastate` at the
+  end of the 800x600 run: mode 103h, CR 13h 2Ah, line compare 567.
+- Not done: a game played to its end in SVGA; the VGA 320x240 mode (its
+  routine sets FRAME_RATE 3Ch too; no VESA needed, not run); S3's and
+  other cards' own modes (the runner has only VESA).
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1663,5 +1696,5 @@ options"; open from it: a run with another table angle, the countdown
 of `SERVE_SECONDS`, the multiball records). The game
      phase 0 of CODE:BAD6 done 2026-09-29 (see "Game phase 0"; 8 see "The
      player record in a run", 9 "The tilt in a run", the others "Esc"),
-     so every phase is known. Open: the SVGA modes in the runner
-     (FRAME_RATE then 60, presumably).
+     so every phase is known. Done 2026-09-29: the SVGA modes in the
+     runner (see "The SVGA modes in a run"; FRAME_RATE 59 or 60).
