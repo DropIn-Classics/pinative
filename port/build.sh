@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 CC=${CC:-cc}
 RT=../doskit/runtime
 CFLAGS="-O2 -Wall -Wextra -I$RT -Isrc"
-GAME="src/main.c src/archive.c src/image.c src/pmax.c src/entry.c src/setup.c src/video.c src/cd.c src/sound.c src/hostcb.c src/nosound.c"
+GAME="src/main.c src/archive.c src/image.c src/pmax.c src/entry.c src/setup.c src/video.c src/cd.c src/sound.c src/intro.c src/hostcb.c src/nosound.c"
 RUNTIME="$RT/sys.c $RT/cdimage.c $RT/textmode.c $RT/pad.c $RT/sha256.c $RT/pmem.c $RT/vga.c $RT/frame.c $RT/modplay.c $RT/audiofx.c $RT/fli.c $RT/shot.c"
 
 mkdir -p build

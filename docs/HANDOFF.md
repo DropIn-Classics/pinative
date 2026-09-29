@@ -2228,6 +2228,33 @@ the table at 12AEh), as the other eleven. Past the archive's end the
 decoders read zeros; pMAX's word read gives something else there (its
 buffer position), not checked, as no entry seen needs it.
 
+### The chooser's files in a run
+
+The run with NOSOUND.SDR in the header (build/pm/nosound.cfg by `-put`,
+no `-cue`) stopped after CHOOSER_LOAD's eleven INT 94h AH=1 (CODE:7885,
+linear 1087B5h, t=13.946465; `-mem` build/pm/ns_7885.mem), 2026-09-29,
+Linux. CHOOSER_LOADED (CODE:5DCF) set to 1 first, then the files in
+this order, each with an empty block name (the 0 before each file name
+in CODE), their selectors stored by the POPs after each call (names in
+the hints): chooser\cube.rix 44h (MOD.INT's, freed by command 4),
+tube.rix 134h, torus.rix 13Ch, tinyfont.fnt 144h, infodata.mgl 14Ch,
+menuchar.rix 154h, intro\introani.roy 15Ch, intropix.mgl 164h,
+SCROLL.DLT 16Ch, BKGR.FLD 174h, PCSKY.FLD 17Ch. For introani.roy EDX
+is kept too (INTROANI_SIZE, 157FCh: the file's 88060 bytes), so INT
+94h AH=1 gives the file's size in EDX; INTROANI_POS set 0.
+
+pMAX's heap: the blocks first fit from the bottom after the 32 of "The
+driver's command 4 in a run" (cube.rix's header at 1A90B0h, PCSKY.FLD's
+at 29CD50h), the free rest from 2AFC60h to FEFFF0h one block: MOD.INT's
+freed block at the top merged into it. The port (port/src/intro.c)
+leaves CODE and TAIL and all 43 used blocks of the chain equal
+(port/README.md, "Checked"). The next call is CODE:7341, through the
+checksummed jump CODE:7438 ([CODE:904F] less the byte sum of CODE:7230..
+7ABB; computed from the run's memory at CODE:75B6). The targets of the
+other checksummed calls in CHOOSER_LOAD, computed the same way and not
+yet seen in a run: [CODE:908B] 698Ah, [CODE:9097] 6FC0h, [CODE:9043]
+6E49h, [CODE:907F] 72BBh, [CODE:235E] 73D8h (the tail jump at the end).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2401,9 +2428,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      driver's command 0 in a run"). Done 2026-09-29: NOSOUND's command 4
      (MOD_LOAD, CODE:1C28), host callbacks 6 to 9 and pMAX's allocation
      from the top; memory equal at CODE:75B6, the end of SOUND_START (see
-     "The driver's command 4 in a run"). Next: CHOOSER_LOAD's files
-     (cube.rix, tube.rix ...: INT 94h AH=1 after CODE:75B6), where the
-     port stops now.
+     "The driver's command 4 in a run"). Done 2026-09-29: CHOOSER_LOAD's
+     files (port/src/intro.c; see "The chooser's files in a run"). Next:
+     the intro, CODE:7341 (reached from CODE:7885), where the port stops
+     now.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

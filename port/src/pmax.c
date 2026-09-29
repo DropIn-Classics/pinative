@@ -183,7 +183,7 @@ static uint32_t block_alloc(uint32_t size, uint16_t *sel)
     return at;
 }
 
-uint16_t pmax_load(const char *name)
+uint16_t pmax_load(const char *name, uint32_t *size)
 {
     char err[256];
     const ArcEntry *e = arc_find(&pi_archive, name);
@@ -196,6 +196,8 @@ uint16_t pmax_load(const char *name)
     at = block_alloc(e->size, &sel);
     if (at)
         memcpy(pmem + at, f, e->size);
+    if (at && size)
+        *size = e->size;
     free(f);
     return at ? sel : 0;
 }

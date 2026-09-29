@@ -1,5 +1,5 @@
-/* sound.c - CHOOSER_LOAD (CODE:757D) and SOUND_START (CODE:7082): the CD
- * checked, the sound driver loaded and started.
+/* sound.c - SOUND_START (CODE:7082): the CD checked, the sound driver
+ * loaded and started.
  */
 #include <string.h>
 #include "game.h"
@@ -19,7 +19,7 @@ static void CALLBACKS_CS(void)
 }
 
 /* CODE:7082: 1 (CF) when there is no CD or the driver fails */
-static int SOUND_START(void)
+int SOUND_START(void)
 {
     uint16_t sel;
     NsRegs r;
@@ -37,7 +37,7 @@ static int SOUND_START(void)
      * has only NOSOUND.SDR (src/NOSOUND.hints) and loads it whatever the
      * header names; DRIVER_CFG keeps the player's name. */
     pmax_cfg_header(N_DRIVER_CFG);
-    sel = pmax_load("NOSOUND.SDR");
+    sel = pmax_load("NOSOUND.SDR", NULL);
     if (!sel)
         pi_stop("SOUND_START: NOSOUND.SDR not loaded");
     ww(N_DRIVER_SEL, sel);
@@ -63,16 +63,4 @@ static int SOUND_START(void)
     ns_call(rw(N_DRIVER_ENTRY + 4), &r);
     wd(N_SOUND_JUMP, 0x4CF2);
     return 0;
-}
-
-void CHOOSER_LOAD(void)
-{
-    ww(N_HOST_DS, pi_image.desc[ILLUSION_CODE].sel);
-    ww(N_VIDEO_SEL, pmax_video_sel());
-    /* through CODE:4CF2's checksummed jump */
-    if (SOUND_START()) {
-        /* CODE:35B7D with BL 0, then exit (INT 21h AX=4CFFh) */
-        pi_stop("CHOOSER_LOAD: the sound start failed");
-    }
-    pi_stop("CHOOSER_LOAD's files");
 }

@@ -27,8 +27,10 @@ void SVGA_CHECK(void);
 /* CODE:049A, CODE:046E */
 void VGA_INIT(void);
 void HISCORE_INIT(void);
-/* CODE:757D */
+/* CODE:757D (intro.c) */
 void CHOOSER_LOAD(void);
+/* CODE:7082 (sound.c): 1 (CF) when there is no CD or the driver fails */
+int SOUND_START(void);
 /* cd.c: CODE:35B52 and 35C58 return 1 for CF */
 int CD_INSTALLED(void);
 void CD_LOCK(uint8_t bl);

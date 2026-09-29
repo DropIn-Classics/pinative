@@ -20,9 +20,9 @@ SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
 (src/video.c), CHOOSER_LOAD's start and SOUND_START (src/sound.c; the
 CD check in src/cd.c) and the sound driver's commands 0 and 4
 (src/nosound.c, NOSOUND.SDR's commands in C, command 4 loading
-`intro\MOD.INT`; the host callbacks they call in src/hostcb.c), up to
-CHOOSER_LOAD's files after CODE:75B6, where the port stops
-(`Stopped before CHOOSER_LOAD's files`). The port loads
+`intro\MOD.INT`; the host callbacks they call in src/hostcb.c) and
+CHOOSER_LOAD's eleven files (src/intro.c), up to the intro's CODE:7341,
+where the port stops (`Stopped before CODE:7341`). The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
@@ -83,4 +83,7 @@ headless build writes the pictures `DK_SHOTS` names, as
 - 2026-09-29, Linux: src/archive.c's unpacking of all 125 entries equal
   to tools/illfiles.py's `extract --all` again after both followed
   pMAX's decoder (a scratch program), 1.7 s.
+- 2026-09-29, Linux: after CHOOSER_LOAD's files (dosrun `-break
+  1087B5#1 -mem`, CODE:7885, NOSOUND.SDR): CODE and TAIL 0 bytes differ;
+  all 43 used blocks of pMAX's heap chain equal byte for byte.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

@@ -70,6 +70,18 @@ name       CODE:6358 DRIVER_SEL    ; the sound driver's block (INT 94h AH=1 by t
 name       CODE:6360 DRIVER_CFG    ; the configuration header again (INT 94h AH=5): the driver's name first; the driver's command 0 gets it as ES:EBX
 name       CODE:8134 DRIVER_ENTRY  ; a far pointer: offset 0, the selector INT 93h AH=8 makes of DRIVER_SEL (run: 0Ch)
 name       CODE:80BC INTRO_MOD_NAME ; "intro\MOD.INT", the module SOUND_START has the driver load into slot 0 (command 4, its result not looked at)
+name       CODE:5DCF CHOOSER_LOADED ; a word: 1 once CHOOSER_LOAD has loaded the chooser's files (CODE:75B6); CMPed with 1 at CODE:2810, 36C8 (ATTRACT_START), 4E71, set 0 at CODE:5040: presumably so that the first chooser does not load them again (not followed)
+name       CODE:1311 CUBE_SEL      ; chooser\cube.rix's selector (INT 94h AH=1 in CHOOSER_LOAD; run 2026-09-29: 44h, MOD.INT's freed one); CUBE_SEL, TUBE_SEL, TORUS_SEL are read as a table by EBX*2 (CODE:3778, 469B, 4A05; not followed)
+name       CODE:1313 TUBE_SEL      ; chooser\tube.rix's (run: 134h)
+name       CODE:1315 TORUS_SEL     ; chooser\torus.rix's (run: 13Ch)
+name       CODE:1317 MENUCHAR_SEL  ; chooser\menuchar.rix's (run: 154h)
+name       CODE:6352 INTROANI_SEL  ; intro\introani.roy's (run: 15Ch)
+name       CODE:8118 INTROANI_SIZE ; its size, INT 94h AH=1's EDX (run: 157FCh, the file's 88060 bytes); written only
+name       CODE:811C INTROANI_POS  ; 0 in CHOOSER_LOAD; ESI read from it and written back with DS INTROANI_SEL at CODE:6BD8, presumably the position in the file (not followed)
+name       CODE:6356 INTROPIX_SEL  ; intro\intropix.mgl's (run: 164h)
+name       CODE:6348 SCROLL_SEL    ; intro\SCROLL.DLT's (run: 16Ch)
+name       CODE:634A BKGR_SEL      ; intro\BKGR.FLD's (run: 174h)
+name       CODE:634C PCSKY_SEL     ; intro\PCSKY.FLD's (run: 17Ch)
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0

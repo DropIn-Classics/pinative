@@ -12,7 +12,7 @@
  * language's table in it, YES_KEYS a word of its text +114h */
 static void SETSOUND_LOAD(void)
 {
-    uint16_t sel = pmax_load("SETSOUND\\SETSOUND.DAT");
+    uint16_t sel = pmax_load("SETSOUND\\SETSOUND.DAT", NULL);
     uint32_t base, texts;
 
     if (!sel)       /* INT 21h AH=9, then AH=4Ch */

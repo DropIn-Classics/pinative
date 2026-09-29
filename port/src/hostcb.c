@@ -57,7 +57,7 @@ int HCB_LOAD(uint16_t ds, uint32_t ebx)
         name[i] = (char)lrb(at + i);
     name[i] = 0;
     pmax_policy(1);
-    sel = pmax_load(name);
+    sel = pmax_load(name, NULL);
     pmax_policy(0);
     /* AX, whatever INT 94h gave; the port's 0 when there is no file */
     lww(host_ds() + N_HCB_FILE_SEL, sel);
