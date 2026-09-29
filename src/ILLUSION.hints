@@ -61,7 +61,8 @@ code       CODE:32DA7 OPTIONS_SCREEN ; /O: "Pinball Illusions Options"
 name       CODE:00A4 HISCORES      ; OPTIONS+7, C8h bytes: four tables of five 10-byte entries (initials, a NUL, then the score, presumably; not followed), the defaults copied in by HISCORE_INIT
 name       CODE:08AC HISCORE_DEFAULTS ; C8h bytes as HISCORES has them ("ICE", "ANY", "AJL", "SN ", "KHN" in turns)
 code       CODE:046E HISCORE_INIT  ; HISCORE_DEFAULTS to HISCORES when HISCORES's first byte is 0 or FFh (after the first VGA_INIT)
-code       CODE:049A VGA_INIT      ; BIOS mode 13h, CRTC registers, 15 retraces waited, a 13EAh-byte block (INT 92h AH=4) filled from the run-length data at CODE:0974; not followed further yet
+code       CODE:049A VGA_INIT      ; BIOS mode 13h, CR 13h 1Eh (240-byte lines), CR 9 40h, the line compare 108h, 15 retraces waited; LOADING_PIC unpacked into a 13EAh-byte block (INT 92h AH=4; run 2026-09-29: at linear 1473C0h, where SETSOUND.DAT was), its palette to the DAC and its pixels to A000:A916h (INT 93h AH=5's selector), the block freed
+name       CODE:0974 LOADING_PIC   ; the "Loading" picture, run-length packed ("TCB", byte +5 the mark: mark, count, value); unpacked a RIX3 picture of 240x18 (+4 width, +6 height, +0Ah the palette, +30Ah the pixels; run 2026-09-29: on the screen at t=2.645)
 comment    CODE:0310 INT 94h AH=7: OPTIONS from the configuration file's 200h bytes at +20h, stored chained: a byte XOR the stored byte four before it, the first four XOR "SN95" (runs 2026-09-29, crafted files: 200h random bytes read back exactly)
 ; 2A1h as a displacement with a register: a field offset, presumably, not CODE_SEL
 num        CODE:2636F

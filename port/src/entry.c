@@ -8,8 +8,9 @@
 #include "names.h"
 #include "platform.h"
 #include "pmax.h"
+#include "vga.h"
 
-const char *pi_stop_mem;
+const char *pi_stop_mem, *pi_stop_vram;
 
 void pi_stop(const char *name)
 {
@@ -18,6 +19,10 @@ void pi_stop(const char *name)
 
     if (pi_stop_mem && pm_write(pi_stop_mem) != 0) {
         fprintf(stderr, "pinative: %s cannot be written\n", pi_stop_mem);
+        r = 1;
+    }
+    if (pi_stop_vram && vga_write_planes(pi_stop_vram) != 0) {
+        fprintf(stderr, "pinative: %s cannot be written\n", pi_stop_vram);
         r = 1;
     }
     snprintf(msg, sizeof msg, "Stopped before %s (not translated yet, or -entry).", name);
@@ -65,5 +70,7 @@ void ENTRY(void)
     SVGA_CHECK();
     /* IRQ 1 masked at the PIC (the keyboard is read otherwise; not
      * followed): nothing in the port's memory */
-    pi_stop("VGA_INIT");
+    VGA_INIT();
+    HISCORE_INIT();
+    pi_stop("L757D");
 }

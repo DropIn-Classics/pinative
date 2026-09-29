@@ -6,9 +6,9 @@
 #include <stdint.h>
 
 /* Where the port stops: a routine not translated yet.  With a memory file
- * set, the memory is written there first (for tools/memcmp.py against the
+ * set (and a video memory file), the memory is written there first (for tools/memcmp.py against the
  * original stopped at the same routine); then the program ends. */
-extern const char *pi_stop_mem;
+extern const char *pi_stop_mem, *pi_stop_vram;
 void pi_stop(const char *name);
 
 /* INT 21h AH=9: the '$'-ended text at the linear address `at` on the
@@ -24,5 +24,8 @@ void ENTRY(void);
 int SETUP_ARGS(void);
 /* CODE:0753 */
 void SVGA_CHECK(void);
+/* CODE:049A, CODE:046E */
+void VGA_INIT(void);
+void HISCORE_INIT(void);
 
 #endif

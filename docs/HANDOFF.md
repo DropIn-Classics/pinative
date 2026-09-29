@@ -2198,8 +2198,15 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (linear 1013CAh, t=2.425942: nothing changed since SVGA_CHECK). The
      order in ENTRY is SVGA_CHECK, IRQ 1 masked, VGA_INIT, then
      HISCORE_INIT (OPTIONS+7 is HISCORES, see the hints).
-   - on from SVGA_CHECK: VGA_INIT (mode 13h, the CRTC, 15 retraces, a
-     block by INT 92h AH=4: vga.c, the frame wait and the pMAX heap),
+   - done 2026-09-29: VGA_INIT and HISCORE_INIT (port/src/video.c, on
+     doskit's vga.c and frame.c): memory and video memory equal at
+     CODE:757D (linear 1084ADh, t=2.641916, 15 frames in both). The
+     "Loading" picture (LOADING_PIC) is on the screen then; its block
+     lay at 1473C0h in the run, where the port's heap put it too (the
+     second block seen: SETSOUND.DAT's place again, freed before). The
+     DAC is not compared (memcmp.py has no DAC; the same 300h bytes go
+     to it).
+   - on from HISCORE_INIT: CODE:757D,
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts
      already read, each compared with memcmp.py;

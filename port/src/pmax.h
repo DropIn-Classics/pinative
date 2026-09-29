@@ -30,6 +30,9 @@ int pmax_cfg_header(uint32_t off);
 /* INT 94h AH=1: the archive's file `name` into a new block of memory; its
  * selector (the block's base: pmax_base), or 0 when it is not there */
 uint16_t pmax_load(const char *name);
+/* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
+ * or 0 when there is no room */
+uint16_t pmax_alloc(uint32_t size);
 /* a block's linear base by its selector */
 uint32_t pmax_base(uint16_t sel);
 /* INT 92h AH=5: the block freed */

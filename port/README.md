@@ -15,8 +15,9 @@ archive as tools/illfiles.py reads it) and loads it into doskit's
 the SHA-256 of src/gen/names.h checked). Translated: ENTRY and
 SETUP_ARGS (src/entry.c, src/setup.c; the configuration file and
 SETSOUND.DAT through src/pmax.c, in place of pMAX's services) and
-SVGA_CHECK for VGA, up to VGA_INIT, where the port stops (`Stopped
-before VGA_INIT`); `-opt o`,
+SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
+(src/video.c), up to CODE:757D, where the port stops (`Stopped before
+L757D`); `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
@@ -28,9 +29,10 @@ of the GOG image when it is unpacked); built with build.sh on macOS
     sh port/build.sh          # macOS, Linux (SDL2 for the window)
     port\build.bat            # Windows (MSVC)
     port/build/pinative -game game
-    port/build/pinative-headless -game game -cfg ILLUSION.CFG [-opt LETTERS] -mem FILE
+    port/build/pinative-headless -game game -cfg ILLUSION.CFG [-opt LETTERS] -mem FILE [-vram FILE]
                               # the memory where the port stops (-entry:
                               # at ENTRY), for memcmp.py --base 100F30
+                              # (--vram with dosrun's -vram)
 
 Print Screen writes the picture shown into the next free
 `screenshot_NNNN.png` in the current folder (doskit's `shot.h`); the
@@ -56,4 +58,6 @@ headless build writes the pictures `DK_SHOTS` names, as
   help text (docs/HANDOFF.md, "SETUP_ARGS in a run").
 - 2026-09-29, Linux: at VGA_INIT's first call (dosrun `-break
   1013CA#1 -mem`): CODE and TAIL 0 bytes differ.
+- 2026-09-29, Linux: at CODE:757D (dosrun `-break 1084AD#1 -mem
+  -vram`): CODE, TAIL and video memory 0 bytes differ.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

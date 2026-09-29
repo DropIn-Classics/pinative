@@ -117,6 +117,12 @@ uint16_t pmax_load(const char *name)
     return at ? sel : 0;
 }
 
+uint16_t pmax_alloc(uint32_t size)
+{
+    uint16_t sel = 0;
+    return block_alloc(size, &sel) ? sel : 0;
+}
+
 uint32_t pmax_base(uint16_t sel)
 {
     int k = (sel - 4) / 8;

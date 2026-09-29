@@ -1,7 +1,7 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-entry]
+ *     pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
@@ -16,7 +16,8 @@
  * ILLUSION.386 is unpacked from the player's ILLUSION.EXE and loaded as
  * pMAX loads it (image.h), then run from ENTRY by the translated routines
  * (game.h) up to the first one not translated, where the port stops; -mem
- * writes the memory there (doskit's pmem.h, for tools/memcmp.py), -entry
+ * writes the memory there (doskit's pmem.h, for tools/memcmp.py), -vram
+ * the video memory (as dosrun's -vram), -entry
  * stops at ENTRY itself.
  */
 #include <stdio.h>
@@ -88,10 +89,12 @@ int main(int argc, char **argv)
             pmax_tail = pmax_tail_buf;
         } else if (!strcmp(argv[i], "-mem") && i + 1 < argc)
             pi_stop_mem = argv[++i];
+        else if (!strcmp(argv[i], "-vram") && i + 1 < argc)
+            pi_stop_vram = argv[++i];
         else if (!strcmp(argv[i], "-entry"))
             entry = 1;
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-entry]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
             return 2;
         }
     }
