@@ -48,7 +48,9 @@ game on the display (see "Table 1's shooting game in a run"; its
 25-hit extra ball never given, see "Table 1's shooting game when the
 lives run out"); table 4's
 sea game (see "Table 4's sea game in a run"); table 3 has no
-opcode-14h object (see "Table 3's opcode-14h record").
+opcode-14h object (see "Table 3's opcode-14h record"); the hole's
+stale sound read gives nothing in a run (see "The hole's sound in a
+run").
 
 ## The earlier analysis
 
@@ -1351,8 +1353,9 @@ CODE:30BD6, CODE:30CFB). No run was made for it.
   opcode 18h all of that is the second hole's.
 - A slip, as read: for a hole ejecting its own ball the sound record
   is read from a scratch dword that still holds the drop-target queue's
-  place (DROPS_QUEUE_STEP), not from the hole. What sounds is not
-  checked; a port that wants the original's sound has to do the same.
+  place (DROPS_QUEUE_STEP), not from the hole. In a run nothing sounds
+  (see "The hole's sound in a run"); a port that wants the original's
+  sound has to do the same.
 - Open: the ball's speed out of a hole; a hole without a picture.
 
 ### The display's animations
@@ -1926,6 +1929,35 @@ tables 1, 2 and 4, which tools/event_streams.py reaches as
 has no game on the display of this kind. Not seen in a run: that table
 3 never enters the opcode-14h handler (CODE:2DBAD).
 
+### The hole's sound in a run
+
+Found 2026-09-29, on Linux, from the code and runs (`build/hole/`; keys
+of "The lamps, a drop-target bank and a hole in a run": `106 space`,
+`112 enter`, `136 f1`, `137 enter`, both Shift keys every 0.6 s from
+138, Enter every 15 s from 152; `-put` of the GOG `ILLUSION.CFG`, no
+`-cue`; 51 s to t=230). Hint: the comment at CODE:30996 (see "The
+holes' eject" for the slip).
+
+- Table 1's hole at module 4F18h (bit 1 clear, a picture at +30h)
+  ejected twice; the last-50-frames read of its sound record (`-log` on
+  CODE:30B87 and CODE:30B8A, linear 131AB7h and 131ABAh) came 7 times
+  each, at counts 30h, 28h, .., 0 (t=149.37..150.06 and
+  172.13..172.81). At a `-break` there [CODE:0004] was F920h, the
+  drop-target queue's empty end, and CODE:F930 held 0.
+- So in these ejects nothing sounds, and the JE to the RET on a 0
+  record also skips that frame's draw of the flickering picture (what
+  that looks like on the screen not checked). The hole's own +10h is
+  module 11BBFh, a type-2 record (read from T001.BPC and its relocations;
+  22 relocated pointers of the module name it); a fix would play it 7
+  times an eject.
+- The queue (state+2A60h) grows down from F920h (CODE:2CA4D, CODE:30800
+  write below it, DROPS_QUEUE_STEP reads up to it); nothing writes at
+  or above F920h. With one or two entries left the read still gives 0;
+  with three or more it lands in the queue's own entries and hands
+  CODE:9F2C a pointer made of their bytes (read, not run: a bank raised
+  while a hole's picture flickers). For the port: by default no sound
+  and no draw on those frames.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -2070,5 +2102,6 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      shooting game when the lives run out"); the fix keeps the state
      pointer across host vector +18h, so byte +8 is read from the state;
    - the hole's sound record read from a stale [CODE:0004]+10h (the
-     hint at CODE:30996; what it plays not checked, so whether the fix
-     changes anything audible is open).
+     hint at CODE:30996; see "The hole's sound in a run": the original
+     plays nothing there and skips that frame's draw, the fix plays the
+     hole's own record 7 times an eject).
