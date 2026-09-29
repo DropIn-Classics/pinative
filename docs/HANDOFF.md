@@ -938,9 +938,9 @@ them after relocation: a CODE offset, 1D3170h + 4B66h). Seen:
 - the WAV stayed empty (the 44-byte header only): the runner's Sound
   Blaster got no transfer it plays. A 12-s run with `-v` showed no
   unknown port; the runner knows the DSP's 8-bit commands and says it
-  is a DSP 1.05, the driver is `SB16.SDR`; why nothing played is not
-  looked at (a doskit question, rule 7). So the jingle is requested,
-  not heard.
+  is a DSP 1.05, the driver is `SB16.SDR`. Why: the runner had no SB16
+  (see "The Sound Blaster in the runner"), fixed in doskit since. So
+  the jingle is requested; this run not repeated with the fix.
 
 The records' positive word +2 (a throwaway count over the four modules'
 slot-34 arrays, up to the first record whose word +0 is not 4; 44, 47,
@@ -952,6 +952,41 @@ only other uses in build/ILLUSION.ASM, besides the FFFEh CODE:2B345
 stores, the Esc path that sets GAME_PHASE 1): what the number means, if anything, is not found (the table
 modules' code not searched for it). The hint on CODE:9E83 and
 docs/bpc-module.md had "2 in the records"; corrected.
+
+### The Sound Blaster in the runner
+
+Found 2026-09-29, on macOS (runs of `ILLUSION.EXE ILLUSION.CFG` with the
+configuration file of "The loader in the runner": Sound Blaster 16,
+220h, quality LOW). The driver `SB16.SDR` sits at linear 1473C0h in
+these runs (selector 0Ch; its banner there reads "MS32 Sound Driver for
+No sound", the set-up's template text presumably, not checked). With
+the runner's ports logged (a local change, not kept):
+
+- t=2.77: it writes 80h and 81h to the SB16 mixer's index port 224h and
+  reads 225h after each (driver +A33..+A5E, read from a capstone
+  listing of that memory): the lowest set bit of register 80h picks the
+  IRQ (through a table at +C9h), the highest of register 81h AND EBh the
+  DMA channel (to +8C0h). The runner had no mixer and answered FFh, so
+  DMA 7, presumably (from the code, not run that way);
+- t=14.02 (the intro's module starts): DMA channel programmed, DSP
+  reset, D1h, 41h 3E80h (16000 Hz), B6h 30h (16-bit, auto-init, FIFO,
+  stereo, signed) with length 4AFFh. The runner knew neither 41h nor
+  Bxh ("unhandled DSP command"), had no mixer and only the first DMA
+  controller (channels 0-3): nothing played. The 12-s run above ended
+  before t=14, so it saw no port at all.
+
+Fixed in doskit c44cf02: a Sound Blaster 16 (mixer registers 80h-82h:
+IRQ 7, DMA 1 and 5; the second DMA controller, channels 4-7; DSP 41h,
+42h, Bxh/Cxh, D5h/D6h, D9h/DAh; the 16-bit interrupt acknowledged at
+22Fh; `-sb` prints the transfers). Now the driver's transfer is 16-bit
+stereo at 16000 Hz on DMA 5, mode 59h, 9600 words at linear 13120h,
+the DSP's block 19200 words: the interrupt every 0.6 s, every other
+wrap of the DMA buffer (the driver presumably mixes by the DMA
+position, not checked). `-wav` has sound from t=14 (a run to t=40: 26 s;
+a run to t=140 with `100 space`, `106 enter`: 122 s, a second start at
+t=104.19). Looked at as numbers only (loudness and zero crossings a
+second: a fade-in over 7 s, about 1400-3400 crossings a second, not
+noise); not listened to.
 
 ### The frame rate
 
@@ -1070,9 +1105,11 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
      objects. Done 2026-09-29: a jingle (driver command 0Ah) requested
-     in a run (see "A jingle in a run"). Open from it: why the runner's
-     Sound Blaster plays nothing (doskit); what the number in a
-     record's positive word +2 means.
+     in a run (see "A jingle in a run"). Done 2026-09-29: why the
+     runner's Sound Blaster played nothing (see "The Sound Blaster in
+     the runner"). Open from it: the jingle run again with the fix, the
+     WAV listened to; what the number in a record's positive word +2
+     means.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
