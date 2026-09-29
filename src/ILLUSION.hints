@@ -5,6 +5,9 @@ segment    CODE 0 CODE             ; descriptor 0: the whole image, code and dat
 segment    TAIL 1 BSS              ; descriptor 1: base at the image's end, size 0; its use not known
 
 name       CODE:02A3 ENTRY         ; the header's entry point
+comment    CODE:02C7 INT 93h AH=11h: presumably the command tail (DS:EDX); its first word goes to CODE:086C
+comment    CODE:02FF INT 94h AH=8 with CX:EDX = CODE:086C: the configuration file (run 2026-09-29: "ILLUSION.CFG" as the argument is opened, created when missing; none: "Error while initializing configuration file")
+comment    CODE:35B34 INT 2Fh AX=1510h, MSCDEX (run: no MSCDEX, "CD error!")
 
 ; 16-bit addresses without a register (67h): no source form in a USE32
 ; segment, the assembler would write a 32-bit address

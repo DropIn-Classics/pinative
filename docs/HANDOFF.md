@@ -5,6 +5,8 @@ top of an earlier analysis (docs/*.md other than this file). The game's
 files are listed. The main program, `ILLUSION.386`, is in stage 1:
 `src/ILLUSION.hints` rebuilds it byte for byte (doskit reads pMAX images
 since 2026-09-29), with few hints yet (see "Stage 1" below).
+The runner runs the game now (protected mode in doskit, 2026-09-29) up to
+its CD check, after the sound set-up (see "The loader in the runner").
 
 ## The earlier analysis
 
@@ -67,9 +69,9 @@ archive, and what `cdadd.000` (a string in the loader) is.
 
 ## What does not fit the kit yet
 
-doskit's stage 1 (disasm.py, tasm.py, build.py) and its runner are
-16-bit real mode only (METHOD.md: "Not in the runner: protected mode
-(DOS extenders)"). The game's code is 32-bit:
+doskit's stage 1 (disasm.py, tasm.py, build.py) and its runner were
+16-bit real mode only when this began; both take 32-bit code now (see
+"Next"). The game's code is 32-bit:
 
 - `ILLUSION.386` and the `.SDR` drivers are flat 32-bit images run by
   pMAX's protected mode;
@@ -220,41 +222,55 @@ are offsets, which the analysis does not find by itself; names).
 
 ## The loader in the runner
 
-`run.py -until 2 -dos ILLUSION.EXE` (2026-09-29, the runner as it was:
-386 real mode only) prints the game's and pMAX's banners, then "No
-memory manager present" and "00562kb low and 65472kb high memory
-available"; then the program is lost (it executes the interrupt table
-at 0000:00D8 and ends at t=0.24 s). A trace (`-trace`, 1.38 million
-lines) shows why: the loader, decoded in memory, calls `INT 15h AX=8900h`
-at 0076:473B (the BIOS's "switch to protected mode": GDT at ES:SI, the
-PIC bases in BX, BH and BL swapped just before) with the return address
-in CX (473Dh). The runner's INT 15h fails that call and returns to
-real mode, where the loader goes on as if in protected mode: it loads
-DS..GS and SS with selectors (18h and others), then `MOV CR3,EAX` (0),
-`POPFD` (3002h: IOPL 3), `LIDT`, `LLDT`, `LTR`, `RET`. So without a memory
-manager pMAX takes the BIOS way in, and it uses an LDT and a task
-state segment. Not known yet: whether it runs the program at ring 3 or
-in V86 mode for DOS calls, whether it pages (CR3 = 0 says presumably
-not), how it gets back to real mode, and where the 65472 KB come from
-(the runner's INT 15h AH=88h says 0 KB).
+Since doskit f6876cf (2026-09-29) the runner emulates the 386's protected
+and V86 mode (no paging, no task switches; doskit's tests/pmode checks
+it). Before, the loader was lost at once (its `INT 15h AX=8900h`, the
+BIOS's switch to protected mode, failed and it went on in real mode as
+if in protected mode).
 
-With a memory manager (EMS, DPMI, as in DOSBox) pMAX presumably takes
-another way (VCPI or DPMI); not looked at. The runner has none, so the
-raw way is the one to emulate first.
+`python3 doskit/tools/run.py -until 30 ILLUSION.EXE ILLUSION.CFG` now
+(runs of 2026-09-29, the doskit commits up to 0d71ad0):
 
-What the runner needs for that, in steps (each with a test program in
-doskit's tests, written for the kit):
+- the banners, then "No memory manager present", "00562kb low and
+  15296kb high memory available" (the runner's INT 15h AH=88h says
+  15360 KB; the 65472 KB of the earlier run came from elsewhere, not
+  looked at);
+- the loader enters protected mode through INT 15h AH=89h (the trace
+  shows CS 30h, DS 18h, ES 20h, SS 28h after it). For a DOS call it goes
+  back to real mode by itself (MOV CR0; e.g. 0030:1221 -> 0076:1226) and
+  calls INT 21h at 0076:123A, the file name copied to 0B3E:0000;
+- it opens `C:\ILLUSION.EXE` (the path from the environment) with
+  AX=3D02h (read/write), then `cdadd.000` and `illusion.386` as loose
+  files (neither is there), then reads its archive; a loose file
+  presumably takes the place of the archive's entry (not checked);
+- ILLUSION.386 runs (its code is CS 14h: CODE:02A3 = `ENTRY`, as in the
+  hints). It takes the configuration file's name from the command line:
+  INT 93h AH=11h (presumably the command tail) at CODE:02C7, the first
+  word to CODE:086C, INT 94h AH=8 at CODE:02FF. Without an argument it
+  prints "Error while initializing configuration file..." and exits
+  with 36. How the GOG release starts it (its DOSBox configuration) is
+  not in `game/`, not checked;
+- with `ILLUSION.CFG` it creates that file (544 bytes, in
+  `build/run/state`), opens `SETSOUND\SETSOUND.DAT` and each `.SDR` as a
+  loose file first (none there) and shows the "FLD Sound Driver Setup
+  Utility V2.01 (c) 1995 FrontLine Design": the sound card list; Sound
+  Blaster 16 (seven times down, Enter), base port 220h (Enter), no IRQ
+  or DMA question, "Sound quality?" with LOW recommended (the runner's
+  6 M instructions a second, presumably), Enter;
+- then the game asks MSCDEX (INT 2Fh AX=1500h at CODE:35B5A, AX=1510h
+  at CODE:35B34, both reflected to real mode by pMAX) and, the runner
+  having none, prints "CD error! Please check your CD and your CD
+  player." and exits with 255. On the way the runner's DOS said
+  "unimplemented INT 21h AH=57 AL=01" (set a file's date and time).
 
-1. INT 15h AH=89h and AH=88h in bios.c (the GDT's layout as IBM's BIOS
-   defines it; memory above 1 MB, RAM_SIZE is 16 MB now);
-2. cpu.c: CR0.PE, segment registers with descriptors from the GDT and
-   LDT (base, limit, 16/32-bit code and stack), LGDT/LIDT/LLDT/LTR,
-   far jumps and calls through selectors, interrupts and exceptions
-   through the IDT;
-3. privilege levels and the TSS's stacks, V86 mode or the way back to
-   real mode, as the loader turns out to use them;
-4. the runner's addresses (-break etc.) with selectors, run.py taking
-   the pMAX image's segments as a program's.
+The key script used: `3 down` ... (7 downs 0.3 s apart), `5.5 enter`,
+`7 enter`, `9 enter`, `11 enter`, `13 enter`, `15 enter`.
+
+Found on the way and fixed in doskit (each with a check in PMODE.EXE):
+an open for writing failed when `build/run/state` did not exist yet
+(e447687); a REPNE SCASB with ECX = -1 moved the emulated clock by 4
+billion instructions (0d71ad0); setjmp's signal mask made runs under PE
+45 times slower on macOS (4a9ac3a).
 
 ## Next
 
@@ -277,10 +293,15 @@ doskit's tests, written for the kit):
      write_pmax cannot know it writes as ILLUSION.386 has it: the
      header's first word 0, format 1, allocation = image size, the
      entry as an image offset (descriptor 0 has base 0, so either way);
-   - then the runner. Decided 2026-09-29: it emulates protected mode
-     (the 386's, in cpu.c and bios.c), not pMAX's services, so that other
-     DOS extenders run on it too. See "The loader in the runner" below
-     for what pMAX asks of it.
+   - done 2026-09-29: the runner emulates the 386's protected mode
+     (cpu.c, bios.c), not pMAX's services, so that other DOS extenders
+     run on it too; the game gets to its CD check (see "The loader in
+     the runner").
+   - next: MSCDEX in the runner (INT 2Fh AX=15xxh, the game's files as
+     the CD; what the device requests of AX=1510h ask for is to be read
+     from the game's call at CODE:35B34), INT 21h AH=57h; then run on
+     to the chooser and a table, and see what else the runtime lacks
+     (x87 is not emulated either).
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
    once more is known, the copy protection first); displacements with
