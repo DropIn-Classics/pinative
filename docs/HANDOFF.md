@@ -2268,6 +2268,20 @@ The same run stopped at CODE:78D9 (linear 108809h, t=13.949067; `-mem`
 build/pm/ns_78d9.mem): the port equal there too (CODE, TAIL, the 43
 blocks).
 
+The next two checksummed calls (CODE:78C9, 78DE) go to CODE:698A
+(INTRO_MODE: mode 13h unchained, the intro's CRTC values, all four
+planes cleared) and CODE:6FC0 (INTROPIX_PALS: INTRO_PAL1 and INTRO_PAL2
+from intropix.mgl's 32 colours of 12 bits; its EDI 813Ch by CODE:7441,
+[CODE:9067] less the byte sum of CODE:698A..7ABB). Then FADE_FROM and
+FADE_TO are set to INTRO_BLACK (CODE:873C, zero then), FADE_LEVEL 40h,
+FADE_STEP 4, the start address 2D50h, and INTRO_FRAME (CODE:6E35) is
+called: the driver's command 6, then FADE_FRAME. The run stopped at
+that call (CODE:7925, linear 108855h, t=13.963461; `-mem`
+build/pm/ns_7925.mem, `-vram`): the port equal there (CODE, TAIL,
+video memory); `-vgastate` there shows the registers INTRO_MODE writes
+(misc E3h, sequencer 4 06h, CR 11h 2Ch, start 2D50h), the port's
+registers not compared.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2444,9 +2458,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      "The driver's command 4 in a run"). Done 2026-09-29: CHOOSER_LOAD's
      files (port/src/intro.c; see "The chooser's files in a run"). Done
      2026-09-29: INTRO_PALS_MAKE and the script's variables, up to
-     CODE:78D9. Next: CODE:698A (mode 13h re-programmed: sequencer
-     memory mode 06h, chain 4 off, and its own CRTC values), where the port
-     stops now.
+     CODE:78D9. Done 2026-09-29: INTRO_MODE and INTROPIX_PALS, up to
+     INTRO_FRAME at CODE:7925. Next: the driver's commands 6, 1 and 0Dh
+     (NOSOUND's module player), which the intro's frames call.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

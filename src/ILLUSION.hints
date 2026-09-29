@@ -90,6 +90,22 @@ name       CODE:7ABC INTRO_SCRIPT  ; the intro's script: entries of a dword (a p
 name       CODE:8124 INTRO_TIME    ; the highest position INTRO_TICK has seen; 0 in CHOOSER_LOAD
 name       CODE:8128 INTRO_NEXT    ; the next INTRO_SCRIPT entry; INTRO_SCRIPT in CHOOSER_LOAD
 name       CODE:903C INTRO_END     ; a byte: 1 by CODE:6E1E, the routine of INTRO_SCRIPT's last entry (at CODE:80B4, position B4Eh), which CHOOSER_LOAD's loop at CODE:7996 waits for; 0 in CHOOSER_LOAD
+code       CODE:698A INTRO_MODE    ; reached from CODE:78C9 through CODE:4CF2's checksummed jump ([CODE:908B] less the byte sum of CODE:6A20..8115: 698Ah in the run's memory); mode 13h unchained (sequencer 4 = 06h), misc output E3h, its own CRTC values (CR 6, 7, 9, 10h-12h, 14h-17h), all four planes cleared
+code       CODE:6FC0 INTROPIX_PALS ; reached from CODE:78DE the same way ([CODE:9097]: 6FC0h); INTRO_PAL1 and INTRO_PAL2 from intropix.mgl's 32 two-byte colours at its dword +18h; EDI by CODE:7441 ([CODE:9067] less the byte sum of CODE:698A..7ABB: 813Ch)
+code       CODE:6EBE PAL12_ROW     ; 32 colours of two bytes (red; green, blue in the nibbles; each 0-0Fh made 0-30h) from DS:EBP to ES:EDI as DAC colours, EDI then past the row's other 32
+code       CODE:6EE9 PAL12_ROW_HALF ; as PAL12_ROW, each component halved and CH, DL, DH added
+code       CODE:6EAC PAL_FILL      ; 64 DAC colours of CH, DL, DH at ES:EDI
+name       CODE:813C INTRO_PAL1    ; 300h bytes (INTROPIX_PALS): row 0 intropix.mgl's colours, 1 and 2 flat (26h,20h,20h and 3Fh,3Fh,3Fh), 3 the colours halved plus (18h,12h,12h); the other 32 of rows 0 and 3 not written by it
+name       CODE:843C INTRO_PAL2    ; 300h bytes (INTROPIX_PALS): intropix.mgl's 32 colours at the start of each of the four rows
+name       CODE:873C INTRO_BLACK   ; 300h bytes, zero in the run's memory at CODE:7925 (presumably black; not written by any routine seen yet); FADE_FROM and FADE_TO at CODE:78F3
+code       CODE:6E35 INTRO_FRAME   ; the driver's command 6 (CODE:7223) and FADE_FRAME, with DS the host's
+code       CODE:6F43 FADE_FRAME    ; with FADE_LEVEL above 0: FADE_STEP taken off it, the DAC set to FADE_FROM * level + FADE_TO * (40h - level), over 40h, after a retrace; else only the retrace waited (CODE:6E26)
+code       CODE:6E26 RETRACE_WAIT  ; 3DAh bit 3 set, then clear
+code       CODE:6F1F FADE_TO_SET   ; 300h bytes from ESI to CODE:6380, FADE_TO set to it
+name       CODE:6980 FADE_FROM     ; a 300h-byte palette's offset (FADE_FRAME)
+name       CODE:6984 FADE_TO       ; a 300h-byte palette's offset (FADE_FRAME)
+name       CODE:6988 FADE_LEVEL    ; a byte, 40h at a fade's start, down by FADE_STEP each FADE_FRAME
+name       CODE:6989 FADE_STEP     ; a byte
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0
