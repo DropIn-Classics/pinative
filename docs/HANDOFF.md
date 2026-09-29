@@ -45,7 +45,8 @@ selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
 left (see "The Info page and the greetings page"); table 1's shooting
 game on the display (see "Table 1's shooting game in a run"); table 4's
-sea game (see "Table 4's sea game in a run").
+sea game (see "Table 4's sea game in a run"); table 3 has no
+opcode-14h object (see "Table 3's opcode-14h record").
 
 ## The earlier analysis
 
@@ -1875,6 +1876,22 @@ crash ends the game with "ITEM COLLECTED / FISH".
 - Not checked: which file the pictures come from, what each picture
   looks like beyond the boat, the arrow and the band.
 
+### Table 3's opcode-14h record
+
+Found 2026-09-29, on Linux, from table 3's module data (no run; the
+details in docs/bpc-module.md, "Deferred event dispatch"). The earlier
+analysis listed a fourth opcode-14h command in table 3 (8E94h, object
+8EA0h with null methods, "a shared placeholder"). It is not a command:
+8E94h is the light ID (14h, word +1Ch) of the light state 8E78h of
+slot-14 group descriptor 8E6Eh, and 8E96h is the next descriptor, whose
+first light state 8EA0h (light 15h) eight slot-15 records point at by
++4. The earlier scanner's rule (a word 14h before a relocated dword)
+gives just this one hit in table 3 and the three real commands in
+tables 1, 2 and 4, which tools/event_streams.py reaches as
+`module_call`; its 68 event streams of table 3 have none. So table 3
+has no game on the display of this kind. Not seen in a run: that table
+3 never enters the opcode-14h handler (CODE:2DBAD).
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1976,7 +1993,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
      objects (table 1's done 2026-09-29, see "Table 1's shooting game
-     in a run"; table 4's, see "Table 4's sea game in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
+     in a run"; table 4's, see "Table 4's sea game in a run"; table 3
+     has none, see "Table 3's opcode-14h record"). Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix

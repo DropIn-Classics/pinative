@@ -765,22 +765,34 @@ host vector, and calls `[object+4]`. The update function's flags determine
 whether the object remains pending or is cleared. Thus the two fields are a
 start method and a deferred update method, not data pointers.
 
-Exactly one relocation-backed opcode-`0x14` operand occurs in each observed
-module:
+One opcode-`0x14` command (`module_call` in `tools/event_streams.py`)
+occurs in the event streams of tables 1, 2 and 4, none in table 3's:
 
 | Table | Command | Object | Start (`+0`) | Update (`+4`) |
 | ---: | ---: | ---: | ---: | ---: |
 | 1 | `0x5EE0` | `0x9A46` | `0x9A4E` | `0x9B25` |
 | 2 | `0x92DE` | `0x9A08` | `0x9A10` | `0x9B68` |
-| 3 | `0x8E94` | `0x8EA0` | null | null |
 | 4 | `0x8F9C` | `0x97E5` | `0x97ED` | `0x9878` |
 
-Tables 1, 2, and 4 relocate both method fields. Table 3's object is a shared
-zero-filled placeholder referenced by other table data, so the static
-opcode-`0x14` record must not be treated as an executable callback without
-additional reachability or runtime evidence. The table-4 start method also
-demonstrates the ABI boundary directly: it saves shared `[0x10]` for its update
-path, whose nested host calls temporarily restore that saved vector.
+The table-4 start method also demonstrates the ABI boundary directly: it
+saves shared `[0x10]` for its update path, whose nested host calls
+temporarily restore that saved vector.
+
+The earlier scanner took every word `0x14` before a relocated dword for
+such a command, and had a fourth in table 3 (`0x8E94`, "object" `0x8EA0`,
+null methods, called a shared placeholder here). Corrected 2026-09-29:
+each of table 3's 21 slot-14 group descriptors (ten bytes) is followed by
+its first 30-byte light state; `0x8E94` is word `+0x1C`,
+the light ID (`0x14`), of the state `0x8E78` of descriptor `0x8E6E`, and
+`0x8E96` is the next descriptor, whose first state `0x8EA0` has light ID
+`0x15`. The eight other pointers to `0x8EA0` are slot-15 records' `+4`
+(primary light state: `0x46FA`, `0x4F9E`, `0x506E`, `0x5D32`, `0x65BA`,
+`0x6C64`, `0x7118`, `0x751C`). The same scan gives exactly the three
+commands above in tables 1, 2 and 4, each in a stream that
+`tools/event_streams.py` reaches from the module's roots; table 3's 68
+event streams have no opcode `0x14`. So table 3 has no opcode-`0x14`
+object; that it never runs the handler is read from the data, not seen
+in a run.
 
 This was found with an earlier scanner (`bpc_events.py`) that is no longer in the
 repository (it is in build/earlier/ on the machine it was removed on);
