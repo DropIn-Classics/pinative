@@ -31,7 +31,8 @@ records' timers, the lamps' blinking, a light group's stream and the
 lane change read from the code (see "The lit records' timers and the
 lamps"); the drop targets (see "The drop targets"); the holes' eject (see
 "The holes' eject"); the display's animations (see "The display's
-animations").
+animations"); the timed lamp, a drop-target bank and a hole
+seen in a run (see "The lamps, a drop-target bank and a hole in a run").
 
 ## The earlier analysis
 
@@ -39,7 +40,8 @@ Kept: its notes (docs/*.md) and its data-format tools with their
 synthetic tests, `tools/bpc_inspect.py`, `asset_inspect.py`,
 `sdr_inspect.py`, `cfg_inspect.py` (`python3 -m unittest discover -s
 tests`: 45 tests ok, Python 3.9; 52 with tests/test_event_streams.py,
-Python 3.12 on Windows, 2026-09-29). Run on `build/files/` 2026-09-29 they
+Python 3.12 on Windows, 2026-09-29; 54 on macOS, Python 3.9, with the
+drop-target banks' test, 2026-09-29). Run on `build/files/` 2026-09-29 they
 accept all four tables (`DATA\S00n`, `SOURCE\T00n.BPC`/`.REL`) and every
 driver but `SNDSCAPE.SDR` ("no EAX jump-table dispatch", the driver the
 notes already call anomalous); `cfg_inspect.py` is not run, there is no
@@ -773,7 +775,9 @@ types at CODE:2C40F ... 2C719). No run was made for it.
   parse to the end of every stream with relocated pointers and no
   stream in both languages: 79/82/68/73 event and 87/98/89/85 display
   streams for tables 1..4 (79/90/68/81 and 87/99/89/85 since handler
-  1Ah's entries are roots too, see "The slot-15 handlers"). Each CD track of the table in "The tables
+  1Ah's entries are roots too, see "The slot-15 handlers"; 80/90/68/84
+  event streams since the drop-target banks' are, see "The lamps, a
+  drop-target bank and a hole in a run"). Each CD track of the table in "The tables
   and their CD tracks" comes out of an opcode 13h in a stream under the
   same counter or record. Slot 33's four records (docs/bpc-module.md:
   passed to CODE:2FEDB at CODE:2A6CE) look like display streams whose
@@ -1254,8 +1258,8 @@ No run was made for it.
   moved one light along the chain (the last gets the first's): the lane
   change, presumably. One group in tables 2, 3 and 4 (3, 3, 4 lights),
   none in table 1.
-- Open: a run that sees a timed record's lamp go dark and the blink
-  period; what the list at state+1822h is for; who clears a group's bit
+- Open (the dark last second and the blink seen, see "The lamps, a
+  drop-target bank and a hole in a run"): what the list at state+1822h is for; who clears a group's bit
   0 (CODE:2EEEC clears the lights of a chain, not followed).
 
 ### The drop targets
@@ -1285,7 +1289,7 @@ the four modules (a throwaway script). No run was made for it.
   +0Bh, so a target it puts down does not count as down for its bank.
 - Open: the object types 0 and 2 of OBJECT_HITS; the table CODE:285BC
   that CODE:28E7B fills and CODE:28F41 draws (another kind of object,
-  not followed); a run that knocks a bank down.
+  not followed); a bank that is raised again (table 4).
 
 ### The holes' eject
 
@@ -1308,8 +1312,7 @@ CODE:30BD6, CODE:30CFB). No run was made for it.
   is read from a scratch dword that still holds the drop-target queue's
   place (DROPS_QUEUE_STEP), not from the hole. What sounds is not
   checked; a port that wants the original's sound has to do the same.
-- Open: a run that sees the 76 frames and the ball's speed out of a
-  hole.
+- Open: the ball's speed out of a hole; a hole without a picture.
 
 ### The display's animations
 
@@ -1337,6 +1340,39 @@ No run was made for it.
 - Open: a run that shows the animation's frames on the screen (how the
   buffer reaches the screen is not followed); the tool could list the
   frames in allanims.mgl.
+
+### The lamps, a drop-target bank and a hole in a run
+
+Runs 2026-09-29, on macOS (the bundle's `ILLUSION.CFG` by `-put`, no
+`-cue`; keys `106 space`, `112 enter`, `136 f1`, `137 enter`, both
+Shift keys every 0.6 s from 138, Enter every 15 s from 152; a game of
+three balls, over by about t=220; `build/drops/`). The run to t=330
+took 47 s. [CODE:A11D] was 1D3170h, table 1's module at linear 2D40A0h
+as in the Windows runs.
+
+- The timed lamp (see "The lit records' timers and the lamps"): the
+  skill shot's stream (header slot 27, `2 light_for @43D2 5`) lit
+  record 43D2h at t=138.267 with +2Eh = 305 (5 x 61); it fell 7 each
+  0.1 s; its lamp (light state 9958h) blinked (+1 FFh and 00h in turn,
+  +3 counting 8..0 about one a frame); from +2Eh = 3Ch the lamp's bytes
+  +0 and +2 were 0 (dark); CODE:2E952 unlit the record at t=142.614,
+  4.35 s after. So the blinking and the dark last second are seen.
+- The drop targets (see "The drop targets"): the ball hit target 5188h
+  at t=205.128 and again 14 ms (one frame) later, target 5142h at
+  209.887 and 209.901. The bank's stream (5128h +16h, stream 51CEh:
+  light record 51E0h, block 5218h) was queued at both of the last two
+  and 51E0h lit. So DROP_HIT runs twice for one hit, presumably while
+  the ball's +6Ch stays; a port that pays a bank's points (table 1's
+  are 0) or plays its sound should do the same. The bank has +4 bit 0:
+  not raised, as read. Nothing of it looked at on the screen.
+- A hole (see "The holes' eject"): count 4Ch twice (t=148.980,
+  171.732), the ball out 0.223 and 0.227 s later: 16 frames. FFCEh not
+  seen.
+- tools/event_streams.py did not know the banks' streams: now they are
+  roots too (a test with them); 80/90/68/84 event streams for tables
+  1..4.
+- Display opcode 1 came 20 times (the attract mode's and the game's),
+  not looked at further.
 
 ### The frame rate
 

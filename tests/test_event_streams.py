@@ -121,6 +121,20 @@ class EventStreamsTest(unittest.TestCase):
         self.assertNotIn("slot-15 record 180h +34h (handler 1Ah) entry 510h",
                          streams[("E", 0x360)]["from"])
 
+    def test_a_drop_target_bank_queues_its_stream(self):
+        b = sample()
+        b.slot(4, 0x600)
+        b.ptr(0x604, 0x620)  # entry 0 empty, entry 1 a drop target
+        b.word(0x620, 1)
+        b.ptr(0x620 + 0x22, 0x680)
+        b.ptr(0x680 + 0x16, 0x340)
+        b.ptr(0x608, 0x6A0)  # an object of another type: no bank
+        b.ptr(0x6A0 + 0x22, 0x6C0)
+        b.ptr(0x6C0 + 0x16, 0x360)
+        streams = es.walk(b.module())
+        self.assertIn("drop-target bank 680h +16h", streams[("E", 0x340)]["from"])
+        self.assertNotIn("drop-target bank 6C0h +16h", streams[("E", 0x360)]["from"])
+
     def test_listing(self):
         text = es.listing(es.walk(sample().module()))
         self.assertIn("event 300h\n  from zone 100h (slot 5, type 4) object 140h +14h", text)

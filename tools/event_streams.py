@@ -223,6 +223,23 @@ def roots(module: Module) -> list[tuple[str, int, str]]:
         while m.word(at) < 0x8000:
             add('E', at + 4, f'slot-16 counter {ctr:X}h threshold {m.word(at)} ({at:X}h)')
             at += 12
+    # drop targets (DROP_HIT, CODE:2C9D4): objects of type 1 in the tables
+    # of 0C0h dwords at slots 4 and 10 (a ball's +60h by its level); their
+    # bank (+22h) queues its +16h when all its targets are down. The table
+    # is read up to its first dword that is not 0 and not relocated
+    banks = set()
+    for slot in (4, 10):
+        base = m.header[slot]
+        for i in range(0xC0 if base else 0):
+            at = base + 4 * i
+            if at + 4 > len(m.data) or (m.dword(at) and at not in m.relocations):
+                break
+            obj = m.pointer_at(at)
+            if obj and obj + 0x26 <= len(m.data) and m.word(obj) == 1 \
+                    and obj + 0x22 in m.relocations:
+                banks.add(m.pointer_at(obj + 0x22))
+    for bank in sorted(banks):
+        add('E', bank + 0x16, f'drop-target bank {bank:X}h +16h')
     # slots 27 and 28: queued by zone type 0 (CODE:2C5D8)
     for slot in (27, 28):
         if m.header[slot]:
