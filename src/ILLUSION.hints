@@ -34,6 +34,14 @@ comment    CODE:2DD8A the counter's threshold actions (12 bytes from +50h): the 
 comment    CODE:2E5A2 handler 11h of CODE:2DA0A: the record's dword +34h is an event stream, to EVENT_QUEUE
 comment    CODE:2D7BE event opcode 18h: its first operand (a slot-15 record) gets its bit 1 set and the second operand in its dword +34h, and is pushed on the list at state+2A64h
 name       CODE:2FE8E EVENT_QUEUE  ; [CODE:0000] into the ring of 64 dwords at [state+2A1Eh], the index state+2A1Ah
+; how a mode starts (2026-09-29; run on table 1 with two -poke, see
+; docs/HANDOFF.md, "A mode's track in a run")
+comment    CODE:2C1DA each ball of the list at state+C1046h (state+C0D32h of them): its centre (words +12h, +14h, plus 8 each) against the zones at its dword +64h (14 bytes: x0, y0, x1, y1, a type, an object; -1 ends them; header slots 5 and 11 in table 1); inside one, the type through CODE:2C3DD. The ball's byte +0Ah marks the object while it is inside (type 4 in the object's byte +1, types 0 and 1 in byte +0), so a zone acts on entry, presumably (run: table 1's zone 3447h widened, its object's stream ran 0.56 s later)
+comment    CODE:2D36E event opcode 1: its operand a slot-15 record; sets the record's bit for the current player (CODE:0038) in byte +1: lights it, presumably
+comment    CODE:2D907 event opcode 5: its operand a slot-15 record, taken (CODE:2D916) when its bit for the current player is set in byte +1 and clear in byte +2: the bit in +1 cleared, its fields +2Ch, +18h, +8, +10h used (not all followed), then its handler by the word +2Ch (CODE:2D9DE)
+comment    CODE:2D8C2 event opcode 17h (a slot-15 record, a word): unless the record is lit for the current player and not blocked (bytes +1, +2), the word to the stream's position (word +2 of the stream's control record): a jump past the take that follows, in table 1's stream 4F54h
+comment    CODE:2E08C handler 15h of CODE:2DA0A: as handler 6 (CODE:2DCA1) without its end: the counter at +34h counted up for the current player, its word +16h too, then CODE:2DD8A (run, table 1: record 41E6h, counter 421Eh, at the ball's launch and in bursts; +16h back to 1 after 9 at CODE:2DF20)
+comment    CODE:2E5B7 handler 16h of CODE:2DA0A: the counter at +34h's threshold action equal to the current player's word +16h: its stream (+4) to EVENT_QUEUE (table 1: record 4362h, lit by zone 352Fh's stream, taken by zone 3447h's; run with it forced: threshold 1, opcode 9, the mode stream's opcode 13h plays track 4)
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 
 ; 16-bit addresses without a register (67h): no source form in a USE32
@@ -135,7 +143,7 @@ rwords     CODE:1183F 20           ; CODE:117EB; index checked against 1Fh at CO
 rwords     CODE:11AE9 8            ; CODE:11A92, CODE:11AD0; index a byte ([[CODE:0000]+1]); eight, as 78h data words follow (CODE:11AF9, read at CODE:11A61 with an index below 78h) up to the first target
 code       CODE:14DE2              ; MOV EBX,14DE2h; CALL EBX at CODE:298CA
 rwords     CODE:13784 8            ; CODE:13725
-rwords     CODE:2C3DD 5            ; CODE:2C2DF; the smallest offset is 32h, what lies from CODE:2C3E7 on is not checked
+rwords     CODE:2C3DD 5            ; CODE:2C2DF, by a zone's type (word +8, see CODE:2C1DA); the smallest offset is 32h, what lies from CODE:2C3E7 on is not checked
 rwords     CODE:2C8BC 3            ; CODE:2C887
 rwords     CODE:2F91C 2            ; CODE:2F903; index the complement of the word at CODE:0020
 rwords     CODE:300B9 8            ; CODE:300A0; index the low three bits of a byte (CODE:30099)

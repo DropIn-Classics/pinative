@@ -155,8 +155,8 @@ slot address, even when the instruction reaches it through runtime state.
 
 | Slot | Main address | Observed use |
 | ---: | ---: | --- |
-| 0-5 | `0xF3E4`-`0xF3F8` | First flipper resource/geometry bundle. The routine at `0x2C414` copies all six pointers into a runtime object and marks it as bundle 1. |
-| 6-11 | `0xF3FC`-`0xF410` | Second flipper resource/geometry bundle, copied by the adjacent routine at `0x2C467` and marked as bundle 2. |
+| 0-5 | `0xF3E4`-`0xF3F8` | First flipper resource/geometry bundle. The routine at `0x2C414` copies all six pointers into a runtime object and marks it as bundle 1. Slot 5 is a list of 14-byte zones (x0, y0, x1, y1, type, relocated object; `-1` ends it), checked against each ball at `0x2C1DA` (docs/HANDOFF.md, "A mode's track in a run", 2026-09-29); "flipper" for the whole bundle is not checked. |
+| 6-11 | `0xF3FC`-`0xF410` | Second flipper resource/geometry bundle, copied by the adjacent routine at `0x2C467` and marked as bundle 2. Slot 11 is a second zone list like slot 5's. |
 | 12-13 | `0xF414`-`0xF418` | Self-sized 16-bit offset directories selecting variable-size gameplay records. |
 | 14 | `0xF41C` | Null-terminated registry of light-group descriptors and linked light states. |
 | 15 | `0xF420` | Null-terminated registry of fixed 52-byte timed-effect states. |

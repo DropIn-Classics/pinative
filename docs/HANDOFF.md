@@ -10,7 +10,8 @@ doskit, 2026-09-29) through the intro and the chooser to the first
 table, which scrolls by itself (see "The loader in the runner"); a ball
 is played on it with the game's own keys (see "The keys", 2026-09-29).
 All four tables load and scroll; which CD track each plays is found
-(see "The tables and their CD tracks").
+(see "The tables and their CD tracks"); a mode's track played in a run
+(see "A mode's track in a run").
 
 ## The earlier analysis
 
@@ -47,6 +48,15 @@ is marked there as to be checked again in the hints.
   in docs/reverse-engineering.md; `DATA\S001\MUSIC.MOD` has `M.K.` at
   1080, `INTRO\PCSKY.FLD` a palette of values up to 63. The other
   files' contents are not checked.
+- On Windows (2026-09-29, the GOG install in `C:\GOG Games\Pinball
+  Illusions`): `isox.py` on its `game.gog`, `extract --all` in 91 s, the
+  four SHA-256 of docs/reverse-engineering.md all matched; the runner
+  builds with MSVC (`doskit/tools/run/build.bat`), check.py `all ok` in
+  25 s. A run goes about three emulated seconds a second (t=400 in
+  125 s). The configuration file and the cue sheet straight from the
+  install: `-put '\ILLUSION.CFG' "C:\GOG Games\Pinball
+  Illusions\ILLUSION.CFG" -cue "C:\GOG Games\Pinball
+  Illusions\game.inst"` (its `MUSIC\` holds all 50 audio tracks).
 
 ## The game's files
 
@@ -454,6 +464,57 @@ the hints: opcode 9 at CODE:2DA7B, `EVENT_QUEUE`, CODE:2D9DE, 2DCA1,
   but table 2's 15. What a slot-15 record is on the table (a target, a
   lane?) is not found; a run that hits one of them would show a play.
 
+### A mode's track in a run
+
+Found 2026-09-29, on Windows (hints: the comments from CODE:2C1DA to
+CODE:2E5B7). Table 1's counter 421Eh is not counted by handler 6: two
+slot-15 records point to it, 41E6h with handler 15h (counts it up, as
+handler 6 does) and 4362h with handler 16h (queues the stream of the
+threshold equal to the current player's word +16h of the counter). The
+counter's flags are 7, its thresholds 1..8, each with a stream and a
+light (module 95BEh ...).
+
+How the ball gets there: CODE:2C1DA checks each ball's centre against a
+list of zones, 14 bytes each (x0, y0, x1, y1 in table coordinates, a
+type 0..4, a relocated object pointer; -1 ends the list). Table 1 has
+two such lists, header slots 5 (at module 33E5h, 13 zones) and 11
+(34B1h, 10 zones): so slots 5 and 11 are not only flipper data, as
+docs/bpc-module.md had it; that they are the two levels' zones is a
+guess (the ball's dword +64h picks the list). The ones for this mode:
+
+- zone 352Fh (slot 11, 190..210 x 195..215, type 1) -> object 4B66h,
+  whose dword +6 is stream 4B90h: its opcode 1 lights record 4362h;
+- zone 3447h (slot 5, 55..85 x 170..200, type 4) -> object 4F18h (the
+  slot-15 layout), whose +14h is stream 4F54h: `17 @4362 78h` (opcode
+  17h: past the take unless 4362h is lit) and `5 @4362` (the take).
+
+That record 4362h is the START MODE insert on the table is presumed (the
+insert is on the screen near the top left), not checked. Threshold 1's
+stream (42DEh) is `9 @7FEA`: mode stream 7FEAh, with `13 @11DB9` (track
+4) and near its end `13 @11DA1` (track 0).
+
+Runs (table 1, `130 f1`, `131 enter`, both flippers every 0.6 s, Enter
+every 20 s, `-watch` on the counter's word +16h for player 0, linear
+2D82D4h with the module's base at CODE:1D3170, linear 2D40A0h, the same
+in every run so far):
+
+- blind play to t=240: the word +16h counts 1 at the launch (t=132.29)
+  and in bursts to 9 (back to 1 by CODE:2DF20), 33 writes; record 41E6h
+  taken 27 times; record 4362h never lit (its byte +1 stays 0), so no
+  mode and no play. The pointers to streams 4B90h and 4F54h are read by
+  no instruction in play (only by the loader's relocation, CODE:B762,
+  B789), because the zone reaches their object's start;
+- forced: `-poke 12F026#1 2D8403 01` (at the first count-up, CODE:2E0F6,
+  record 4362h's bit for player 0) and `-poke 12F026#1 2D74E7 "00 00 00
+  00 50 01 3C 02"` (zone 3447h over the whole table): 4362h taken at
+  t=132.84 (by CODE:2D939), the display "BLOW ALL BOMBS BEFORE TIMER
+  REACHES ZERO" at t=134, a CD stop and a play of frames 44518..49376
+  (track 4) at t=139.13, a timer on the display at t=140. So the chain
+  threshold -> opcode 9 -> mode stream -> opcode 13h -> play is seen
+  once, for threshold 1 of table 1; the other thresholds and tables are
+  not run. What the 6.3 s between the take and the play are (the mode
+  stream's commands before its opcode 13h) is not looked at.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -530,13 +591,12 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
 3. Tasks for the next agent (written 2026-09-29; each larger, in order
    of use; the rules in AGENTS.md hold, findings go here and in the
    hints):
-   - A mode's track in a run: find what a slot-15 record is on the
-     table (which main-program code sets its bit +1 / starts CODE:2D9DE:
-     a hit of the ball, presumably), then drive a run on table 1 (keys
-     in "The keys"; doskit `-rwatch` on counter 421Eh's per-player words,
-     module base + 421Eh + 6) until threshold 1 plays track 4. If blind
-     play cannot get there, a runner option to write memory at a time
-     (in doskit, with a test) to set the counter is fair.
+   - done 2026-09-29: a mode's track in a run (see "A mode's track in a
+     run"; forced with `-poke`, which doskit had already). Open from it:
+     a blind run that lights START MODE through zone 352Fh; what the
+     zone types 0..4 do (the switch at CODE:2C3DD); correct the slots
+     0-11 rows of docs/bpc-module.md once the flipper bundles are read
+     again.
    - The event language: every opcode of CODE:2D18F (32) and CODE:2F625
      (26) read from its handler, its operands and effect in the hints
      (one comment per handler); then a parser tool (tools/, standard
