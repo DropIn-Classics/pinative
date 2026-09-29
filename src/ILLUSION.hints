@@ -127,3 +127,31 @@ rwords     CODE:2D18F 20 stride=4 from=2D193 ; LEA at CODE:2CF36 and CODE:2D148,
 rwords     CODE:2F625 1A stride=4 from=2F625 ; LEA at CODE:2F4A4 and CODE:2F5A2, call through CODE:2F4C5 and CODE:2F5C4; record 0 at CODE:2F621 is 0,0 (index 0 not called)
 words      CODE:2DA0A 1C CODE      ; PUSH [EBX*4+2DA0A] at CODE:2DA02 after PUSH 2DA09h, then RET: by the word at [[CODE:0008]+2Ch] (0 not taken); 28 up to the first target (a RET at CODE:2DA7A)
 words      CODE:2CD10 0B CODE      ; its address put in [CODE:0010] (CODE:2BEDC, 2D04D, 2DBD3) before calls into the table module: its host vector (docs/bpc-module.md), the entries not checked one by one
+
+; the keyboard (runs of 2026-09-29 with doskit's -rwatch on CODE:D984)
+code       CODE:A076 KBD_IRQ       ; installed at CODE:A03B with INT 93h AH=4 BL=1 (presumably IRQ1's vector; the old one saved with AH=3); run: entered on each key event, CS=000C
+ds         CODE:A08E-A10B CODE     ; DS from CODE:A10B (the selector made at CODE:A323 from DS); run: its writes land at CODE's addresses (KEY_DOWN below)
+name       CODE:D984 KEY_DOWN     ; 256 bytes, FFh while the key is down: the scan code, +80h after an E0h prefix (run: +2Ah FFh on Left Shift down, 00h on its release)
+name       CODE:DA84 KEY_TOGGLE    ; the same index, the byte inverted on each press
+name       CODE:A016 LAST_KEY      ; the last scan code pressed (without 80h); also stored at CODE:CC2F
+name       CODE:A01D KEY_E0        ; FFh after an E0h prefix
+name       CODE:A2C7 KEY_RELEASED  ; FFh after a release: a press of Space (39h) or Alt (38h, E0 38h) counts only then (no typematic repeat for them, presumably)
+; reads of KEY_DOWN through the record at [CODE:0014] (CB3Eh in the runs:
+; KEY_DOWN is its field E46h); the field offsets stay numbers
+comment    CODE:144BA Space (KEY_DOWN+39h) pushes the word at [ESI+0D48h] up by 258h a frame to 3E8h, then clears the key; down by C8h without it: presumably a nudge (upward), not checked
+num        CODE:144BA
+num        CODE:14520
+comment    CODE:145A0 Left Alt (KEY_DOWN+38h) and Right Alt (+B8h) move the word at [ESI+0D46h] down / up by 258h to -3E8h / 3E8h: presumably nudges left and right, not checked; Space, Left Alt, Right Alt set bits 0, 1, 2 of [ESI+2A77h] on a new press
+num        CODE:145A0
+num        CODE:1460A
+num        CODE:1461C
+num        CODE:14686
+comment    CODE:14757 the flippers (run: Left Shift held, the left flipper up in the picture): left = Left Shift or Left Ctrl (KEY_DOWN+2Ah, +1Dh) to [ESI+2A7Bh], right = Right Shift or Right Ctrl (+36h, E0 1Dh) to [ESI+2A7Ch]
+num        CODE:14757
+num        CODE:1475D
+num        CODE:14769
+num        CODE:1476F
+comment    CODE:2F300 Enter (KEY_DOWN+1Ch) launches the waiting ball (run: F1, then Enter: the ball moves; Down, held 3 s, is read by no one): the index at [[ESI+2906h]] cleared, 1770h taken from the word +10h of the object at [ESI+1076h+index*4] (presumably its speed, upward)
+num        CODE:2F306
+num        CODE:2F315
+comment    CODE:2A7FD in the attract mode: Esc (KEY_DOWN+1) to CODE:2A8AB; F1..F8 (+3Bh..+42h, the field at [ESI+0E81h]) or keypad Enter (E0 1Ch) set [ESI+8Eh] to 2 and add the key's number (1..8; keypad Enter 1) to [ESI+0D70h] (run: F1 starts a game, "PLAYERS 1"; the others not tried)

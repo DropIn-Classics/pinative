@@ -7,7 +7,8 @@ files are listed. The main program, `ILLUSION.386`, is in stage 1:
 since 2026-09-29), with few hints yet (see "Stage 1" below).
 The runner runs the game now (protected mode, MSCDEX, VGA mode 0Dh in
 doskit, 2026-09-29) through the intro and the chooser to the first
-table, which scrolls by itself (see "The loader in the runner").
+table, which scrolls by itself (see "The loader in the runner"); a ball
+is played on it with the game's own keys (see "The keys", 2026-09-29).
 
 ## The earlier analysis
 
@@ -85,9 +86,9 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 29,973
-instructions, 3912 labels, 17 lines as DB, 19 s on the Mac used
-(2026-09-29); gaps.py: 210 gaps, 165,070 of 0x46480 bytes not reached as
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 30,022
+instructions, 3916 labels, 17 lines as DB, 19 s on the Mac used
+(2026-09-29); gaps.py: 210 gaps, 164,921 of 0x46480 bytes not reached as
 code (see "The gaps" below). The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
 point's name, the pointers found so far, a `stop` and the 17 `raw`
@@ -171,7 +172,9 @@ Looked at one by one on 2026-09-29 (a throwaway classifier: zeros,
 text, dwords into the image, a clean decode; then by eye). Most are
 data: inline strings (the `INT 94h AH=1` file names around CODE:75C1..
 785B, messages), zero-filled buffers (CODE:6348, 32DE3, 33068 and on),
-tables (the scan-code table at CODE:26A6E, the records at CODE:168C9..
+tables (CODE:26A70, 26AD7, 26B3E: from ASCII 20h on to small numbers,
+presumably characters to a font's glyphs, not a scan-code table as noted
+here before; the records at CODE:168C9..
 2600D, 63,300 bytes, 54h apart in part), and CODE:3D409 to the end
 (36,983 bytes) not looked at closely. CODE:4A1B..4CB6 looks random; its
 address is stored as data at CODE:4552 (`MOV [3B54h],4A1Bh`, read at
@@ -296,14 +299,51 @@ if in protected mode).
   50.000.000"), and it scrolls by itself up to t=200 (a new picture in
   every shot 2 s apart): the attract mode, presumably (not checked). No
   instruction the runner does not know (x87 or other) came up to t=200
-  (`-v`). The busiest code then is 000C:98BC, not in ILLUSION.386's
-  selector 14h; which image it is was not looked at;
+  (`-v`). The busiest code then is 000C:98BC: selector 0Ch has CODE's
+  base too (the keyboard handler runs as 000C:A076, linear 10AFA6h), so
+  that is CODE:98BC;
 - the image's base in those runs is linear 100F30h (found by its bytes
   in a memory dump; `-watch 102478` is CODE:1548). The runner's `-prof`
   prints linear addresses as if real mode (0014:25CC as 0270C).
 
 The key script for the set-up: `3 down` ... (7 downs 0.3 s apart), `5.5 enter`,
 `7 enter`, `9 enter`, `11 enter`, `13 enter`, `15 enter`.
+
+### The keys
+
+Found 2026-09-29 from the program and runs (hints: `KBD_IRQ` and the
+comments after it). The user expected the keys usual in the series
+(Down held and let go for the plunger, Shift for the flippers, perhaps
+Alt and Ctrl, Space to tilt); that is no evidence for this game
+(PROVENANCE.md), it said what to look for. What the program does:
+
+- `KBD_IRQ` (CODE:A076, installed at CODE:A03B through INT 93h AH=4
+  BL=1) keeps `KEY_DOWN` (CODE:D984, 256 bytes: FFh while down, the scan
+  code, +80h after E0h) and `KEY_TOGGLE` (CODE:DA84). The game reads
+  them through the record at [CODE:0014] (CB3Eh in the runs, where
+  `KEY_DOWN` is its field E46h), so no address in the code names them:
+  doskit's `-rwatch` (699dd31, new for this) showed the readers;
+- flippers: left = Left Shift or Left Ctrl, right = Right Shift or
+  Right Ctrl (CODE:14757). Run: Left Shift held, the left flipper up;
+- Space, Left Alt, Right Alt (CODE:144BA, 145A0, 1461C): a value pushed
+  up / left / right and back, one push a press: nudges, presumably
+  (the picture not looked at for it; whether too many tilt, not found);
+- attract mode: F1..F8 or keypad Enter (CODE:2A7FD); F1 started a game,
+  "PLAYERS 1 BALL 1" (the others not tried; presumably players 1..8);
+  Esc to CODE:2A8AB (not followed);
+- the ball: Enter (main keyboard) launches it with a fixed 1770h
+  (CODE:2F300); the ball waits in the lane at the right until then. Down
+  (E0 50h or 50h) is read by no instruction from the attract mode through
+  two balls (it was held 1.5 and 3 s); no one read `LAST_KEY` then either;
+- after the start also read: M (32h), P (19h) at CODE:2B4F2, 2B50F
+  (not followed).
+
+A game: `100 space`, `106 enter` (Law 'n Justice), `130 f1`, `131
+enter`: the ball moves from t=132, is lost at t=150 with 50.000 points
+(no flipper pressed), "PLAYER 1 BALL 2" at t=154, waits for Enter.
+`-rwatch` and the other address options take linear addresses for this
+image: CODE:X is 100F30h+X in these runs (run.py translates only 16-bit
+`SEG:OFF`).
 
 Found on the way and fixed in doskit (each with a check in PMODE.EXE):
 an open for writing failed when `build/run/state` did not exist yet
@@ -370,8 +410,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: BIOS modes 0Dh/0Eh in the runner (doskit
      55ecb38); the game gets to the first table (see "The loader in
      the runner").
-   - next: a ball played on a table (the keys for plunger and flippers
-     are not known yet), the
+   - done 2026-09-29: a ball played on the first table (see "The
+     keys"). next: the
      other three tables, which CD track goes with what; x87 is not
      emulated, not needed up to t=200.
 2. Stage 1 for the main program, on from the above: the gaps are looked
