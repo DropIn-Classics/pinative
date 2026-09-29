@@ -23,7 +23,9 @@ jingle in a run"); what each option does in a game (see "The options");
 the jingle's effect in the WAV, and the runner's breakpoints no longer
 change a run (see "The jingle in the WAV"); a jingle alone, which
 stops the module's music for its 1.78 s (see "The jingle alone"); the
-CD's audio in a WAV of its own (see "The CD in a WAV").
+CD's audio in a WAV of its own (see "The CD in a WAV"); the CD muted
+in a game, and around a jingle whose record asks for it (see "The CD's
+volume around a jingle").
 
 ## The earlier analysis
 
@@ -1077,12 +1079,14 @@ A control run without the pokes.
   + 1 + 64 = 89 ticks, 1.78 s at 50 Hz (the default tempo; the
   pattern sets none). The patterns at orders 0Dh, 0Fh, 10h also end
   with a jump to their own order (B0Dh, B0Fh, B10h), so that jump ends
-  a jingle, presumably (the driver's code at +1576h not read for it).
+  a jingle, presumably (read in the driver since, and seen: see "The
+  CD's volume around a jingle").
 
 Not listened to. The CD is not in the WAV (the runner keeps its plays
 on the clock only), so bit 2 of CODE:CB97 (the CD's volume 0 before a
 jingle) is not seen. (Since doskit e2c9cce the runner writes the CD's
-audio and prints the channel settings, see "The CD in a WAV".)
+audio and prints the channel settings, see "The CD in a WAV"; the
+volume around a jingle: "The CD's volume around a jingle".)
 
 ### The CD in a WAV
 
@@ -1108,9 +1112,73 @@ Run on macOS (the Mac layout of "The GOG release on the Mac", `-cd
 - no IOCTL output 03h up to t=150: the game did not set the CD's
   volume in that run.
 
-Not listened to. Open: a run with a jingle (see "The jingle alone")
-and `-cd`, to see whether the game sets the CD's volume through IOCTL
-output 03h then (bit 2 of CODE:CB97, not looked at).
+Not listened to. (In that run the game was not started: the CD's
+volume 0 comes with a game's start, see "The CD's volume around a
+jingle".)
+
+### The CD's volume around a jingle
+
+Runs of 2026-09-29, on macOS (the Mac layout, `-cd -cue`, the bundle's
+`ILLUSION.CFG`, `106 space`, `112 enter`, `136 f1`, `137 enter`,
+`-cdwav`, `-wav`; logs as linear addresses, base 100F30h, and in
+SB16.SDR, linear 1473C0h in these runs as before; doskit cb97a46, then
+381ea4f, the fix below). Hints: CD_VOLUME, MUSIC_REQUEST, the comments on CODE:9DC7,
+9C1A, 9C4F, 9E83, 9CD4; the driver's side in docs/audio-driver.md.
+
+- A game's start mutes the CD: the negative requests (t=136.01 at F1,
+  138.30, 139.01) each set channels 0 and 1 to volume 0 through IOCTL
+  output 03h (CD_VOLUME; `-cd` prints `0<-0 00, 1<-1 00`). The table's
+  track 2 is not stopped: `-cdwav` has its sound up to t=136.010646 and
+  silence after. So in a game the music is the module's, with the CD
+  running muted.
+- A mode's track (table 1, START MODE forced as in "A mode's track in a
+  run", track 4 at t=145.13) comes with CD volume C0h and the driver's
+  level 0 (command 0Ch, CODE:9C1A): the module silent under the CD.
+- Byte +0Ah of the audio records (a throwaway count over the four
+  modules' slot-34 records): 1 in every record with a track (bit 0, the
+  timed track), 2 in a few, 4 in 12/20/18/0 of the jingle records of
+  tables 1..4, 0 in the others; table 1's record 34 (the jingle of the
+  runs before) has 0.
+- A jingle whose byte has bit 2, poked while track 4 plays (at the 1500th
+  call of CODE:14DE2: CODE:F5C6 `0F 00 01 00`, CODE:CB97 `05`; at the
+  1501st CODE:F5C2 `03 00`, record 35's words): CD volume 0 at t=151.434,
+  command 0Ah (order 0Fh), the driver's end at t=154.148 (B0Fh), the
+  completion routine CODE:9CD4, then CODE:9DC7: CODE:CB97 back to 01 from
+  CODE:CB98 and CD volume C0h at t=154.162. The CD WAV is silent from
+  t=151.434456 to 154.161746; the track ran on under it (no stop, no
+  play), so it comes back 2.73 s further on. A jingle without bit 2 in
+  the same run (the game's own, t=147.32, order 2) left the CD at C0h and
+  set C0h again at its end (t=149.28).
+- How the driver ends a jingle (read in SB16.SDR, seen in these runs):
+  a Bxx whose target is the order being played, in temporary playback,
+  sets the driver's flags; the next row restores the saved module, and
+  command 6 (every frame, CODE:298EF) calls the completion routine. The
+  jingle alone again with the driver logged: command 0Ah at t=140.071,
+  B0Eh at t=141.763 (1.692 s: row 22's first tick after 24 + 1 + 15 x 4
+  = 85 ticks, 1.70 s at 50 Hz), the callback at t=141.764; the module
+  comes back at the next row, after 89 ticks (the 1.78 s of "The jingle
+  alone").
+
+A runner bug on the way: the first runs with track 4 lost the Sound
+Blaster for good at t=145.13. SB16.SDR's command 2 (pause, resume) masks
+and unmasks DMA 5 around each CD request (CODE:9C4F, 9C5E); the runner
+ended the transfer when it met a masked channel, and the track's start
+(a CD stop and play between the two) was long enough for a sample to
+come due. The module's sequencer runs in the driver's mixing loop, so it
+stopped too (its tick count, driver +31F2h, stood still from t=145.14),
+no jingle ended, no completion came, and the CD stayed at volume 0 after
+the bit-2 jingle. Fixed in doskit 381ea4f (a masked channel holds the
+transfer; SB16.EXE's check 5); run.py learnt `-cdwav` in cb97a46 (it
+had taken it for the program). A run since doskit c44cf02 in which a track
+started during play had no Sound Blaster from there on. The runs of the
+sections above had, after the table's start, only the pairs around a
+volume setting (t=136-139), which did not stop it in this run's
+configuration (the tick count went on to t=145); presumably not in
+theirs either, not checked run by run.
+
+Not listened to. Open: bit 1 of the byte (MUSIC_REQUEST adds it while
+CODE:2BAD3 is set; no reader looked for); a bit-2 jingle whose track's
+time runs out during it (CODE:9D3C then, not run).
 
 ### The frame rate
 
@@ -1236,10 +1304,12 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      the way). Open from it: the WAV listened to; what the number in a
      record's positive word +2 means. Done 2026-09-29: the jingle alone
      (see "The jingle alone": it takes the module music's place for
-     1.78 s, the module goes on after it). Open from it: how the driver
-     ends a jingle (a jump to its own order, presumably). Done
-     2026-09-29: the CD's audio in a WAV (see "The CD in a WAV"). Open
-     from it: the CD's volume around a jingle.
+     1.78 s, the module goes on after it). Done 2026-09-29: the CD's
+     audio in a WAV (see "The CD in a WAV"). Done 2026-09-29: the CD's
+     volume around a jingle and how the driver ends a jingle (see "The
+     CD's volume around a jingle"; a runner bug fixed on the way). Open
+     from it: bit 1 of a record's byte +0Ah; a track's time running out
+     during a jingle.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these

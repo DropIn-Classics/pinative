@@ -48,17 +48,17 @@ an unsupported original function name.
 | ---: | ---: | --- |
 | `0x00` | `0x0FA7` | Initialize. Captures the caller's `DS`, `ES:EBX` state pointer, `FS:EDI` 11-entry callback table, then initializes common and device-specific state. Carry reports failure. |
 | `0x01` | `0x10E8` | Start the mixer/playback service. `CX` is clamped to 2..15, internal voices are initialized, and the device interrupt path is installed. The main image passes `CX=15`. |
-| `0x02` | `0x1212` | Toggle a one-byte state and call one of two device routines; consistent with pause/resume, but not yet dynamically confirmed. |
+| `0x02` | `0x1212` | Toggle the byte at `+0x123C` and pause or resume: `SB16` masks its DMA channel (`+0x8B0`) and sets the PIC masks from `+0x3306`/`+0x3307`, or unmasks it (`+0x8A2`) and restores the PIC masks. The main image issues it twice around each CD request (`CODE:9C4F`, `9C5E`); seen in runs 2026-09-29 (the byte 1 between the two calls, 0 after). |
 | `0x03` | `0x123D` | Stop the active mixer/playback service and restore device state. Used during intro cleanup. |
 | `0x04` | `0x12E2` | Load a module into slot `BL` from the caller-visible name at `ES:EDX`. The main image uses slot zero for `INTRO\\MOD.INT` and `CHOOSER\\MOD.MUS`. |
 | `0x05` | `0x1330` | Release module slot `BL`. The main image releases slot zero before driver shutdown. |
-| `0x06` | `0x1356` | Periodic service/update. It advances playback and invokes the optional command-`0x11` callback when completion state is pending. |
+| `0x06` | `0x1356` | Periodic service/update, issued every frame (`CODE:298EF`). It invokes the optional command-`0x11` callback when `+0x3322` is `0xFF` (a temporary playback ended, below) and clears it. |
 | `0x07` | `0x138D` | Start one voice. `DL` is the one-based voice number, `CH` the loaded-module slot, `CL` the one-based instrument, and `BL` the one-based note. Nonzero `BH` is injected as the parameter of a tracker `Cxx` volume effect. |
 | `0x08` | `0x14CF` | Start or reposition module playback. `CL` selects the loaded-module slot and `BL` its order-list index. The main image calls it with `BL=0x12`, `CL=0` during final cleanup. |
 | `0x09` | `0x13E2` | Install a sample region from `FS:ESI` with byte count `ECX` into a selected voice record. |
 | `0x0A` | `0x1576` | Start temporary module playback using the same `BL` order index and `CL` module slot as command `0x08`, after preserving the current module base, pattern cursor, order index, and playback-speed byte for later restoration. |
 | `0x0B` | `0x1032` | Shut down the initialized driver after playback has stopped. |
-| `0x0C` | `0x1270` | Set a global level from `BX`, clamped to `0x100`. The chooser passes zero immediately after loading its music module. |
+| `0x0C` | `0x1270` | Set a global level from `BX` (to `+0x3820`), clamped to `0x100`. The chooser passes zero immediately after loading its music module; in a table the main image passes zero when a CD track starts and `0x100` before a jingle (`CODE:9C1A`, `9C34`). |
 | `0x0D` | `0x1287` | Return a playback position derived from the service counter and active voice count. The main image compares the result with `0x280A`. |
 | `0x0E` | `0x0BDC` | Store routine pointer `ES:EDX`, then run associated setup. The caller supplies the far-return routine at main-image offset `0x4C85`. |
 | `0x0F` | `0x0BFA` | Store routine pointer `ES:EDX` and derive timer state from `CX`. The caller supplies offset `0x4C93` with `ECX=0x1999`. |
@@ -93,8 +93,22 @@ Commands `0x08` and `0x0A` both multiply `CL` by `0x275` and use `BL` to index
 the selected module's order list. Command `0x0A` additionally copies four
 active playback fields to a saved bank before selecting the temporary stream.
 This statically identifies the packed parameters and the interruption/resume
-boundary. Exact audible timing and hardware-specific behavior still need a
-runtime trace.
+boundary.
+
+How a temporary playback ends (read in `SB16.SDR` 2026-09-29, seen in runs):
+command `0x0A` sets `+0x3320` to `0xFF`. The `Bxx` effect (`+0x1EAF`, through
+the tick-0 table at `+0x30E3`) compares its target with the order playing
+(`+0x2773`) while `+0x3320` is set; equal, it sets `+0x3321` and `+0x3322` to
+`0xFF` instead of jumping. At the next row the sequencer (`+0x2109`) restores
+the saved module, pattern cursor, order and speed (`+0x15A6`'s copies, back by
+`+0x15D1`, which clears `+0x3320` and `+0x3321`); command `0x06` calls the
+completion callback and clears `+0x3322`.
+So a jingle is the stretch of orders from the one asked for to a `Bxx` that
+names the order it is in (table 1's `music2.mod` order `0x0E`: 1.69 s in a
+run, `0x0F`: 2.71 s). The sequencer runs in the mixing loop (`+0x20E0`,
+counting ticks at `+0x31F2`), so it stops when the card's transfer stops; an
+`F00` (speed 0, `+0x201C`) sets `+0x31EE`, which holds the rows until a
+command `0x08` or `0x0A`.
 
 ## Host callback table
 
