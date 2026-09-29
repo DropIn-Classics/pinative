@@ -5,8 +5,9 @@ top of an earlier analysis (docs/*.md other than this file). The game's
 files are listed. The main program, `ILLUSION.386`, is in stage 1:
 `src/ILLUSION.hints` rebuilds it byte for byte (doskit reads pMAX images
 since 2026-09-29), with few hints yet (see "Stage 1" below).
-The runner runs the game now (protected mode in doskit, 2026-09-29) up to
-its CD check, after the sound set-up (see "The loader in the runner").
+The runner runs the game now (protected mode and MSCDEX in doskit,
+2026-09-29) past its CD check through the intro, to a still picture at
+about 100 s (see "The loader in the runner").
 
 ## The earlier analysis
 
@@ -248,8 +249,8 @@ if in protected mode).
   INT 93h AH=11h (presumably the command tail) at CODE:02C7, the first
   word to CODE:086C, INT 94h AH=8 at CODE:02FF. Without an argument it
   prints "Error while initializing configuration file..." and exits
-  with 36. How the GOG release starts it (its DOSBox configuration) is
-  not in `game/`, not checked;
+  with 36. The GOG release starts it as `D:\ILLUSION.EXE C:\ILLUSION.CFG /`
+  (see "The GOG release on the Mac" below);
 - with `ILLUSION.CFG` it creates that file (544 bytes, in
   `build/run/state`), opens `SETSOUND\SETSOUND.DAT` and each `.SDR` as a
   loose file first (none there) and shows the "FLD Sound Driver Setup
@@ -258,19 +259,64 @@ if in protected mode).
   or DMA question, "Sound quality?" with LOW recommended (the runner's
   6 M instructions a second, presumably), Enter;
 - then the game asks MSCDEX (INT 2Fh AX=1500h at CODE:35B5A, AX=1510h
-  at CODE:35B34, both reflected to real mode by pMAX) and, the runner
-  having none, prints "CD error! Please check your CD and your CD
-  player." and exits with 255. On the way the runner's DOS said
-  "unimplemented INT 21h AH=57 AL=01" (set a file's date and time).
+  at CODE:35B34, both reflected to real mode by pMAX). Without MSCDEX
+  (the runner before doskit 6a34e22) it prints "CD error! Please check
+  your CD and your CD player." and exits with 255;
+- with MSCDEX (doskit 6a34e22, 3f69eda; a run with the configuration
+  file already in the layer, so no set-up): at t=2.65 IOCTL output 01h,
+  IOCTL input 0Ah (audio disk info), 0Bh (track info) for every track
+  from the first to the last, IOCTL output 01h twice; nothing is played
+  up to t=150 with the cue sheet's 51 tracks (`-cue`) either. Then
+  `SB16.SDR`, `intro\MOD.INT` (the intro's music is a module), the
+  chooser's files at t=6.6..7.6 (`cube.rix`, `tube.rix`, `torus.rix`,
+  `tinyfont.fnt`, `infodata.mgl`, `menuchar.rix`), the intro's
+  (`introani.roy`, `intropix.mgl`, `SCROLL.DLT`, `BKGR.FLD`,
+  `PCSKY.FLD`); the intro's pictures to t=90 (text over clouds, the
+  credits);
+- from about t=100 to 150 (the end of the run) the screen is one still
+  picture, black, 304x50 as the runner reads the CRTC. The busiest loops
+  are CODE:25C0 (waits for the dword at CODE:1548 to change; written by
+  CODE:4C8C every 0.03 s from t=97.8, so it is not stuck there) and
+  CODE:6E2A (waits for the vertical retrace). What the game waits for,
+  or whether the runner's VGA reads the mode wrongly, is not found. The
+  image's base in that run is linear 100F30h (found by its bytes in a
+  memory dump; `-watch 102478` is CODE:1548). The runner's `-prof`
+  prints linear addresses as if real mode (0014:25CC as 0270C).
 
-The key script used: `3 down` ... (7 downs 0.3 s apart), `5.5 enter`,
+The key script for the set-up: `3 down` ... (7 downs 0.3 s apart), `5.5 enter`,
 `7 enter`, `9 enter`, `11 enter`, `13 enter`, `15 enter`.
 
 Found on the way and fixed in doskit (each with a check in PMODE.EXE):
 an open for writing failed when `build/run/state` did not exist yet
 (e447687); a REPNE SCASB with ECX = -1 moved the emulated clock by 4
 billion instructions (0d71ad0); setjmp's signal mask made runs under PE
-45 times slower on macOS (4a9ac3a).
+45 times slower on macOS (4a9ac3a); INT 21h AH=57h (a file's date and
+time, the set-up sets it) was missing (6a34e22).
+
+### The GOG release on the Mac
+
+Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
+(a Boxer bundle; `Contents/Resources/game/Pinball Gold
+Illusions.app/Contents/Resources/Illusions.boxer`):
+
+- `C.harddisk/illusion/Illusions/` holds `game.gog` (57,200,640 bytes,
+  the data track), `game.inst` (the cue sheet: track 1 `game.gog`
+  MODE2/2352, tracks 2..51 `MUSIC\TrackNN.ogg`, typed MP3 in the sheet,
+  Ogg Vorbis in fact), `ILLUSION.CFG` (the SHA-256 in
+  docs/reverse-engineering.md) and `ILLUSION.BAT`:
+  `@D:\ILLUSION.EXE C:\ILLUSION.CFG /%1 %2 %3 %4 %5`;
+- `MUSIC\` there holds only `Track02.ogg`; tracks 03..51 are in
+  `game.cdmedia/` beside `C.harddisk`;
+- `ILLUSIONS.BAT` (the play) mounts `game.gog` alone as D:, so the Mac
+  release plays with no audio tracks; `ILLUSIONS_SETUP.BAT` mounts
+  `game.inst` and runs `ILLUSION.BAT /o` (the set-up, presumably; `/o`
+  not looked at). A second `game.gog` (8,805,888 bytes, another SHA-256)
+  is in `C.harddisk/illusion/`, not looked at.
+
+For the runner the Windows layout was made from symbolic links in a
+scratch folder (`game.inst`, `game.gog`, `MUSIC/Track02..51.ogg`); `-cd
+-cue FOLDER/game.inst` then prints 51 tracks, lead-out 64:13:38, track 2
+at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
 
 ## Next
 
@@ -297,11 +343,15 @@ billion instructions (0d71ad0); setjmp's signal mask made runs under PE
      (cpu.c, bios.c), not pMAX's services, so that other DOS extenders
      run on it too; the game gets to its CD check (see "The loader in
      the runner").
-   - next: MSCDEX in the runner (INT 2Fh AX=15xxh, the game's files as
-     the CD; what the device requests of AX=1510h ask for is to be read
-     from the game's call at CODE:35B34), INT 21h AH=57h; then run on
-     to the chooser and a table, and see what else the runtime lacks
-     (x87 is not emulated either).
+   - done 2026-09-29: MSCDEX in the runner (doskit 6a34e22: D: as a
+     CD of one data track; 3f69eda: `-cue`, the tracks of a cue sheet;
+     plays are kept on the emulated clock, nothing sounds), INT 21h
+     AH=57h. The game gets through its intro (see "The loader in the
+     runner").
+   - next: the still picture at t=100 (what the game waits for there,
+     or what the runner's VGA shows wrongly); then on to the chooser
+     and a table, with `-cue`, to see when the game plays CD tracks and
+     what else the runtime lacks (x87 is not emulated either).
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
    once more is known, the copy protection first); displacements with
