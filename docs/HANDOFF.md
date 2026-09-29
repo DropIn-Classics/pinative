@@ -36,7 +36,7 @@ seen in a run (see "The lamps, a drop-target bank and a hole in a run");
 the player record's names checked in a run (see "The player record
 in a run"); the slot-16 counters' timers (see "The slot-16 counters'
 timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
-"The tilt in a run").
+"The tilt in a run"); game phase 0, set by no one (see "Game phase 0").
 
 ## The earlier analysis
 
@@ -335,7 +335,8 @@ jump or call to its start anywhere in the image), left as data:
 - routines after a RET: CODE:2FFA, 36A1 (waits for scan code 2 and its
   release), 73D8, 92CE, 9606 (after the text "HEJ!$"), A618/A61E,
   15340, 297A6, 2E886 and 302F8 (both in the interpreters' style),
-  35BC6, 35D20 (a seek, command 83h, to a track's start: the request at
+  BB0E (after the text "9090", a debug tool moving two words with the
+  keys 1..4, see "Game phase 0"), 35BC6, 35D20 (a seek, command 83h, to a track's start: the request at
   CODE:35EB7; the play is CD_PLAY at CODE:35DDC), 29832 (the one that
   sets CODE:2982E to 29922h);
 - one to three bytes after a RET or JMP (CODE:A497, A653, 32902,
@@ -1508,7 +1509,31 @@ TILT_STEP, GAME_PHASE, CODE:2B716.
   while tilted, no bonus. The next ball was served as usual.
 - Not seen: whether the flippers work in phase 9 (the routine reads no
   flipper keys, as read); the score's fate, as it was 0 here.
-- Phase 0 remains unseen.
+- Phase 0: see "Game phase 0".
+
+### Game phase 0
+
+Read 2026-09-29 from the code, one run on macOS (as in "The tilt in a
+run": keys `106 space`, `112 enter`, `136 f1`, `137 enter`, `146 esc`,
+`150 esc`; `-poke 12C69E#300 10DAFC "00 00"`, the 300th pass of play's
+routine; `-watch 10DAFC`, `-log 10CA2E`; `build/phase0/`, 20 s). Hints:
+GAME_PHASE, CODE:BAFE, CODE:BB0A.
+
+- No instruction writes 0 to GAME_PHASE: its 18 writes are the
+  constants 1..9, and the image's 0 is replaced by 1 at CODE:B928
+  before the round loop. The run's `-watch` saw 0 only at the image's
+  loading (t=2.28) and at the poke.
+- The routine (CODE:BAFE) waits for the retrace until port 60h reads 1
+  (Esc down) and returns; the phase stays 0, so it is called again. In
+  the run: 70 passes a second from the poke (t=145.156) to the end
+  (t=156), AL 1 at both Esc presses and the loop went on; the
+  screenshots at 149 and 155 are identical. So phase 0 hangs the game
+  (interrupts go on; the music not listened to).
+- After it, behind the text "9090", code with no reference (CODE:BB0E):
+  keys 1..4 move two words of the state, read nowhere else, the screen
+  scrolls to the second, and a ball-like position (y x 150h + x, as
+  CODE:269D7 computes a ball's +72h) goes to DS:72h. A debug tool,
+  presumably, and phase 0 a debug pause; both dead in this release.
 
 ### The GOG release on the Mac
 
@@ -1635,7 +1660,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      argument (see "The self-patched call in a run", the end); what Esc
      does (see "Esc"). Done 2026-09-29: the other option bytes (see "The
 options"; open from it: a run with another table angle, the countdown
-of `SERVE_SECONDS`, the multiball records). Open: the game
-     phase 0 of CODE:BAD6 (8 done, see "The player record in a run"; 9
-     done, see "The tilt in a run"; the others see "Esc"); the SVGA
-     modes in the runner (FRAME_RATE then 60, presumably).
+of `SERVE_SECONDS`, the multiball records). The game
+     phase 0 of CODE:BAD6 done 2026-09-29 (see "Game phase 0"; 8 see "The
+     player record in a run", 9 "The tilt in a run", the others "Esc"),
+     so every phase is known. Open: the SVGA modes in the runner
+     (FRAME_RATE then 60, presumably).
