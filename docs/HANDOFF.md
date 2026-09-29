@@ -82,19 +82,20 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 25,457
-instructions, 3618 labels, 14 lines as DB, 17 to 37 s on the Mac used
-(2026-09-29); gaps.py: 203 gaps, 183,268 of 0x46480 bytes not reached
-as code. The hints so far: the two descriptors as segments (`CODE` the
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 27,351
+instructions, 3762 labels, 16 lines as DB, 18 to 38 s on the Mac used
+(2026-09-29); gaps.py: 211 gaps (174,690 of 0x46480 bytes not reached as
+code) not looked at one by one yet. The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
-point's name, the pointers found so far, a `stop` and the 14 `raw`
+point's name, the pointers found so far, a `stop` and the 16 `raw`
 lines:
 
 - eleven instructions with a 16-bit address and no register (67h, e.g.
   `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
   ask for that address size;
 - CODE:31649 `64 66 AD`: FS before 66h, the one such order;
-- CODE:164B4: a DS prefix where DS is the default.
+- CODE:13AD7, 141D6, 164B4: a DS prefix where DS is the default, all
+  three with EBP as the index register (45 others with it have none).
 
 Code reached through pointers so far:
 
@@ -120,13 +121,27 @@ Code reached through pointers so far:
   start, four more were reached already. CODE:7AB6 sums over the far
   pointers start-up writes and gives no address from the file: left out.
 
-Not reached yet, seen: word tables of offsets relative to the table
-(`MOV SI,[EDI*2+T]; LEA EBP,[EDI+T]; JMP EBP`, e.g. CODE:1183F,
-CODE:13784, CODE:2C3DD, CODE:2F91C, CODE:300B9, CODE:308C7), the index
-being the previous entry kept in a variable (CODE:0020..0028), so
-presumably chains of states; no hint for them in the kit yet. Calls
-through the sound driver's entry (far pointers at CODE:8134, CODE:98A0)
-leave the image.
+- eight compiled switches, word tables of offsets from the table
+  (`MOV SI,[EDI*2+T]; LEA EBP,[EDI+T]; JMP EBP`; `rwords`, new in
+  doskit): CODE:1183F, 11AE9, 13784, 2C3DD, 2C8BC, 2F91C, 300B9,
+  308C7; the index mostly the previous entry kept in a dword at
+  CODE:0020..0028. Counts from a bound check or up to the first target
+  (CODE:11AE9: a first try with 80h entries ran into the 78h data words
+  after the eight, whose targets fell inside instructions).
+- CODE:14DE2: `MOV EBX,14DE2h; CALL EBX` (CODE:298CA).
+
+Not reached yet, seen: calls through offsets kept in records
+(`LEA EDX,[EBX+2D193h]`, EBX a word from a record; also CODE:2F625),
+through record fields (`[ESI+2946h]`, ESI = [CODE:0014]), through a
+pointer at CODE:2982E (four in turn), and `CALL [ESI+4]` at CODE:7067.
+Calls through the sound driver's entry (far pointers at CODE:8134,
+CODE:98A0) leave the image.
+
+Labels that are not addresses: the kit takes a displacement from 100h
+up with a register for an address (METHOD.md), but here records have
+fields beyond 2900h (`MOV EDI,[ESI+28AAh]` makes a label C28AA inside
+code). 82 labels land inside instructions this way. Wants a heuristic
+for flat 32-bit code in doskit, or `num` hints.
 
 Seen on the way (in doskit's commits): the image's segment-register
 stores to memory carry 66h (`66 8C ...`, four of them), which the source
