@@ -497,9 +497,18 @@ esc`, `144 space`, `150 esc`, `154 y`; `-watch` on QUIT_TABLE, linear
 
 `GAME_PHASE` (state+8Eh, CODE:CBCC) is the number that picks one of the
 ten routines at CODE:BAD6 each round ("Code reached through pointers":
-the ten near pointers): F1 sets 2, Esc during play 3, CODE:2B1DC sets 4
-and 4 is CODE:2B76E, the play. What the other phases are is not
-followed; the Y key on a QWERTZ or AZERTY keyboard (scan code 15h is Z
+the ten near pointers). A run of a whole game on table 1 (F1 at 130,
+Enter every 15 s from 131, no flipper; `-watch` on linear 10DAFCh)
+wrote it 32 times: 1 attract mode; F1: 2 game start and at once 6 (the
+ball waits for Enter, "PLAYER 1 BALL n"); 4 play; 7, 1.3 s each,
+"DON'T MOVE", four times in each of the first two balls and three in
+the third: a lost ball served again while the ball save (event opcode
+0Bh) runs, presumably, as CODE:2B946 does it; 5 the ball lost ("NO
+BONUS"), then 6; after the third ball 5, 3 ("GAME OVER", t=208.01), 1.
+The hint on `GAME_PHASE` has the routine of each. Not seen: 0, 8
+(extra ball, by the code), 9 (near the text "TILT", presumably the
+tilt). Why the ball save came back so often (each serve starts it
+again?) is not looked at. The Y key on a QWERTZ or AZERTY keyboard (scan code 15h is Z
 on QWERTZ) not looked at.
 
 ### The tables and their CD tracks
@@ -968,5 +977,5 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      a run": not patched in runs). Done 2026-09-29: the options screen's
      argument (see "The self-patched call in a run", the end); what Esc
      does (see "Esc"). Open from it: the other option bytes; the game
-     phases of CODE:BAD6; the SVGA
+     phases 0, 8, 9 of CODE:BAD6 (the others done, see "Esc"); the SVGA
      modes in the runner (FRAME_RATE then 60, presumably).
