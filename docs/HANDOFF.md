@@ -43,7 +43,8 @@ ball save in a run"); the multiball option and a multiball in a run (see
 "The multiball in a run"); the work on Linux (see "Start here"); the
 selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
-left (see "The Info page and the greetings page").
+left (see "The Info page and the greetings page"); table 1's shooting
+game on the display (see "Table 1's shooting game in a run").
 
 ## The earlier analysis
 
@@ -914,8 +915,9 @@ records" and "Table 2's music chooser"; in short:
   streams through it, table 2's one. These roots come from module code,
   so tools/event_streams.py does not list them.
 
-Open from it: table 1's and 4's opcode-14h objects (module 9A46h,
-97E5h) not looked at; slot 41's lamps (the list at module 994Ah by the
+Open from it: table 1's opcode-14h object (done 2026-09-29, see
+"Table 1's shooting game in a run") and table 4's (module 97E5h) not
+looked at; slot 41's lamps (the list at module 994Ah by the
 player's word +12h) not checked. The run of the chooser: next section.
 
 ### Table 2's chooser in a run
@@ -1726,8 +1728,10 @@ GREETINGS_TEXT, the comments at CODE:4532 and 505C.
   MENU_ROW in AL at CODE:526D (FFh on Esc, the way out to DOS).
 - The menu has a stage before it (CHOOSER_WAIT, CODE:38C6): the backdrop
   with changing captions and no list, from t=104.21 after Space at 100
-  (which only ends the credits). Any of Esc, Enter, Space, F1..F4, or
-  KEY_HISTORY's four keys, sets WAIT_END (CODE:1904, what the earlier
+  (which only ends the credits). Any of Esc, Enter, Space, or
+  KEY_HISTORY's four keys, sets WAIT_END (not F1..F4: they are dropped
+  while MENU_ON is 0, seen in a run with F1 at 130 and 132; corrected
+  after the first commit said otherwise) (CODE:1904, what the earlier
   note called "the menu loop" there); a few frames later the list comes
   up (CODE:505C). That is why a key before the list is not taken as a
   choice.
@@ -1769,6 +1773,47 @@ GREETINGS_TEXT, the comments at CODE:4532 and 505C.
   ATTRACT_START is reached at 104.21, before CODE:4FF9 (not looked at).
 - A note for byte searches: CODE:x is file offset x + 24h in
   ILLUSION.386 (checked on CODE:4532, 4886), not + 28h.
+
+### Table 1's shooting game in a run
+
+Found 2026-09-29, on Linux, from table 1's module and runs (`build/vm/`;
+the details in docs/bpc-module.md, "Table 1's shooting game"). Table
+1's opcode-14h object (module 9A46h) is a game on the display: bad
+guys in four windows, a crosshair moved by the flippers, a bad guy in
+the crosshair's window shot when it aims; four lives; 25 hits light the
+extra ball, 30 end the game with 50,000,000 more and the game's score
+paid to the player.
+
+- Runs as in "The table angle and the ball save in a run" (`-put` of
+  the GOG `ILLUSION.CFG`, keys `106 space`, `112 enter`, `136 f1`, `137
+  enter`), with the two pokes of "A mode's track in a run" and the
+  counter's word +16h poked to 4 at the same moment (`-poke 12F026#1
+  2D82D4 "04 00"`; the count-up there makes it 5, threshold 5's mode;
+  5 gave 6). Module base 2D40A0h as before; the state record 0A19Fh is
+  linear 2DE23Fh.
+- No flipper in the game: the start at t=145.04, lives 4, 3, 2, 1 at
+  146.2..146.6, one hit at 147.8 (the crosshair stays on window 1), lives
+  0 at 148.0, 206 updates in 2.93 s (70 a second, one a frame). The
+  display: "GIMME YOUR BEST SHOT / TO CLEAR THE STREET" at 141, the
+  street at 146.
+- Lives poked to 99 at the first update (`-poke 2DDBC5#1 2DE241 "63
+  00"`) and the flippers pressed every 1.1 s (left) and 1.7 s (right)
+  from 145.2: 30 hits by 177.5, 40 lives lost; `+8` FFh at the 25th hit
+  (173.45); the game's score (BCD, `+11h`) counted 1 a hit (21 at 21
+  hits) and was 80 after the 30th: 80,000,000. The player's score
+  (linear 10E7E8h, byte +7) went from 0 to 80h at 178.0 (and +6 from 10h
+  to 20h at 179.5, presumably a take; not looked at). The display: "EXCELLENT" at 178, a number
+  at 180 (not legible at the shot's size), "EXTRA BALL IS LIT" at 184.
+- Not run: the lives-out paths ("YOU SHOT nn BAD GUYS" with fewer than
+  25 hits, the extra ball alone with 25..29; the first run ended on this
+  path, its display not looked at), whether the game's score is paid
+  there (read: it is not), which `vm_*` picture is which, the extra ball
+  collected afterwards.
+- Found on the way: the key times of the earlier Windows runs (`130
+  f1`, `131 enter`) do not reach a table with `-put` of the GOG
+  configuration (F1 in CHOOSER_WAIT is dropped, see "The Info page and
+  the greetings page"); `seq` writes decimal commas under a German
+  locale, which the runner's `-keys` does not read (`LC_ALL=C`).
 
 ### The GOG release on the Mac
 
@@ -1870,7 +1915,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: table 2's music (see "The audio records and
      table 2's music chooser"); its run done 2026-09-29 (see "Table 2's
      chooser in a run"). Open from it: table 1's and 4's opcode-14h
-     objects. Done 2026-09-29: a jingle (driver command 0Ah) requested
+     objects (table 1's done 2026-09-29, see "Table 1's shooting game
+     in a run"). Done 2026-09-29: a jingle (driver command 0Ah) requested
      in a run (see "A jingle in a run"). Done 2026-09-29: why the
      runner's Sound Blaster played nothing (see "The Sound Blaster in
      the runner"). Done 2026-09-29: the jingle run again with the fix

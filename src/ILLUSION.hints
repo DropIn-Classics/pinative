@@ -455,7 +455,7 @@ name       CODE:18FB MENU_INFO     ; the menu's column: 1 Info (Right, CODE:3582
 name       CODE:18FC MENU_ON       ; 1 in MENU_LOOP, 0 in CHOOSER_WAIT: only then Enter, Space and F1..F4 choose (CODE:359A, 35F8)
 name       CODE:18FE MENU_FADE     ; 1 while the screen fades out to leave (Esc, a choice); MENU_KEYS takes no key then, and CODE:3325 sets MENU_DONE when the fade (CODE:132B) is at 0
 name       CODE:18FF ESC_KEY       ; Esc seen (scan code 1: MENU_KEYS at CODE:350F, PAGE_KEYS at 3489); leaves INFO_PAGE and GREETINGS_PAGE (cleared there), else leaves the chooser for DOS (CODE:50A9, 5198, AL=FFh)
-name       CODE:1904 WAIT_END      ; set by Esc, Enter, Space, F1..F4 (MENU_KEYS) and KEY_HISTORY (CODE:3943): CODE:3849 then blanks the chooser's caption (CODE:1728) and counts CODE:1900 to 4, which ends CHOOSER_WAIT
+name       CODE:1904 WAIT_END      ; set by Esc, Enter and Space (MENU_KEYS; F1..F4 are dropped while MENU_ON is 0, CODE:35F8, run 2026-09-29: F1 at 130 and 132 left CHOOSER_WAIT running) and KEY_HISTORY (CODE:3943): CODE:3849 then blanks the chooser's caption (CODE:1728) and counts CODE:1900 to 4, which ends CHOOSER_WAIT
 name       CODE:1916 MENU_DONE     ; set when a fade after MENU_FADE is done (CODE:3325); ends CHOOSER_WAIT and MENU_LOOP
 code       CODE:3465 PAGE_KEYS     ; the keys of INFO_PAGE and GREETINGS_PAGE from the ring at CODE:1906: only Esc counts (ESC_KEY), the rest are dropped. Runs 2026-09-29: Esc left the Info page at t=118 and the greetings page at 112, the menu loop again 0.7 s later
 code       CODE:3492 MENU_KEYS     ; the chooser's keys from the ring at CODE:1906, one a frame: Esc, Down, Up, Right, Left, Enter and Space, F1..F4 (see the names above); the rest dropped

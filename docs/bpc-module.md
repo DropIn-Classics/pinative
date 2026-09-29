@@ -209,6 +209,69 @@ header slot 34 itself, requested at `0x2B1DC` and `0x2BB3E` (at each
 ball's serve, presumably: in a run at the game's start and twice later); record 1 is requested by the streams of header slots 27 and
 28; record 2 closes most of table 2's modes.
 
+## Table 1's shooting game
+
+Found 2026-09-29 from table 1's module (a throwaway capstone script with
+the relocations marked) and seen in runs the same day (docs/HANDOFF.md,
+"Table 1's shooting game in a run"). The opcode-`0x14` object at
+`0x9A46` (start `0x9A4E`, update `0x9B25`) is a game on the dot-matrix
+display (160 x 16 dots): bad guys show up in four windows of a street,
+the player moves a crosshair between them with the flippers, and one
+in the crosshair's window is shot when it aims.
+
+- It is run by mode stream `0x5EA8` (the mode of counter `0x421E`'s
+  threshold 5, stream `0x4326`): blocks `0x41E6`, `0x4362`, `0x4492`,
+  `0x51E0`, takes `0x417E`, shows display `0x5F18` ("GIMME YOUR BEST
+  SHOT" / "TO CLEAR THE STREET", 5 s), waits, plays `0x11E49`, runs the
+  game (`14 @9A46`), plays `0x11E0D`, ejects the ball from hole
+  `0x4F18`, plays `0x11DA1`, unblocks the four records and takes
+  `0x41E6`.
+- The module code keeps its values in the dwords at `[0]`..`[0x3C]` of
+  its data segment (a compiler's registers, presumably) and pointers
+  into the data point at a field's end (the BCD adds work down from
+  them); the addresses below are the fields' starts.
+- The state record at `0xA19F`: `+0` hits (word), `+2` lives (word, 4 at
+  the start), `+4` the crosshair's window 0..3, `+6`/`+7` the left and
+  right flipper's repeat counts, `+8` `0xFF` from the 25th hit, `+0x0A`
+  .. `+0x11` the game's score (8 packed-BCD bytes, the four at `+0x0E`
+  the low ones), from `+0x12` four windows of 6 bytes (a timer in
+  frames, a step 0..9, a look 0..3), `+0x42` the index into the
+  delays.
+- Start: hits 0, lives 4, window 1, score 0; each window's timer from
+  the next of the words at `0xA227` (`+0x42` counts on, modulo 256;
+  the first sixteen are 32, 161, 48, 17, 160, 145, 16, 161, 160, 1, 0,
+  177, 160, 49, 32, 145), step and look 0.
+- Update, once a frame: the street (`0xA0F9`, the whole display);
+  each window: its timer counted down; at 0 the step goes on and the
+  timer and look come from the pairs at `0xA1F3`: step 1 (25 frames,
+  look 1), 2 (25, look 2), then 3 frames each: looks 3, 2, 3, 2, 3, 2,
+  3; step 5's look has bit 15 set: the bad guy shoots, lives - 1, audio
+  record `0x11CA9`. After step 9 the window is empty again (step and
+  look 0, a new delay). A window with look 2 whose number is the
+  crosshair's is hit: hits + 1, audio record `0x11CC3`, the score +
+  1,000,000 (the BCD at `0xA43F`), the window emptied. Otherwise the
+  window's picture (number 1 + 3 x window + look - 1, at x 16, 48, 80,
+  128 from `0xA1E3`, 32 x 16) is drawn. Then the flippers: the left one
+  moves the crosshair a window left, the right one a window right, at
+  once and then every 25 frames while held (`+6`/`+7`); the crosshair
+  (picture 14, 16 x 15, transparent, `0xA142`) at the display offset
+  from `0xA1EB` / 2.
+- The end: lives at 0: the hits written into "YOU SHOT 00 BAD GUYS"
+  (`0x6050`); with 25 hits or more (`+8`) stream `0x5F96` is queued (it
+  lights slot-15 record `0x5FC6`, handler 1: the extra ball), else
+  `0x5FA2` (the text and the game's score for 2 s). The score is not
+  paid on this path (read, not checked in a run). 30 hits: the score +
+  50,000,000 (the BCD at `0xA437`), the whole score added to the current
+  player's (state `+0xD76`'s record `+0`), stream `0x5FAE` queued
+  ("EXCELLENT" with the palette flashing, the score, "EXTRA BALL IS
+  LIT" five times, record `0x5FC6` lit). Either way the update returns
+  with ZF clear, which ends the object.
+- The pictures are presumably `data\s001\special\vm_*` (the names at
+  `0xA447`, 15 of them: `vm_001`, then `vm_002a`..`vm_005c`, four times
+  three as the windows and looks are, then `vm_006a`, `vm_006b`),
+  loaded by the host into the table at FS; which file is which number
+  is not checked.
+
 ## Initial shared slots
 
 The copied-header scan establishes the following host-visible groups and the
