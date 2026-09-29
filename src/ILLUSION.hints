@@ -120,3 +120,5 @@ words      CODE:7AC0 0C0 CODE stride=8 ; records of 8 bytes from CODE:7ABC to 80
 ; to the code after the table (its first offset)
 rwords     CODE:2D18F 20 stride=4 from=2D193 ; LEA at CODE:2CF36 and CODE:2D148, call through CODE:2CF57 and CODE:2D169; record 0 leads to a RET
 rwords     CODE:2F625 1A stride=4 from=2F625 ; LEA at CODE:2F4A4 and CODE:2F5A2, call through CODE:2F4C5 and CODE:2F5C4; record 0 at CODE:2F621 is 0,0 (index 0 not called)
+words      CODE:2DA0A 1C CODE      ; PUSH [EBX*4+2DA0A] at CODE:2DA02 after PUSH 2DA09h, then RET: by the word at [[CODE:0008]+2Ch] (0 not taken); 28 up to the first target (a RET at CODE:2DA7A)
+words      CODE:2CD10 0B CODE      ; its address put in [CODE:0010] (CODE:2BEDC, 2D04D, 2DBD3) before calls into the table module: its host vector (docs/bpc-module.md), the entries not checked one by one
