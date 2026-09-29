@@ -33,7 +33,11 @@ first; this file is the rules. The method and the tools are doskit's
 output) that the lead then interprets and writes into the hints, and
 `git-committer` for every commit and push, so the checks and the
 message stay uniform. Delegate to them instead of doing their job
-inline.
+inline, where that saves work: a collection whose commands are known
+beforehand (a batch of `run.py` runs, `disasm.py` or `gaps.py` output
+to list) goes to `doskit-collector`; a step whose next command depends
+on reading the last result (a run that fails, a screenshot to look at)
+the lead does itself. Every commit goes to `git-committer`.
 
 ## Provenance (permanent)
 

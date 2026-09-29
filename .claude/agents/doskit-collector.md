@@ -25,6 +25,28 @@ you do not draw conclusions the caller did not ask for.
   addresses, gap ranges, candidate pointers, register values at a
   breakpoint, diff runs from memcmp.py.
 
+## run.py for ILLUSION.EXE (this project)
+
+- In Git Bash set `MSYS_NO_PATHCONV=1` first: otherwise the lone `/`
+  argument becomes a path and the game shows its options screen
+  instead of the intro.
+- The usual command line: `python3 doskit/tools/run.py -until T -cue
+  "C:/GOG Games/Pinball Illusions/game.inst" [options] ILLUSION.EXE
+  'C:\ILLUSION.CFG' /` (the configuration file is in `build/run/state`
+  already, so no set-up screen). About three emulated seconds a second.
+- run.py translates only 16-bit `SEG:OFF`. For ILLUSION.386 give linear
+  addresses: CODE:X is 100F30h+X (the base in every run so far; if a
+  `-log` on a known address such as CODE:4FF9, the chooser, reached at
+  t≈97.6, gets no hit, say so).
+- `-log` and `-dump` may be given several times; `-watch` only once
+  (the last one counts).
+- Key scripts used before (docs/HANDOFF.md): `-key 100 space -key 106
+  enter` for table 1, `-key 130 f1 -key 131 enter` to start a game and
+  launch the ball.
+- Write the output to `build/run/*.log` and report the lines asked for;
+  `-shot` pictures go to `build/run/` and are named in the report, not
+  described.
+
 ## What you must not do
 
 - Never write to `src/*.hints`, `port/`, `docs/HANDOFF.md`, or any
