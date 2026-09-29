@@ -34,7 +34,8 @@ lamps"); the drop targets (see "The drop targets"); the holes' eject (see
 animations"); the timed lamp, a drop-target bank and a hole
 seen in a run (see "The lamps, a drop-target bank and a hole in a run");
 the player record's names checked in a run (see "The player record
-in a run").
+in a run"); the slot-16 counters' timers (see "The slot-16 counters'
+timers").
 
 ## The earlier analysis
 
@@ -1427,6 +1428,36 @@ comments. Not checked: whether a multiplier shows on the display
 handlers that set them (1, 2, 5, 8) in a run; no take in blind play
 reaches them.
 
+### The slot-16 counters' timers
+
+Read 2026-09-29 from the code and table 1's streams, then two runs on
+macOS (as in "The player record in a run"; `build/names/c1.txt`,
+`c2.txt`). Hints: COUNTER_TIMERS (CODE:2CB69), handler 14h.
+
+- The word +26h of a slot-16 counter, set by slot-15 handler 14h to
+  seconds times FRAME_RATE, is read by COUNTER_TIMERS once a frame of
+  play (the list at state+28E6h, from CODE:2B4B9): counted down, and at
+  0 the counter's step (+30h/+34h) goes back to +28h/+2Ch and its value
+  (+38h/+3Ch) to 0. The resets CODE:29FFA and 2A113 set +26h to 0 too.
+  After a counter runs out the routine returns, so the counters after
+  it miss that frame's count; no table has two timed counters, so it
+  changes nothing as far as the data goes.
+- Handler 14h is in three records: 579Ch (5 s) and 57D6h (10 s) of
+  table 1 on counter 574Ah, 490Ch (12 s) of table 3 on 48BAh. Table 1's
+  four zone streams 4A62h, 4AFCh, 4B8Ch, 4C20h each take one of records
+  55FAh..5712h (handler 10h: the value up by the step, 1,000,000, and
+  paid), then 579Ch and 57D6h, and light one of them for 5 or 10 s.
+  So, as read: a chain of shots whose value grows by 1,000,000 a shot
+  while each comes within 5 or 10 s of the last, and falls back to 0
+  otherwise. Which zones those are on the table is not looked at.
+- Blind play (a game of three balls to t=217): +26h stayed 0, the chain
+  not reached.
+- Forced (poked at the third TAKE_PAY, t=138.25: +26h 131h, step
+  5,000,000, value 3,000,000): +26h fell one a frame, reached 0 at
+  t=142.599 (4.35 s, 305 frames at 70 a second), and at that frame the
+  step was 1,000,000 and the value 0 (CODE:2CBA6). COUNTER_TIMERS ran
+  826 times up to t=150.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1520,7 +1551,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
      handlers"). Done 2026-09-29: a run that checks the names
      (score, bonus, multiplier, extra ball; see "The player record in a
-     run"). Open from it: who reads a slot-16 counter's word +26h (handler 14h); table 4's
+     run"). Done 2026-09-29: who reads a slot-16 counter's word +26h (see "The
+     slot-16 counters' timers"). Open from it: table 4's
      random awards. Where CODE:BAD4 is counted: DRV_TICK (see "Offsets
      among the immediates"), how often not checked.
    - done 2026-09-29: table 2's music (see "The audio records and

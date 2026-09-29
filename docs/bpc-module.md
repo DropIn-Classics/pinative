@@ -336,7 +336,7 @@ routine at `0x2FD11` establish the following host-visible fields:
 | `+0x00` | Flags word; host paths test bits 1 and 2. |
 | `+0x02` | Initial word. |
 | `+0x06`, `+0x16` | Two arrays of eight per-player words. |
-| `+0x26` | Runtime/scaled interval word. |
+| `+0x26` | A timer in frames: set by slot-15 handler 14h (seconds times the frame rate), counted down each frame of play by `0x2CB69`; at 0 the step goes back to `+0x28`/`+0x2C` and the value to 0 (checked 2026-09-29 in a run, table 1). |
 | `+0x28`, `+0x2C` | Configured dwords copied into runtime dwords at `+0x30`, `+0x34`. |
 | `+0x30`, `+0x34` | The step: a 12-digit packed-BCD number (high word, low dword), raised by slot-15 handlers 0Fh and 1Bh, lowered by 19h, paid by 0Eh (checked 2026-09-29 in the hints). |
 | `+0x38` | Six-byte runtime BCD accumulator in an eight-byte field: the value (high word `+0x38`, low dword `+0x3C`), raised by the step (handler 0Bh), paid by 7 and 0Ah. |
