@@ -851,6 +851,20 @@ The other requests in the run (t=130.02, the F1 start; 131.36, the
 serve) went through CODE:9EDB (a negative word +2: command 8), none
 through CODE:9EBA (command 0Ah, the jingle): not seen yet.
 
+Where the jingles come from (2026-09-29, statically: the four modules'
+slot-34 records and tools/event_streams.py; not run): the records with
+a positive word +2 (the driver's command 0Ah) are many (25/22/23/22 in
+tables 1..4); in tables 1..3 most have module slot 1 (`music2.mod`) and
+order indices 0, 1, 2, ..., in table 4 slot 0 and indices 2Dh..44h. Few
+are played by event opcode 13h (6/2/0/9 commands); most by display
+opcode 10h ("play", a record through CODE:3007A): table 1 has 100 such
+commands, many as the first command of the display stream at a slot-15
+record's +18h, presumably shown when the record is taken. The blind
+runs took record 41E6h 27 times and logged no command 0Ah; its +18h
+not looked at. A run that forces a take of, say, table 1's record 43D2h
+(its +18h stream 445Ch plays record 34) with `-log` on CODE:9EBA would
+show one.
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
