@@ -26,7 +26,10 @@ stops the module's music for its 1.78 s (see "The jingle alone"); the
 CD's audio in a WAV of its own (see "The CD in a WAV"); the CD muted
 in a game, and around a jingle whose record asks for it (see "The CD's
 volume around a jingle"); bit 1 of an audio record's byte +0Ah, read
-by no instruction (see "Bit 1 of a record's byte +0Ah").
+by no instruction (see "Bit 1 of a record's byte +0Ah"); the lit
+records' timers, the lamps' blinking, a light group's stream and the
+lane change read from the code (see "The lit records' timers and the
+lamps").
 
 ## The earlier analysis
 
@@ -1216,6 +1219,43 @@ So a port can leave bit 1 out; what LOST_BALL_RUNOUT changes is only
 that MUSIC_NEXT is not written during the run-out. Not listened to;
 other tables not run.
 
+### The lit records' timers and the lamps
+
+Read 2026-09-29 from the code (hints: LIT_LIST_STEP CODE:2E8CD,
+LAMP_OFF CODE:2E82F, LIGHTS_STEP CODE:2EF7A) and header slot 14 of the
+four modules (a throwaway script with tools/event_streams.py's loader).
+No run was made for it.
+
+- The lit slot-15 records are on a list (state+2A32h, next +30h) that
+  LIT_LIST_STEP walks once a frame. A record not lit for the current
+  player leaves it with its lamp off. A timer (opcode 2: seconds x
+  FRAME_RATE) is counted down a frame; while more than FRAME_RATE is
+  left the lamp is put on blinking each frame, for the last game second
+  it is put off each frame, at 0 the record is unlit and leaves. Records
+  without a timer (opcode 1) have their lamp put on blinking each frame.
+  Not for a record blocked for the player, and not while a mode runs
+  for records with flag bit 4 (opcode 9 turns those off).
+- So a lit record's lamp blinks. The blink is LIGHTS_STEP's: a light
+  state with byte +2 bit 1 counts +3 down per visit and inverts +1 when
+  it runs out (+4 = 8 from the lit list). LIGHTS_STEP visits about 20h
+  lights and draws at most 8 changes a call, so the blink period in
+  frames depends on the table's number of lights: not measured.
+- A group of header slot 14 (flags byte +4 bit 1 clear: the groups with
+  an event stream) whose lights are all on and none blinking queues its
+  stream once (bit 0 of +4 marks it) and goes to a list at
+  state+1822h (not followed). So a group's stream comes when all its
+  lamps have been taken (a lit record's lamp blinks until taken; a take
+  sets the player's bit in byte +5 of the record's other light state,
+  +8, see opcode 5), presumably; not seen in a run.
+- On a press of either flipper key the groups of a second list, stored
+  backwards in front of slot 14's pointers, have their lamps' on bits
+  moved one light along the chain (the last gets the first's): the lane
+  change, presumably. One group in tables 2, 3 and 4 (3, 3, 4 lights),
+  none in table 1.
+- Open: a run that sees a timed record's lamp go dark and the blink
+  period; what the list at state+1822h is for; who clears a group's bit
+  0 (CODE:2EEEC clears the lights of a chain, not followed).
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
@@ -1318,8 +1358,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      of docs/bpc-module.md.
    - done 2026-09-29: the event language (see "The event language";
      tools/event_streams.py with tests/test_event_streams.py). Open from
-     it (the frame rate done 2026-09-29, see "The frame rate"): the slot-15 update CODE:2E8CD (timed lights);
-     the animations of display opcodes 1 and 0Ch (who plays them and
+     it (the frame rate done 2026-09-29, see "The frame rate"; the
+     slot-15 update CODE:2E8CD done 2026-09-29, see "The lit records'
+     timers and the lamps"): the animations of display opcodes 1 and 0Ch (who plays them and
      clears state+2A50h); opcode 4's objects (CODE:28EA6); the hole
      eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
      +4); a port of the two interpreters needs these.
