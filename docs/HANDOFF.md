@@ -35,7 +35,8 @@ animations"); the timed lamp, a drop-target bank and a hole
 seen in a run (see "The lamps, a drop-target bank and a hole in a run");
 the player record's names checked in a run (see "The player record
 in a run"); the slot-16 counters' timers (see "The slot-16 counters'
-timers"); table 4's random awards (see "Table 4's random awards").
+timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
+"The tilt in a run").
 
 ## The earlier analysis
 
@@ -1487,6 +1488,28 @@ for the counter (as in "The player record in a run";
   (CODE:2A0C2) and is shared by the players. Not run: blind play does
   not reach threshold 15.
 
+### The tilt in a run
+
+Runs 2026-09-29, on macOS (as in "The player record in a run", but no
+Shift keys: no flipper; `build/names/tilt*.txt`, `tl*.txt`). Hints:
+TILT_STEP, GAME_PHASE, CODE:2B716.
+
+- The nudge count state+2A78h falls 4 a frame, not 1: it falls 1 a
+  call, and the call comes with CODE:144AD, which runs four times a
+  frame (presumably; the path is not traced). A new press of Space
+  adds TILT_STEP (100 with NORMAL), and at C8h or more state+2A75h is
+  set. So NORMAL tilts at the third nudge within 25 frames of the first.
+- Three Space presses 0.3 s apart (t=145.0): the count peaked at 77h,
+  no tilt. 0.1 s apart: 5Fh after the first, A7h after the second, F3h at the third,
+  state+2A75h FFh and GAME_PHASE 9 (CODE:2B918) at t=145.214; the
+  display showed "TILT"; the ball was lost at 146.065 (no flipper was
+  pressed in this run anyway), GAME_PHASE 5 and 6 in the same frame
+  (1.96 and 2.64 s between them in the runs without a tilt): BONUS_ADD returns at once
+  while tilted, no bonus. The next ball was served as usual.
+- Not seen: whether the flippers work in phase 9 (the routine reads no
+  flipper keys, as read); the score's fate, as it was 0 here.
+- Phase 0 remains unseen.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1613,5 +1636,6 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      does (see "Esc"). Done 2026-09-29: the other option bytes (see "The
 options"; open from it: a run with another table angle, the countdown
 of `SERVE_SECONDS`, the multiball records). Open: the game
-     phases 0, 8, 9 of CODE:BAD6 (the others done, see "Esc"); the SVGA
+     phase 0 of CODE:BAD6 (8 done, see "The player record in a run"; 9
+     done, see "The tilt in a run"; the others see "Esc"); the SVGA
      modes in the runner (FRAME_RATE then 60, presumably).
