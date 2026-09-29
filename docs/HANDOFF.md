@@ -527,3 +527,30 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    a register that land in data (field offsets or addresses, by eye);
    offsets among the 32-bit immediates
    (ptrscan.py); names (doskit/docs/METHOD.md).
+3. Tasks for the next agent (written 2026-09-29; each larger, in order
+   of use; the rules in AGENTS.md hold, findings go here and in the
+   hints):
+   - A mode's track in a run: find what a slot-15 record is on the
+     table (which main-program code sets its bit +1 / starts CODE:2D9DE:
+     a hit of the ball, presumably), then drive a run on table 1 (keys
+     in "The keys"; doskit `-rwatch` on counter 421Eh's per-player words,
+     module base + 421Eh + 6) until threshold 1 plays track 4. If blind
+     play cannot get there, a runner option to write memory at a time
+     (in doskit, with a test) to set the counter is fair.
+   - The event language: every opcode of CODE:2D18F (32) and CODE:2F625
+     (26) read from its handler, its operands and effect in the hints
+     (one comment per handler); then a parser tool (tools/, standard
+     library, synthetic tests in tests/) that lists every stream of a
+     module with the root it hangs from (slot 14/15/16 structures,
+     opcode 9 and the other pointer operands). Replaces the throwaway
+     scripts of this session; check it against the table above.
+   - The slot-15 handlers: the 28 at CODE:2DA0A, what each does (hints
+     comments); what +2Ch = 0, 5, 7, 13h, 1Ah mean; correct
+     docs/bpc-module.md's "+0x2C value operand" if it is wrong.
+   - Table 2's music: the template copy (module 9A55h, 9ADAh, 9CD9h),
+     its index word at 9D88h, and who uses record 12 (track 15);
+     MUSIC_REQUEST's switch on word +2 (CODE:2F91C) and what the mode
+     ends' track-0 records do.
+   - Stage 1 (item 2): ptrscan.py over the 32-bit immediates and `ptr`
+     hints for those that are offsets, then names for the routines
+     found in these sessions (METHOD.md); keep build.py IDENTICAL.
