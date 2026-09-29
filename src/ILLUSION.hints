@@ -342,7 +342,7 @@ comment    CODE:30CFB the ball out: its words +12h, +14h = +6, +8 (and shifted b
 ; are in none of the modules' streams the tool finds)
 comment    CODE:2F35C the display queue's runner: waits while state+2A40h (frames) counts down, and after opcode 7 (state+2A3Ch) while an animation of opcode 1 runs (state+2A50h), then while state+2A3Eh counts down; else one command of the running stream (state+2A2Eh, else the next of the ring at [state+2A2Ah], filled by CODE:2FEDB) by the table at CODE:2F621 (record n at +4n, as CODE:2D18F; commands from +6, the position word at +4); with none queued, the background stream (state+2A58h) runs to its end at once (CODE:2F555)
 comment    CODE:2FEDB a display stream to the queue: word +0 bit 0 set: it becomes the background stream (state+2A58h); else by its bytes +2, +3 against the running one's (state+2A3Ah, 2A3Bh): +2 lower, or equal and +3 lower, dropped; +2 higher or negative, or both equal: the queue emptied, the displays cleared (CODE:2FBA8, BA9B) and it queued; +2 equal and +3 higher: queued behind
-comment    CODE:2F9CF display opcode 1 (an animation, five words): state+2A50h = it (a wait of opcode 7 waits for it first); its +6..+0Eh from the words (the first shifted right by 4 and doubled), +12h from +22h, +10h and +16h cleared (who plays it and clears state+2A50h not followed)
+comment    CODE:2F9CF display opcode 1 (an animation, five words): state+2A50h = it (a wait of opcode 7 waits for it first); its +6..+0Eh from the words (the first shifted right by 4 and doubled), +12h from +22h, +10h and +16h cleared; played by ANIMS_STEP; state+2A50h also cleared when DISPLAY_QUEUE empties the queue (CODE:2FF7A)
 comment    CODE:2F7A5 display opcode 2: both display buffers cleared (CODE:2FBA8)
 comment    CODE:2FB17 display opcode 3 (a text record): through CODE:27783 (host vector +14h, docs/bpc-module.md)
 comment    CODE:2FBA4 display opcodes 4, 15h, 16h, 17h (a dword each): a RET
@@ -354,6 +354,19 @@ comment    CODE:2F812 display opcode 9 (a pointer, four words): the current play
 comment    CODE:2F7B1 display opcode 0Ah (a word): waits that many frames (state+2A40h)
 comment    CODE:2F7CA display opcode 0Bh (a code address): called, with [CODE:0000] = it
 comment    CODE:2F68D display opcode 0Ch (an animation, five words, the fifth not read): as opcode 1 into state+2A5Ch, without the wait; nothing when it is the one there already
+; the animations (2026-09-29, read from the code and the four modules'
+; display streams; no run made for it). An animation record of the
+; module: +0 the next played beside it (0 in every record opcodes 1 and
+; 0Ch name), +6 the place ((word >> 4) x 2, times 4 the byte offset in
+; the buffer), +0Eh repeats (the fifth word: 0 in most uses, up to 9),
+; +10h/+11h a step every +11h+1 calls (1..3 in the modules), +12h the
+; frames left, +16h the frame's data, +1Ah, +1Eh its width and height,
+; +22h the frame count, +24h the first frame's number in
+; data\s00n\anims\allanims.mgl ("Manglade Anims", CODE:2791F)
+name       CODE:27A0E ANIMS_STEP    ; a step of the display's animations, a call a frame after DISPLAY_RUN (CODE:2A690, 2B83D, 2B95A, 2BA0A)
+comment    CODE:27A0E the list at state+2A50h (opcode 1; last state+2A54h), each record a step: the next frame drawn (ANIM_FRAME), and after +22h of them it starts again while +0Eh counts down, else it leaves the list (its +0 cleared; the list's head then 0: DISPLAY_RUN's wait of opcode 7 ends). A record still counting +10h ends the call. With the list empty, the animation of opcode 0Ch (state+2A5Ch) plays the same way but starts again for ever; it is set back to its first frame while the list plays or a display stream runs (state+2A2Eh), and then not drawn
+name       CODE:27C2A ANIM_FRAME    ; one frame into the 160-byte-a-line buffer (1400h bytes, 160 x 32, cleared to FCh by CODE:27CEC; the dot display, presumably)
+comment    CODE:27C2A a new start (+16h 0) takes frame +24h (1 when not below the file's count, its dword 0), its header words width, height, count to +1Ah, +1Eh, +22h (and +12h); a data byte up to 4 is a pixel of colour FCh + byte (4: 00h), above 4 skips byte - 4 pixels; the frames follow one another in the file (+16h goes on past the one drawn)
 comment    CODE:2F7AB display opcode 0Dh: one display buffer cleared (CODE:27259)
 comment    CODE:2F982 display opcode 0Eh (four words): as opcode 5 with the word at state+2A6Eh: the seconds left of the mode stream's wait (CODE:2CD3C)
 comment    CODE:2F79F display opcode 0Fh: the other display buffer cleared (CODE:27CEC)

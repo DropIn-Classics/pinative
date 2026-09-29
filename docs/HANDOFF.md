@@ -30,7 +30,8 @@ by no instruction (see "Bit 1 of a record's byte +0Ah"); the lit
 records' timers, the lamps' blinking, a light group's stream and the
 lane change read from the code (see "The lit records' timers and the
 lamps"); the drop targets (see "The drop targets"); the holes' eject (see
-"The holes' eject").
+"The holes' eject"); the display's animations (see "The display's
+animations").
 
 ## The earlier analysis
 
@@ -1310,6 +1311,33 @@ CODE:30BD6, CODE:30CFB). No run was made for it.
 - Open: a run that sees the 76 frames and the ball's speed out of a
   hole.
 
+### The display's animations
+
+Read 2026-09-29 from the code (hints: ANIMS_STEP CODE:27A0E,
+ANIM_FRAME CODE:27C2A, display opcodes 1 and 0Ch) and the four
+modules' display streams (a throwaway script with tools/event_streams.py).
+No run was made for it.
+
+- Display opcode 1 plays an animation record once plus its fifth word
+  more times (0 in most uses, up to 9); DISPLAY_RUN's opcode 7 waits
+  for it. Opcode 0Ch sets a looping one that plays only while no
+  opcode-1 animation and no display stream runs. ANIMS_STEP runs once a
+  frame after DISPLAY_RUN and clears state+2A50h when the animation
+  ends; DISPLAY_QUEUE clears it too when a stream of higher priority
+  empties the queue.
+- The frames come from `data\s00n\anims\allanims.mgl`: a dword count,
+  a dword table, each frame three words (width, height, and in the
+  first frame the animation's frame count) and run-length bytes (0..3
+  the colours FCh..FFh, 4 colour 0, above 4 a skip). The buffer is 160
+  bytes a line, 1400h bytes (160 x 32): the dot display, presumably.
+  A step comes every +11h+1 frames (1..3 in the modules).
+- Tables 1..4: opcode 1 names 37/45/63/44 records, opcode 0Ch 5/12/14/8;
+  none has a next record at +0, so the code's side-by-side list is not
+  used by the modules.
+- Open: a run that shows the animation's frames on the screen (how the
+  buffer reaches the screen is not followed); the tool could list the
+  frames in allanims.mgl.
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
@@ -1416,8 +1444,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      slot-15 update CODE:2E8CD done 2026-09-29, see "The lit records'
      timers and the lamps"; opcode 4's objects done 2026-09-29, see "The
      drop targets"; the hole eject done 2026-09-29, see "The holes'
-     eject"): the animations of display opcodes 1 and 0Ch (who plays them and
-     clears state+2A50h); a port of the two interpreters needs these.
+     eject"; the animations of display opcodes 1 and 0Ch done 2026-09-29,
+     see "The display's animations"). These were what a port of the two
+     interpreters needed.
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
      handlers"). Open from it: a run that checks the names (score,
      bonus, multiplier, extra ball: `-watch` on the player record);
