@@ -22,7 +22,8 @@ in a run", the end, and "Esc"); a jingle requested in a run (see "A
 jingle in a run"); what each option does in a game (see "The options");
 the jingle's effect in the WAV, and the runner's breakpoints no longer
 change a run (see "The jingle in the WAV"); a jingle alone, which
-stops the module's music for its 1.78 s (see "The jingle alone").
+stops the module's music for its 1.78 s (see "The jingle alone"); the
+CD's audio in a WAV of its own (see "The CD in a WAV").
 
 ## The earlier analysis
 
@@ -1080,7 +1081,36 @@ A control run without the pokes.
 
 Not listened to. The CD is not in the WAV (the runner keeps its plays
 on the clock only), so bit 2 of CODE:CB97 (the CD's volume 0 before a
-jingle) is not seen.
+jingle) is not seen. (Since doskit e2c9cce the runner writes the CD's
+audio and prints the channel settings, see "The CD in a WAV".)
+
+### The CD in a WAV
+
+doskit e2c9cce (2026-09-29): `-cdwav FILE` writes what the CD drive
+plays, 44.1 kHz stereo from t=0 on the emulated clock, from the cue
+sheet's track files (the Ogg Vorbis decoded by stb_vorbis, doskit's
+third_party/); IOCTL output 03h (the channels and their volumes) is kept
+and printed by `-cd`, IOCTL input 04h reads it back (before: always full
+volume). `-wav` (the Sound Blaster) is a file of its own, starting at the
+card's first transfer, not mixed with it.
+
+Run on macOS (the Mac layout of "The GOG release on the Mac", `-cd
+-cue`, `-put` of the bundle's `ILLUSION.CFG`, `106 space`, `112 enter`,
+`-until 150`, `-wav`, `-cdwav`; 19 s):
+
+- a stop at t=112.57, a stop and the play of frames 24470..38187 (track
+  2) at t=130.084; the WAV is silent before (0 samples not 0 up to
+  sample 5736716, the play's), sound from sample 5737284 (the track's
+  own leading silence, 568 samples);
+- from the play on, the WAV's samples match libsndfile's decoding of
+  `Track02.ogg` (soundfile 0.13.1, outside the kit) within 1, mean
+  difference 0.085, no shift;
+- no IOCTL output 03h up to t=150: the game did not set the CD's
+  volume in that run.
+
+Not listened to. Open: a run with a jingle (see "The jingle alone")
+and `-cd`, to see whether the game sets the CD's volume through IOCTL
+output 03h then (bit 2 of CODE:CB97, not looked at).
 
 ### The frame rate
 
@@ -1207,7 +1237,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      record's positive word +2 means. Done 2026-09-29: the jingle alone
      (see "The jingle alone": it takes the module music's place for
      1.78 s, the module goes on after it). Open from it: how the driver
-     ends a jingle (a jump to its own order, presumably).
+     ends a jingle (a jump to its own order, presumably). Done
+     2026-09-29: the CD's audio in a WAV (see "The CD in a WAV"). Open
+     from it: the CD's volume around a jingle.
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
