@@ -414,7 +414,8 @@ Who asks for them (found 2026-09-29; hints `MUSIC_REQUEST`,
   tracks 2..8, 10..13 (table 1), 14, 15, 18, 19, 22, 25 (2), 26..38
   (3), 39..50 (4); 9, 16, 17, 20, 21, 23, 24 and 51 in no record (table
   2 copies three records over records 0..2 at run time,
-  docs/bpc-module.md; those templates not looked at). A scan for the
+  docs/bpc-module.md; the templates: see "The audio records and table
+  2's music chooser"). A scan for the
   word 13h before a relocated pointer to a record finds most of the
   others in each module's event streams (heuristic, the streams not
   parsed);
@@ -437,7 +438,8 @@ the hints: opcode 9 at CODE:2DA7B, `EVENT_QUEUE`, CODE:2D9DE, 2DCA1,
   +0D5Eh) unless one runs already (state +0D4Fh). Near its end each such
   stream has an opcode 13h with a record of track 0 (record 3 in table
   1, 2 in table 2, ...): what that does to the music is not found
-  (`MUSIC_REQUEST` then writes 0 to `MUSIC_NEXT`; its switch on word +2,
+  (`MUSIC_REQUEST` then writes 0 to `MUSIC_NEXT`; later found: it goes
+  back to the module music, see "The audio records ..."; its switch on word +2,
   CODE:2F91C, not followed);
 - the opcode 9 is in a short stream reached in one of two ways, both
   from a slot-15 record (docs/bpc-module.md), whose word +2Ch picks one
@@ -636,6 +638,51 @@ ball) are presumed from what the code does with the fields.
   record 39 (track 0); table 4's not looked at. Where CODE:BAD4 is counted is not
   disassembled (see the hint on CODE:2F7DE).
 
+### The audio records and table 2's music chooser
+
+Found 2026-09-29, statically (table 2's module disassembled with a
+throwaway capstone script, the main program in the hints); none of it
+seen in a run. The details are in docs/bpc-module.md, "Audio-control
+records" and "Table 2's music chooser"; in short:
+
+- An audio record drives two players: the CD (word +8, a track) and the
+  sound driver's tracker module (words +2, +4, +6). Word +2 is the
+  driver's request: 2 command 0Ah (temporary playback, a jingle
+  presumably), negative (FFFEh, FFFFh) command 8 (the module music from
+  an order index), 0 none; +4 is the order index, +6 the module slot (0
+  `music.mod`, 1 `music2.mod`, both loaded when a table starts; table
+  4 has one module). With a track, +4/+6 are where the module music
+  goes on when the track's time is up (CODE:9CEA).
+- The switch at CODE:2F91C has two arms of the same code: FFFEh and
+  FFFFh do the same. A negative request first keeps the flags and the
+  asked-for track in state+5Ah, +2A82h, which no one found reads.
+- So the track-0 records at the end of the modes (table 1's record 3,
+  table 2's 2, ...) switch from the mode's CD track back to the module
+  music, at order index 1 in tables 1 and 3, not a silence. That is also,
+  presumably, why the runs heard only the tables' first tracks: the rest of a game's
+  music comes from the module, not the CD (not listened to, the runner
+  has no sound).
+- Table 2 lets the player choose one of three tunes ("BY THE BEACH",
+  "MOONLIGHT PARKING", "ROLL ME ON") with the flippers and Enter: the
+  event opcode 14h object at module 9A08h, run by the mode stream 92BEh
+  (CD track 19 while it runs), which hole 4C50h's stream starts when
+  record 927Ah is lit. The choice, one word per player at module 9D88h
+  (indexed by state+0D72h, the current player), picks the template
+  copied over records 0..2: at a game's start (slot 40, template 0), at
+  each player's ball (slot 41) and when the choice is made.
+- Record 12 (track 15) is in no template and has no pointer to it:
+  table 2's data does not play track 15.
+- The host vector's +1Ch is `EVENT_QUEUE`, not a display queue
+  (docs/bpc-module.md corrected); table 1's module queues three event
+  streams through it, table 2's one. These roots come from module code,
+  so tools/event_streams.py does not list them.
+
+Open from it: a run on table 2 that lights 927Ah and enters hole 4C50h
+(`-poke` as in "A mode's track in a run"), to see the chooser and hear
+the driver's commands 8 and 0Ah logged; table 1's and 4's
+opcode-14h objects (module 9A46h, 97E5h) not looked at; slot 41's
+lamps (the list at module 994Ah by the player's word +12h) not checked.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -730,10 +777,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      bonus, multiplier, extra ball: `-watch` on the player record);
      who reads a slot-16 counter's word +26h (handler 14h); where
      CODE:BAD4 is counted; table 4's random awards.
-   - Table 2's music: the template copy (module 9A55h, 9ADAh, 9CD9h),
-     its index word at 9D88h, and who uses record 12 (track 15);
-     MUSIC_REQUEST's switch on word +2 (CODE:2F91C) and what the mode
-     ends' track-0 records do.
+   - done 2026-09-29: table 2's music (see "The audio records and
+     table 2's music chooser"). Open from it: a run of the chooser, table
+     1's and 4's opcode-14h objects.
    - Stage 1 (item 2): ptrscan.py over the 32-bit immediates and `ptr`
      hints for those that are offsets, then names for the routines
      found in these sessions (METHOD.md); keep build.py IDENTICAL.

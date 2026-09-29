@@ -137,15 +137,74 @@ These are audio-control records rather than generic table state. Module event
 records repeatedly refer to them, and the end-of-ball bonus export in slot 32
 passes one to the host callback at offset `+4`. The main image consumes slot
 35 directly during music startup: its word at `+8` is passed into the routine
-at `0x9D83`, while its byte at `+0x0A` is stored at `0xCB97`. The exact meaning
-of all six fields remains provisional.
+at `0x9D83`, while its byte at `+0x0A` is stored at `0xCB97`.
+
+The fields, from `MUSIC_REQUEST` (`0x2F85C`) and the music update at
+`0x9DC7` (checked 2026-09-29 in the hints; not seen in a run):
+
+| Offset | Meaning |
+| ---: | --- |
+| `+0` | 4, the record type (`0x3007A` dispatches by it) |
+| `+2` | the sound driver's request: 0 none; positive (2 in the records) driver command `0x0A`, a temporary module playback over the music (a jingle, presumably); negative (`FFFE`, `FFFF`, handled alike) command 8, the module music from the order index; a negative one first keeps the flags and the asked-for track in state `+0x5A`, `+0x2A82` (read by no one found) |
+| `+4` | the order index in the music module (driver `BL`) |
+| `+6` | the module slot (driver `CL`): 0 `data\s00n\music.mod`, 1 `music2.mod` (both loaded at the table's start; table 4, which has no slot-30 string, uses 0 only) |
+| `+8` | a CD track, 0 none; with a track, `+4`/`+6` are the module music to return to when the track's time is up (order index 0: the track again). The table's first track (slot 35, `0x9BCA`) is played with the return cleared, so it repeats, as seen in the runs |
+| `+0A` | flags to `0xCB97`: bit 0 the track's length is counted (`MUSIC_TRACK`), which the return above needs; bit 2 the CD volume 0 before a jingle; bit 1 is added while `0x2BAD3` is set |
+
+So a mode's closing record with track 0 (table 1's record 3, table 2's
+record 2, ...) does not stop the music: it switches from the mode's CD
+track back to the table's module music at its order index.
 
 The array is mutable runtime state in table 2. Routines at `0x9A55`, `0x9ADA`,
-and the reset path at `0x9CD9` copy 18 words (three complete records) from one
-of three templates over records 0 through 2. The template is selected through
-table-local state, so a compatibility implementation must not treat the
-slot-34 array as immutable asset data. `bpc_inspect.py` validates the record
-run and exported indices and prints the five exported records.
+and the path at `0x9CD9` copy 18 words (three complete records) from one
+of three templates over records 0 through 2; see "Table 2's music chooser"
+below. A compatibility implementation must not treat the slot-34 array as
+immutable asset data. `bpc_inspect.py` validates the record run and exported
+indices and prints the five exported records.
+
+## Table 2's music chooser
+
+Found 2026-09-29 by disassembling table 2's module (a throwaway capstone
+script) and the main program's hints; not seen in a run.
+
+- Table 2 offers three tunes. Its templates are the records 3..5, 6..8
+  and 9..11 (pointers at module `0x9D9E`), their names text records at
+  `0x9DB6`, `0x9DCC`, `0x9DE6` (pointers at `0x9DAA`): "BY THE BEACH",
+  "MOONLIGHT PARKING", "ROLL ME ON". The three differ in the order index
+  (`+4`) of records 0..2: 0/1/1, `0x10`/`0x11`/`0x11`, `0x1D`/`0x1E`/1,
+  and the third's record 2 carries track 14 as well.
+- The word array at `0x9D88` (8 words, one per player by state `+0xD72`,
+  the current player) holds each player's choice, 0..2; bytes `+0x10`,
+  `+0x11` and words `+0x12`, `+0x14` after it are the chooser's timers.
+- Slot 40 (`0xB5`, called at a game's start, `0x2AA6D`) calls `0x9ADA`:
+  all eight choices 0, template 0 copied. Slot 41 (`0xBB`, called at the
+  next player's ball, `0x2BD61`) relights lamps of the list at `0x994A`
+  by the player's word `+0x12` (the bonus multiplier, presumably) and
+  calls `0x9A55`: the current player's template copied.
+- The chooser is the opcode-`0x14` object at `0x9A08` (start `0x9A10`,
+  update `0x9B68`, see "Deferred event dispatch"), run by the mode stream
+  `0x92BE`: counter `0x91BA` reset, record 16 (CD track 19), the texts
+  "CHOOSE LEFT RIGHT" and "SELECT WITH RETURN", a wait of 3 s, the
+  chooser, an eject from hole `0x4C50`, record 2 (the chosen tune's
+  closing record), a display, unblock `0x9054`. The stream is queued by
+  slot-15 record `0x927A` (handler `0x11`), which the hole's stream
+  `0x4C88` takes when it is lit.
+- Start: the player's choice 0, the timers set, state `+0xF1` (a copy of
+  the last scan code, written by the keyboard handler with `LAST_KEY`)
+  cleared. Update, every call: the left flipper (state `+0x2A7B`) lowers
+  the choice, the right one (`+0x2A7C`) raises it, within 0..2, at most
+  one step per `0x19` calls; the choice's name drawn through the host
+  vector's `+0x14`; when state `+0xF1` is `0x1C` (Enter) the choice's
+  template is copied over records 0..2, the event stream `0x4CBE` (a take
+  of `0x5128`) queued through `+0x1C`, and the update returns with ZF
+  clear, which ends it.
+- Record 12 (`FFFE`, order `0x1E`, track 15) is in no template and has
+  no pointer to it: track 15 is not played by table 2's data.
+
+What the main image does with records 0..2 afterwards: record 0 is
+header slot 34 itself, requested at `0x2B1DC` and `0x2BB3E` (at each
+ball's serve, presumably: in a run at the game's start and twice later); record 1 is requested by the streams of header slots 27 and
+28; record 2 closes most of table 2's modes.
 
 ## Initial shared slots
 
@@ -439,7 +498,7 @@ The vector is:
 | `+0x10` | `0x275E4` | Build a numeric/score presentation using the pointer and layout arguments in the shared scratch cells. |
 | `+0x14` | `0x27783` | Render the display-text record supplied through `[0]`; the record selects layout and contains or references its text. |
 | `+0x18` | `0x30368` | Convert the value in `[0x20]` to decimal ASCII, writing backwards from the end pointer in `[0]`. |
-| `+0x1C` | `0x2FE8E` | Enqueue the display record from `[0]` in the 64-entry ring rooted at runtime state `+0x2A1E`. |
+| `+0x1C` | `0x2FE8E` | `EVENT_QUEUE`: the event stream at `[0]` into the 64-entry ring at runtime state `+0x2A1E` (an event stream, not a display record: checked 2026-09-29, table 1's three and table 2's one argument parse as event streams). |
 | `+0x20` | `0xBAB6` | Program VGA DAC entries `0xFC..0xFF` from the second 12-byte color set. No BPC call site was found. |
 | `+0x24` | `0xBA9B` | Program the same VGA DAC entries from the first color set. No BPC call site was found. |
 | `+0x28` | `0xB1B9` | Load the `ES` video selector and `FS` graphics-data selector used by following direct blits. |

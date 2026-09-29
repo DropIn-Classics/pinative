@@ -17,8 +17,12 @@ code       CODE:35DDC CD_PLAY      ; EBX = the track: the play request at CODE:3
 code       CODE:35E4F CD_STOP      ; the request at CODE:35E94 (command 85h, stop audio)
 code       CODE:9D83 MUSIC_TRACK   ; stops the CD and plays track EBX; when bit 0 of CODE:CB97 is set, the length times [CCB8E] / 75 to CODE:9DBD, counted down at CODE:9CEA, which plays the track again at 0 (run, table 1: again after 159.3 s of a 182.9 s track, not explained)
 comment    CODE:9BCA the table's first music record ([CODE:F470], header slot 35 of the table module): its word +8 the CD track, its byte +0Ah to CODE:CB97 (runs: tracks 2, 0Eh, 1Ah, 27h for tables 1..4, the byte 1 for all four)
-code       CODE:2F85C MUSIC_REQUEST ; [CODE:0000] = an audio record of the table module (12 bytes, word +0 = 4): its word +8 to MUSIC_NEXT, its byte +0Ah to CODE:CB97 (state+59h); while CODE:2BAD3 is set only the byte, with bit 1 added
+code       CODE:2F85C MUSIC_REQUEST ; [CODE:0000] = an audio record of the table module (12 bytes, word +0 = 4): its word +8 to MUSIC_NEXT, its byte +0Ah to CODE:CB97 (state+59h); while CODE:2BAD3 is set only the byte, with bit 1 added; then its word +2 to state+2A84h (CODE:F5C2), +4 to +2A88h, +6 to +2A8Ah: the sound driver's request (CODE:9E83), +4 the order index, +6 the module slot; word +2 negative (FFFEh, FFFFh): first state+59h to +5Ah and MUSIC_NEXT to +2A82h (read by no one found)
 name       CODE:F5BE MUSIC_NEXT    ; state+2A80h: a track asked for; CODE:9E13 plays it through MUSIC_TRACK when not 0 and sets it to 0 (runs, table 1: only 0 written in a game of three balls)
+comment    CODE:9E13 a track in MUSIC_NEXT: the record's order index and module slot kept in CODE:9CE6/9CE8 (the module music to return to), the module request cleared, the track played, CD volume C0h; when its time is up (CODE:9CEA) the driver's command 8 with them, the CD volume 0 (9CE6 0: the track again)
+comment    CODE:9E83 the module request (state+2A84h): positive (2 in the records) the driver's command 0Ah (temporary module playback, docs/audio-driver.md: a jingle over the music, presumably) with BX the order index, CX the module slot, the CD volume 0 first when bit 2 of CODE:CB97 is set; negative: CD volume 0, the track's countdown CODE:9DBD stopped (-1), command 8 (the module from that order index); 0: nothing
+comment    CODE:9B76 module slots 0 and 1 loaded above from CODE:98D5 and 98E9 (data\s00n\music.mod and music2.mod, the digit at CODE:98DD/98F1; slot 1 not when CODE:A311 is 4); command 8, order index 1 of slot 0: the module music at a table's start
+comment    CODE:2B345 the module request without a record: order index 1, slot 0, word FFFEh (state+8Eh = 1)
 comment    CODE:2ABA4 the score (CODE:0020/0024) against the list of 10-byte entries at state+C0CFCh: the first time an entry is passed, header slot 37's record (tracks 8, 18, 34, 48 for tables 1..4); presumably the high-score music, not reached in runs
 comment    CODE:2AA90 header slot 36's record (track 0, byte +0Ah 2 in all four tables; run, table 1: once, at t=193.8, what happened then not looked at)
 comment    CODE:2B1DC header slot 34's record, record 0 (track 0; run, table 1: at t=130.0, the F1 start, 135.8 and 147.2)
@@ -171,7 +175,7 @@ code       CODE:14DE2              ; MOV EBX,14DE2h; CALL EBX at CODE:298CA
 rwords     CODE:13784 8            ; CODE:13725
 rwords     CODE:2C3DD 5            ; CODE:2C2DF, by a zone's type (word +8, see CODE:2C1DA); the smallest offset is 32h, what lies from CODE:2C3E7 on is not checked
 rwords     CODE:2C8BC 3            ; CODE:2C887
-rwords     CODE:2F91C 2            ; CODE:2F903; index the complement of the word at CODE:0020
+rwords     CODE:2F91C 2            ; CODE:2F903; index the complement of the word at CODE:0020 (the record's word +2: FFFFh 0, FFFEh 1); the two arms are the same code
 rwords     CODE:300B9 8            ; CODE:300A0; index the low three bits of a byte (CODE:30099)
 rwords     CODE:308C7 2            ; CODE:308AD
 code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, with the selector saved from CS at CODE:A36A
@@ -209,7 +213,8 @@ comment    CODE:2DB7B event opcode 10h (a slot-26 BCD counter): stopped (byte +0
 comment    CODE:2D6F9 event opcode 11h (a display stream): to CODE:2FEDB, the display queue
 comment    CODE:2D843 event opcode 12h (a slot-16 counter, two dwords): the dwords to +38h, +3Ch
 comment    CODE:2D5E0 event opcode 13h (an audio record): to MUSIC_REQUEST (run, table 1: record 1, track 0)
-comment    CODE:2DBAD event opcode 14h (an object of the module): to state+2A70h, the host vector to [CODE:0010], the object's dword +0 called (PUSH, RET); CODE:2CFC8 calls its +4 later (docs/bpc-module.md, "Deferred event dispatch")
+comment    CODE:2DBAD event opcode 14h (an object of the module): to state+2A70h, the host vector to [CODE:0010], the object's dword +0 called (PUSH, RET); CODE:2CFC8 calls its +4 later (docs/bpc-module.md, "Deferred event dispatch"; table 2's is the music chooser, "Table 2's music chooser" there)
+comment    CODE:2CFC8 when no event stream runs and the queue's next entry is empty (further tests of state+2A2Eh and +2A28h not followed): the module object's +4 (state+2A70h) called with the host vector in [CODE:0010]; its return with ZF clear ends it (state+2A70h and 2A74h cleared, state+2A7Fh FFh), with ZF set it is called again
 comment    CODE:2D85F event opcode 15h (a slot-16 counter, a word): the current player's words +6 and +16h = the word
 comment    CODE:2D7F9 event opcode 16h (a slot-16 counter): the current player's words +6 and +16h = the counter's word +2
 comment    CODE:2D8C2 event opcode 17h (a slot-15 record, a position): unless the record is lit for the current player and not blocked (bytes +1, +2), a jump to the position: past the take that follows, in table 1's stream 4F50h
@@ -255,7 +260,7 @@ comment    CODE:2C462 zone type 2: the ball's +50h..+64h from header slots 6..11
 comment    CODE:2C40F zone type 3: the ball's +50h..+64h from header slots 0..5 (state+28A6h), byte +8 0
 comment    CODE:2C719 zone type 4, a hole: unless the ball is held (bit 7 of its byte +1), when the hole's byte +1 is 0 it holds the ball (its number to byte +1), the points before +2Ch (CODE:2FBBF), the main program's record at CODE:100CE through CODE:3007A, the event stream at +14h to EVENT_QUEUE
 words      CODE:2DA0A 1C CODE      ; PUSH [EBX*4+2DA0A] at CODE:2DA02 after PUSH 2DA09h, then RET: by the word at [[CODE:0008]+2Ch] (0 not taken); 28 up to the first target (a RET at CODE:2DA7A)
-words      CODE:2CD10 0B CODE      ; its address put in [CODE:0010] (CODE:2BEDC, 2D04D, 2DBD3) before calls into the table module: its host vector (docs/bpc-module.md), the entries not checked one by one
+words      CODE:2CD10 0B CODE      ; its address put in [CODE:0010] (CODE:2BEDC, 2D04D, 2DBD3) before calls into the table module: its host vector (docs/bpc-module.md), +14h (CODE:27783) draws a text record, +1Ch is EVENT_QUEUE (checked 2026-09-29: table 1's and 2's arguments there are event streams), the others not checked one by one
 
 ; the keyboard (runs of 2026-09-29 with doskit's -rwatch on CODE:D984)
 code       CODE:A076 KBD_IRQ       ; installed at CODE:A03B with INT 93h AH=4 BL=1 (presumably IRQ1's vector; the old one saved with AH=3); run: entered on each key event, CS=000C
