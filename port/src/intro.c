@@ -3,7 +3,9 @@
  */
 #include "game.h"
 #include "image.h"
+#include "frame.h"
 #include "names.h"
+#include "nosound.h"
 #include "pmax.h"
 #include "pmem.h"
 #include "vga.h"
@@ -143,9 +145,76 @@ static void INTROPIX_PALS(void)
         PAL12_ROW(from, &di);
 }
 
+/* CODE:7223: the driver's command 6 */
+static void DRIVER_MIX(void)
+{
+    NsRegs r = { 0 };
+
+    r.eax = 6;
+    r.ds = pi_image.desc[ILLUSION_CODE].sel;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+}
+
+/* CODE:6E26: the end of the next vertical retrace */
+static void RETRACE_WAIT(void)
+{
+    frame_wait();
+}
+
+/* CODE:6F43 */
+static void FADE_FRAME(void)
+{
+    uint32_t from, to, i;
+    uint8_t dl, dh;
+
+    if ((int8_t)rb(N_FADE_LEVEL) <= 0) {
+        RETRACE_WAIT();
+        return;
+    }
+    wb(N_FADE_LEVEL, (uint8_t)(rb(N_FADE_LEVEL) - rb(N_FADE_STEP)));
+    dl = rb(N_FADE_LEVEL);
+    dh = (uint8_t)(0x40 - dl);
+    from = rd(N_FADE_FROM);
+    to = rd(N_FADE_TO);
+    for (i = 0; i < 0x300; i++) {
+        uint16_t ax = (uint16_t)(rb(from + i) * dl + rb(to + i) * dh);
+        wb(N_FADE_OUT + i, (uint8_t)(ax >> 6));
+    }
+    /* colour 3Fh black */
+    wb(N_FADE_OUT + 0xBD, 0);
+    ww(N_FADE_OUT + 0xBE, 0);
+    RETRACE_WAIT();
+    vga_outb(0x3C8, 0);
+    for (i = 0; i < 0x300; i++)
+        vga_outb(0x3C9, rb(N_FADE_OUT + i));
+}
+
+/* CODE:6E35 */
+static void INTRO_FRAME(void)
+{
+    DRIVER_MIX();
+    FADE_FRAME();
+}
+
+/* CODE:6E49: intropix.mgl's picture (after its 32 colours) to the four
+ * planes at 7D0h, 2580h bytes each */
+static void INTROPIX_SHOW(void)
+{
+    uint32_t base = pmax_base(rw(N_INTROPIX_SEL));
+    uint32_t si = base + lrd(base + 0x18) + 0x40, i;
+    int plane;
+
+    vga_outw(0x3C4, 0x0102);
+    for (plane = 0; plane < 4; plane++) {
+        vga_outb(0x3C5, (uint8_t)(1 << plane));
+        for (i = 0; i < 0x2580; i++)
+            vga_write((uint16_t)(0x7D0 + i), lrb(si++));
+    }
+}
+
 void CHOOSER_LOAD(void)
 {
-    uint32_t size;
+    uint32_t size, i;
 
     ww(N_HOST_DS, pi_image.desc[ILLUSION_CODE].sel);
     ww(N_VIDEO_SEL, pmax_video_sel());
@@ -188,5 +257,12 @@ void CHOOSER_LOAD(void)
     wb(N_FADE_STEP, 4);
     vga_outw(0x3D4, 0x500D);            /* the start address 2D50h */
     vga_outw(0x3D4, 0x2D0C);
-    pi_stop("INTRO_FRAME (CODE:7925, the driver's command 6)");
+    INTRO_FRAME();
+    for (i = 0; i < 0x10000; i++)
+        vga_write((uint16_t)i, 0x3F);
+    vga_outb(0x3C0, 0x31);              /* the overscan colour 3Fh */
+    vga_outb(0x3C0, 0x3F);
+    /* CODE:795A: through CODE:7438's checksummed jump ([CODE:9043]: 6E49h) */
+    INTROPIX_SHOW();
+    pi_stop("CODE:795F (the driver's command 1)");
 }

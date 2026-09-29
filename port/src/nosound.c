@@ -311,7 +311,7 @@ static int MOD_LOAD(uint16_t es, uint32_t edx)
         }
     }
 
-    wd(D_ROW_OFFSET, 0);
+    wd(D_ORDER_POS, 0);
     ww(D_PAT_OFFSET, (uint16_t)(rb(D_ORDERS + slot) << 10));
     HCB_UNLOAD();
     wb(D_SPEED, 6);
@@ -342,6 +342,19 @@ static int CMD_LOAD_MODULE(NsRegs *r)
     return 0;
 }
 
+/* CODE:0D9F */
+static int CMD_MIX(NsRegs *r)
+{
+    (void)r;                    /* SAMPLE_POS_GET's ECX not used */
+    MIX_UPDATE();
+    if (rb(D_SONG_END_CB) == 0xFF) {
+        wb(D_SONG_END_CB, 0);
+        if (rd(D_CMD11_PTR) != 0xFFFFFFFFu)
+            pi_stop("NOSOUND: command 11h's pointer called (CMD_MIX)");
+    }
+    return 0;
+}
+
 int ns_call(uint16_t cs, NsRegs *r)
 {
     uint32_t save = pm_ds;
@@ -358,6 +371,9 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 4:
         cf = CMD_LOAD_MODULE(r);
+        break;
+    case 6:
+        cf = CMD_MIX(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

@@ -106,6 +106,9 @@ name       CODE:6980 FADE_FROM     ; a 300h-byte palette's offset (FADE_FRAME)
 name       CODE:6984 FADE_TO       ; a 300h-byte palette's offset (FADE_FRAME)
 name       CODE:6988 FADE_LEVEL    ; a byte, 40h at a fade's start, down by FADE_STEP each FADE_FRAME
 name       CODE:6989 FADE_STEP     ; a byte
+name       CODE:6680 FADE_OUT      ; 300h bytes: FADE_FRAME's palette for the DAC, colour 3Fh made black in it
+code       CODE:6E49 INTROPIX_SHOW ; reached from CODE:795A through CODE:7438's checksummed jump ([CODE:9043] less the byte sum of CODE:7341..73D7: 6E49h); intropix.mgl's picture after its 32 colours (from its dword +18h + 40h) to the four planes at 7D0h, 2580h bytes each
+code       CODE:7223 DRIVER_MIX    ; the driver's command 6
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0

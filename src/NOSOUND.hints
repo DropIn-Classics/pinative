@@ -20,11 +20,11 @@ name       CODE:2D56 HOST_CFG      ; EBX and ES at command 0: the configuration 
 name       CODE:2D5C HOST_CB_SEL   ; FS at command 0: the host callbacks' table; its offset (EDI) at HOST_CB_OFF
 name       CODE:2D5E HOST_CB_OFF
 name       CODE:2D62 INITED        ; FFh after command 0 (a second command 0 fails); cleared by command 0Bh
-name       CODE:2D63 PLAYING       ; FFh after command 1 (presumably the output started; not followed)
+name       CODE:2D63 PLAYING       ; FFh after command 1 (the timer started, CODE:059A); MIX_UPDATE then mixes as far as SAMPLE_POS, else one tick a call
 name       CODE:0D0D CMD11_PTR     ; a far pointer from command 11h (ES:EDX), FFFFFFFFh after command 0; the selector at CODE:0D11
 code       CODE:137A CHAN_BUF_ALLOC ; 800h bytes by host callback 0, cleared, their selector to CHAN_BUF_SEL and to +0Ah of the four CHANNELS records
 name       CODE:327C CHAN_BUF_SEL  ; run 2026-09-29: 2Ch
-name       CODE:2C3A CHANNELS      ; four records of 3Bh bytes (what they hold not followed)
+name       CODE:2C3A CHANNELS      ; C2C33 records of 3Bh bytes: +0 the tick routine, +4 the position's fraction (word), +6 the position, +0Ah the sample's selector, +0Ch the volume * 100h, +0Eh loop start, +10h loop end (1: none), +12h the end, +16h/+18h the step (integer, fraction) from the period, +1Ah the note * 2 + finetune (index into PERIOD_TAB), +1Ch..+22h arpeggio's steps, +24h volume slide, +26h the period, +28h the portamento's speed, +2Ah its target, +2Ch sample offset, +2Eh finetune * 48h, +30h..+32h vibrato position, speed, depth, +33h volume, +34h FFh after a vibrato row, +35h/+36h counters, +37h 1: a jingle's channel, +38h/+3Ah the pattern loop's row and count
 code       CODE:06FD DEV_INIT      ; the device's part of command 0: for NOSOUND only BUFFERS_ALLOC
 code       CODE:11C6 BUFFERS_ALLOC ; FRAME_BYTES = MIX_RATE / 50 and the sizes from it; DMA_ALLOC, VOLTAB_MAKE
 name       CODE:326C MIX_RATE      ; AC44h (44100) in the file, not changed by command 0
@@ -49,12 +49,12 @@ name       CODE:21AC SAMPLE_HDRS_SIZE ; 3A2h (31 samples of 1Eh) for "M.K." or "
 name       CODE:21AE SIG_SIZE      ; 4 with a signature, else 0 (also: loop start and length in words, doubled)
 name       CODE:21B0 NSAMPLES      ; 1Fh or 0Fh
 name       CODE:21B2 NPATTERNS     ; PATTERNS_COUNT's: the highest pattern in the order list + 1
-name       CODE:21B5 PAT_OFFSET    ; MOD_LOAD: the first order's pattern * 400h (the pattern playing, presumably; not followed)
-name       CODE:21B7 ROW_OFFSET    ; MOD_LOAD: 0 (presumably the row within the pattern; not followed)
+name       CODE:21B5 PAT_OFFSET    ; the next row's offset in PATTERNS_SEL's block: pattern * 400h + row * 10h (ROW_PLAY); MOD_LOAD: the first order's pattern * 400h
+name       CODE:21B7 ORDER_POS     ; the position in ORDERS (a dword; ROW_PLAY moves it on, back to RESTART_POS at SONG_LENGTH); MOD_LOAD: 0
 name       CODE:21C1 SAMPLE_HDRS   ; the file's sample headers (1Eh bytes each: name, length, finetune, volume, loop start, loop length; words big-endian)
 name       CODE:2581 SONG_TITLE    ; the file's first 14h bytes
 name       CODE:2C2D RESTART_POS   ; the file's restart byte AND 7Fh, 0 when not below the song length
-name       CODE:2C2F SPEED         ; 6 after MOD_LOAD (the ticks per row, presumably; not followed)
+name       CODE:2C2F SPEED         ; the ticks per row: 6 after MOD_LOAD, effect 0Fh sets it (MIX_UPDATE)
 name       CODE:2D64 C2D64         ; cleared by command 4
 name       CODE:2D67 SLOT_OFF      ; the slot command 4 (and others) works on, times 275h
 name       CODE:2D73 SLOTS         ; module slots of 275h bytes: 1Fh sample records of 10h (+0 selector, +2 loop start, +4 loop end, +6 length, +8 volume, +0Ah length, +0Ch loop length, +0Eh finetune * 48h), then SLOT_LOADED, ORDERS, SONG_LENGTH, PATTERNS_SEL
@@ -65,3 +65,81 @@ name       CODE:2FE6 PATTERNS_SEL  ; + SLOT_OFF: the patterns' block, NPATTERNS 
 code       CODE:2595 NOTE_CONVERT  ; NOTE_IN to NOTE_OUT: the period (12 bits) looked up in PERIODS; one not there gives a note all 0
 code       CODE:2614 PATTERNS_COUNT ; NPATTERNS from the slot's ORDERS (all 80h bytes, not only the song length's)
 name       CODE:2ABD PERIODS       ; the periods NOTE_CONVERT looks up, words, 0 at the end
+
+; the module player (command 6), read 2026-09-29
+words      CODE:2B27 10 CODE       ; the effects at a row, by effect number (CODE:15E5, a channel's byte +37h not 1)
+name       CODE:2B27 ROW_FX
+words      CODE:2BA7 10 CODE       ; the same with byte +37h 1: only effects 0Bh, 0Dh, 0Eh, 0Fh
+name       CODE:2BA7 ROW_FX_SFX
+code       CODE:0658 TIMER_IRQ     ; IRQ 0's handler, set by CODE:059A through host callback 1Eh (EDX 658h): SAMPLE_POS counted, wrapped at MIX_SIZE; every [06ACh]-th an old handler's turn at CODE:08A4 (presumably; not followed)
+name       CODE:06A8 SAMPLE_POS    ; TIMER_IRQ's count, 0 at command 1 (CODE:059A); CODE:0651 reads it
+words      CODE:2B67 10 CODE       ; effect 0Eh (CODE:1965) by the parameter's high nibble
+name       CODE:2B67 ROW_FX_E
+words      CODE:2BE7 10 CODE       ; the same with byte +37h 1: only 6 and 0Eh
+name       CODE:2BE7 ROW_FX_E_SFX
+; a channel's dword +0 (CHANNELS): the routine CODE:14FC calls each tick; the effects set it
+code       CODE:16DA
+code       CODE:178E
+code       CODE:1824
+code       CODE:188A
+code       CODE:18CF
+code       CODE:19E9
+code       CODE:1A26
+code       CODE:1A4B
+code       CODE:1B9E
+ptr        CODE:1627 CODE
+ptr        CODE:16D3 CODE
+ptr        CODE:170C CODE
+ptr        CODE:1721 CODE
+ptr        CODE:1787 CODE
+ptr        CODE:181D CODE
+ptr        CODE:1882 CODE
+ptr        CODE:18AF CODE
+ptr        CODE:1987 CODE
+ptr        CODE:199B CODE
+ptr        CODE:19E2 CODE
+ptr        CODE:1A1F CODE
+ptr        CODE:1A37 CODE
+ptr        CODE:1A44 CODE
+ptr        CODE:1A50 CODE
+; the mixer (CODE:00E4) calls per channel the routine of MIX_ROUTINES
+words      CODE:00C0 4 CODE stride=8 ; dword +0 of four 8-byte entries, one per channel; dword +4 an offset into the buffer (0 for all four)
+name       CODE:00C0 MIX_ROUTINES
+code       CODE:0249 MIX_SET       ; channel 0: ECX samples from FS:ESI (fraction in EBP, step EDX:BP) through the volume row EAX of GS to words ES:EDI, stored
+code       CODE:03C3 MIX_ADD       ; channels 1-3: as MIX_SET, added to the words there
+words      CODE:0268 10 CODE       ; MIX_SET's entries into its 16 unrolled steps (for the ECX AND 0Fh left over)
+words      CODE:03E2 10 CODE       ; MIX_ADD's
+; the player (command 6), names 2026-09-29
+code       CODE:0D9F CMD_MIX       ; command 6: MIX_UPDATE; then with C2D66 FFh the far pointer of command 11h called
+code       CODE:0651 SAMPLE_POS_GET ; ECX = SAMPLE_POS
+code       CODE:1A7B MIX_ROOM      ; CX = SAMPLE_POS less MIX_POS, round MIX_SIZE: what the timer has played past the mixing
+code       CODE:1A98 MIX_UPDATE    ; mixes FRAME_BYTES (PLAYING 0) or MIX_ROOM's, at most FRAME_BYTES, in pieces that end at a tick's (FRAME_BYTES) line; at each line TICKS counted and the module's tick played (TICK_FX, or ROW_PLAY every SPEED ticks)
+code       CODE:00E4 MIX           ; MIX_LEN samples of each channel at MIX_POS through MIX_ROUTINES; a channel past its end loops or stops, a jingle's channel gets the music's state back from C2D26..
+name       CODE:326A MIX_POS       ; where the mixing is in the buffer, in samples (words), below MIX_SIZE
+name       CODE:3276 MIX_LEN       ; MIX_UPDATE's piece
+name       CODE:3278 MIX_LEFT      ; MIX_UPDATE's samples still to mix
+name       CODE:3264 MASTER_VOL    ; command 0Ch's BX, at most 100h: the channels' volumes times it over 10000h (not the jingle's channels)
+name       CODE:2C33 NCHANNELS     ; a word
+name       CODE:2C36 TICKS         ; the ticks played since command 1 (L0C39 clears it); command 0Dh returns it less the ticks still in the buffer
+name       CODE:2C31 TICK_COUNT    ; down to the next row
+name       CODE:2C32 STOPPED       ; 1 by effect 0Fh with 0: no rows, no ticks' effects
+name       CODE:2C30 SAVED_SPEED   ; SONG_RESTORE's SPEED
+name       CODE:2C27 PAT_DELAY     ; effect 0EEh's rows to wait
+name       CODE:2C28 BREAK_ROW     ; 0, or the row to start the next order at + 1 (effects 0Bh, 0Dh)
+name       CODE:2C29 CUR_PATTERN   ; ORDERS' byte at ORDER_POS
+name       CODE:2C35 ROW_SAMPLE    ; the sample of the note being played (effect 9)
+name       CODE:21B3 LOOP_TO       ; FFFFh, or PAT_OFFSET to go back to (effect 0E6h)
+name       CODE:2D65 SONG_END      ; FFh by effect 0Bh jumping to the order it is at with C2D64 FFh: SONG_RESTORE at the next row
+name       CODE:2D66 SONG_END_CB   ; FFh with SONG_END: command 6 then calls command 11h's pointer
+name       CODE:2D6B SAVED_SLOT    ; SONG_RESTORE's SLOT_OFF, PAT_OFFSET (C21BB) and ORDER_POS (C21BD)
+name       CODE:2B07 SINE_TAB      ; 32 bytes, vibrato's
+name       CODE:263D PERIOD_TAB    ; words: the periods by note * 2 + finetune * 48h
+code       CODE:1019 SONG_RESTORE  ; SONG_END's work: SAVED_SLOT's slot and positions, SAVED_SPEED, CHANNELS_RESET
+code       CODE:1057 CHANNELS_RESET ; the channels not a jingle's (all when not PLAYING) silenced; BREAK_ROW 0
+code       CODE:13DA ROW_PLAY      ; the row at PAT_OFFSET (NOTE_PLAY per channel), then PAT_OFFSET on: LOOP_TO, or the next row, or the next order (BREAK_ROW)
+code       CODE:14DC NOTE_PLAY     ; CX, DX a channel's note (CL note, CH sample, DL effect, DH parameter): NOTE_SAMPLE and NOTE_PERIOD but for effects 3, 5 and a jingle's channel, then NOTE_FX
+code       CODE:14FC TICK_FX       ; each channel's routine at +0
+code       CODE:1512 NOTE_PERIOD   ; the note's period and step, the position to the sample offset
+code       CODE:156A NOTE_SAMPLE   ; the sample's selector, volume, finetune, loop
+code       CODE:15E5 NOTE_FX       ; the step again after a vibrato row; the tick routine RET (CODE:1B9E); the effect through ROW_FX or ROW_FX_SFX
+name       CODE:2D6F NEXT_SLOT     ; the slot times 275h commands 8 and 0Ah (CODE:0F17, 0FBE) start at; effects 0Bh and 0Dh set it to SLOT_OFF

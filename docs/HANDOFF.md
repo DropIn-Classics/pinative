@@ -2282,6 +2282,39 @@ video memory); `-vgastate` there shows the registers INTRO_MODE writes
 (misc E3h, sequencer 4 06h, CR 11h 2Ch, start 2D50h), the port's
 registers not compared.
 
+### The driver's player
+
+NOSOUND.SDR's command 6 (CMD_MIX) is the module player; its effect
+handlers were reached only through tables and pointers the code stores,
+so they were DB in the source: the hints now name the tables (ROW_FX,
+ROW_FX_SFX, ROW_FX_E, ROW_FX_E_SFX: 16 dwords each; a `words` count is
+hex), the tick routines a channel's dword +0 holds (`ptr` at each
+store), the mixer's MIX_ROUTINES (CODE:00C0, stride 8) and its two
+unrolled loops with their entry tables, and TIMER_IRQ (CODE:0658, set
+through host callback 1Eh). The whole driver is code now but for its
+data (build.py IDENTICAL, 2210 instructions).
+
+What the code says (names in src/NOSOUND.hints): MIX_UPDATE mixes into
+the DMA buffer at MIX_POS, FRAME_BYTES (MIX_RATE / 50) a call before
+command 1 (PLAYING 0), after it as far as TIMER_IRQ's SAMPLE_POS (IRQ 0
+at MIX_RATE: PIT divisor 1234DCh / MIX_RATE, 27), in pieces ending at a
+tick's line; at each line TICKS is counted and the module's tick played
+(TICK_FX, or ROW_PLAY every SPEED ticks). ORDER_POS (named ROW_OFFSET
+before) is the position in ORDERS, PAT_OFFSET the next row's offset
+(pattern * 400h + row * 10h). Command 0Dh returns TICKS less the ticks
+still in the buffer: the intro's script (INTRO_TICK) runs on the
+module's 50 Hz ticks. A channel's +37h 1 marks a jingle's channel, whose
+end gives the channel the music's state back (C2D26..).
+
+The run stopped at the intro's command 1 (CODE:795F, linear 10888Fh,
+t=13.983528; `-mem`, `-vram` build/pm/ns_795f.*), after one INTRO_FRAME
+(one command 6: the module's first row and one tick mixed), the screen
+filled with 3Fh, the overscan 3Fh and INTROPIX_SHOW: the port
+(port/src/nsplay.c) equal there: CODE, TAIL, video memory, the driver's
+block, the DMA buffer at 13120h (1333 bytes not zero) and the 43 used
+heap blocks. Only that row's effects ran; the other handlers are not
+checked against a run yet.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2459,8 +2492,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      files (port/src/intro.c; see "The chooser's files in a run"). Done
      2026-09-29: INTRO_PALS_MAKE and the script's variables, up to
      CODE:78D9. Done 2026-09-29: INTRO_MODE and INTROPIX_PALS, up to
-     INTRO_FRAME at CODE:7925. Next: the driver's commands 6, 1 and 0Dh
-     (NOSOUND's module player), which the intro's frames call.
+     INTRO_FRAME at CODE:7925. Done 2026-09-29: the driver's command 6
+     (port/src/nsplay.c; see "The driver's player"), INTRO_FRAME and
+     INTROPIX_SHOW, up to CODE:795F. Next: command 1 (the timer: host
+     callbacks 18h and 1Eh, the PIT; SAMPLE_POS needs a clock in the
+     port, the retraces' presumably) and 0Dh, then the intro's loop
+     (CODE:7996).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

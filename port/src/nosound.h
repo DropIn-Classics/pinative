@@ -16,4 +16,8 @@ typedef struct {
  * r->eax; 1 for CF (then r->eax is the driver's error) */
 int ns_call(uint16_t cs, NsRegs *r);
 
+/* nsplay.c, with DS the driver's: CODE:1A98 and CODE:1057 */
+void MIX_UPDATE(void);
+void CHANNELS_RESET(void);
+
 #endif
