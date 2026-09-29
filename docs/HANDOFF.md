@@ -40,7 +40,9 @@ timers"); table 4's random awards (see "Table 4's random awards"); the tilt (see
 SVGA modes in the runner (see "The SVGA modes in a run"); the table angle
 seen in the ball's speed and the ball save (see "The table angle and the
 ball save in a run"); the multiball option and a multiball in a run (see
-"The multiball in a run"); the work on Linux (see "Start here").
+"The multiball in a run"); the work on Linux (see "Start here"); the
+selector in CODE:3B4B, the chooser's Info page and a hidden greetings
+page (see "The Info page and the greetings page").
 
 ## The earlier analysis
 
@@ -244,6 +246,9 @@ read:
   with them stay numbers; CODE:3B4B is freed with INT 92h AH=5, where it
   is set is not found: 430Ah and 46AFh (the text "The GREETINGS Page",
   in CODE) stored to CODE:3B58 and read with it are left numbers.
+  (Found later, see "The Info page and the greetings page": set by two
+  POPs, INFODATA.MGL's selector; 46AFh is read with CODE's DS and is
+  now a label.)
 - Numbers kept: counts, sizes, strides (C4E0h, 1500h, 5C0h, 580h), the
   lengths of the checksummed stretches (the kit has no label
   differences), a CD time (32200h at CODE:35DE8).
@@ -1678,6 +1683,44 @@ BALLS_ON_TABLE, BALLS_TO_SERVE.
   (`build/multiball/g_*.png`) show one ball at a time as the view
   follows a ball, so the counts come from the dump, not the picture.
 
+### The Info page and the greetings page
+
+Found 2026-09-29, on Linux, from the code and runs (the GOG
+`ILLUSION.CFG` by `-put`; `build/greet/`). Hints: INFODATA_SEL,
+TINYFONT_SEL, TEXT_POS, KEY_HISTORY, INFO_PAGE, GREETINGS_PAGE,
+GREETINGS_TEXT, the comments at CODE:4532 and 505C.
+
+- The selector in CODE:3B4B is written by `POP WORD PTR [3B4B]` (CODE:4FD6,
+  76EE) after INT 94h AH=1 loads `chooser\infodata.mgl`; CODE:3B4D the
+  same for `tinyfont.fnt`. The earlier search looked for MOVs only.
+- TEXT_POS (CODE:3B58) is written by two routines that differ in DS.
+  INFO_PAGE (CODE:4504) stores 430Ah + a dword from INFODATA.MGL (+4 +
+  4 x the page, the file's first dword the count 4), read with DS =
+  INFODATA_SEL (CODE:41A8, 3FF3): an offset in that file, left a
+  number. GREETINGS_PAGE (CODE:4871) stores 46AFh, read with DS
+  unchanged (CODE:4197, 405E): the text in CODE before it, now
+  GREETINGS_TEXT (`dptr` at CODE:4886; build.py IDENTICAL).
+- GREETINGS_PAGE is reached only when the dword KEY_HISTORY
+  (CODE:1538), the last four scan codes of the chooser's keyboard
+  handler CODE:340A, is 0F3A2A1Dh: Tab, Caps Lock, Left Shift, Left
+  Ctrl, in that order. The handler is installed (CODE:33B8) as Space
+  brings up the table menu (t=100.56); CODE:505C, the menu's start, is
+  entered at the next key and checks it (CODE:506C), and the menu loop
+  checks it too (CODE:3943, sets CODE:1904; not followed).
+- Runs: `-key 100 space`, then `106 tab`, `106.5 3a`, `107 lshift`,
+  `107.5 lctrl`: KEY_HISTORY 0F3A2A1Dh at 108.0, CODE:505C and
+  GREETINGS_PAGE at 108.53, the page on the screen from about 109 (the
+  greetings of FrontLine Design, in the small font). `100 space`, `106
+  enter`, `110 right`, `111 enter`: the menu loop at 106.76, INFO_PAGE
+  at 111.56, the Law 'N Justice page on screen with its picture and
+  high scores. A key before the menu loop starts is taken for the
+  menu's start (Info is right of the list, not below it).
+- Not done: the other Info pages (CODE:18F9, how it changes not
+  looked at), what CODE:1904 does in the menu loop, how the greetings
+  page is left.
+- A note for byte searches: CODE:x is file offset x + 24h in
+  ILLUSION.386 (checked on CODE:4532, 4886), not + 28h.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1795,7 +1838,8 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      byte +0Ah": read by no one).
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
-     selector in CODE:3B4B; names for the routines found in these
+     selector in CODE:3B4B (done 2026-09-29, see "The Info page and the
+     greetings page"); names for the routines found in these
      sessions (METHOD.md), keeping build.py IDENTICAL (22 given
      2026-09-29, see "The gaps", the end). Done 2026-09-29:
      the self-patched call at CODE:298C5 (see "The self-patched call in

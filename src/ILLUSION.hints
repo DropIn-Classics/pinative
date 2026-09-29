@@ -435,19 +435,29 @@ comment    CODE:2A7FD in the attract mode: Esc (KEY_DOWN+1) to CODE:2A8AB; F1..F
 ; used next and by eye. Numbers left as they are: counts in ECX, sizes in
 ; EBX for INT 92h, strides (C4E0h, 1500h, 5C0h), offsets in other selectors
 ; (video memory after OUT 3C4h; ES/DS/FS from INT 93h AH=5, CODE:130F, A117,
-; 634A/634C, 3B4B) and a CD time (CODE:35DE8). ES from CODE:A10B, 131D, 635E
+; 634A/634C, 3B4B: INFODATA_SEL, see CODE:4532) and a CD time (CODE:35DE8). ES from CODE:A10B, 131D, 635E
 ; is taken for CODE (copies of DS, presumably the start-up alias). Lengths of
 ; checksummed stretches (ECX before CODE:4CE8/4CF2/7438/7441) stay numbers:
 ; the kit has no label differences.
 comment    CODE:523B the dword at 290FBh+7CBh = CODE:298C6 is the immediate of MOV EBX,14DE2h; CALL EBX at CODE:298C5: overwritten here with [[CODE:5DCB]+13h]+[CODE:55E3] (the variable the dead copy-protection pieces write) when the byte at CODE:037C is 1. CODE:037C is the 0 before the text CODE:0372 prints and no instruction in the image names it but the CMP here; runs of 2026-09-29 (the chooser left for table 1 and by Esc): CODE:523B not reached, CODE:298C6 written once, by the loader at t=2.28, and CODE:298C5 called 14DE2h once a frame. Presumably the protection's switch, dead in this release as its pieces are; the base 290FBh left a number
+; the chooser's Info page and the hidden greetings page (2026-09-29, from
+; the code and runs on Linux; hints below CODE:4532)
+name       CODE:3B4B INFODATA_SEL  ; the selector INT 94h AH=1 gives for chooser\infodata.mgl (stored by the POPs at CODE:4FD6 and 76EE), freed with INT 92h AH=5; DS for INFO_PAGE's text
+name       CODE:3B4D TINYFONT_SEL  ; the same for chooser\tinyfont.fnt (CODE:4F85, 76AD); FS for the text routines, the character widths at FS:[4 x character + 2] (CODE:41D4)
+name       CODE:3B58 TEXT_POS      ; the next character of the page being written (430Ah + an offset in INFODATA.MGL, or 46AFh in CODE)
+name       CODE:1538 KEY_HISTORY   ; the last four scan codes pressed, the newest in the low byte (CODE:340A); 0F3A2A1Dh, Tab, Caps Lock, Left Shift, Left Ctrl in that order, opens GREETINGS_PAGE as the menu starts (CODE:506C) and sets CODE:1904 in the menu loop (CODE:3943; what that does not looked at). Run 2026-09-29: the four keys at t=106..107.5 after Space at 100 (the menu on screen), the dword 0F3A2A1Dh at 108.0, CODE:505C and GREETINGS_PAGE at 108.53
+code       CODE:4504 INFO_PAGE     ; the menu's Info entry (called at CODE:509B when CODE:18FB is set): the page of CODE:18F9 from INFODATA.MGL (see CODE:4532), with a picture and the table's high scores (run 2026-09-29: the first page, Law 'N Justice)
+name       CODE:46AF GREETINGS_TEXT ; the greetings page's text (FrontLine Design's greetings and a note on the program's size), ended by 0; written by GREETINGS_PAGE
+code       CODE:4871 GREETINGS_PAGE ; the text before it (CODE:46AF) on the chooser's screen in the small font; reached only by KEY_HISTORY (run 2026-09-29, the page on screen from t=108.5)
+comment    CODE:505C the table menu's start (runs 2026-09-29: entered at the key after Space's menu comes up, t=106.76 with Enter at 106): GREETINGS_PAGE when KEY_HISTORY asks for it, then the menu loop CODE:3969 and INFO_PAGE while CODE:18FB is set
 comment    CODE:4FF9 the chooser (reached at t=97.6 in the runs); it ends at CODE:51D6 when a table is chosen (t=106.56, the CD stop there) or on Esc (t=101.11, the program then exits with 32): the sound driver's commands 5 and 0Bh, the selector in CODE:8138 freed, CD_STOP, a checksummed call
 comment    CODE:50A9 a keyboard table by INT 93h AH=15h (a country code in AH:AL, presumably the keyboard's; not checked): BE and FR the AZERTY one at CODE:6023, the eight codes at CODE:50EE (HU, YU, SF, SG, CZ, SL, PL, GR) the QWERTZ one at CODE:5F22, else the QWERTY one at CODE:5E21 (the runs); copied upper-case to CODE:2B0A2, FFh for what is not a character
 comment    CODE:29889 the frame step (runs: CODE:298C5 about 70 times a second on table 1): the four routines of the table at [CODE:2982E], a wait for CODE:BAD1 = FFh (set by the driver's command-0Fh routine CODE:B9B9), then 14DE2h, CODE:28EA6, 14C46, 156C4
 comment    CODE:14DE2 each ball on the table (state+0D32h of them, the list at state+1046h) to CODE:0010, then CODE:14DD6 (CODE:26977, 269B0)
-comment    CODE:4532 [CODE:3B58] is read with DS from CODE:3B4B (a block freed with INT 92h AH=5, where it is set not found): 430Ah here and 46AFh at CODE:4886 (the text "The GREETINGS Page" in CODE) left numbers until that selector is known
+comment    CODE:4532 INFO_PAGE's text: 430Ah + the dword at +4 + 4 x [CODE:18F9] of INFODATA.MGL (the file starts with a count, 4, and one offset a page from +4, the first page's text at 430Ah + 14h), read with DS = INFODATA_SEL by CODE:41A8, 3FF3; so 430Ah is an offset in that file and stays a number. Run 2026-09-29 (Space at 100, Enter at 106, Right and Enter at 110, 111): INFO_PAGE at t=111.56, the Law 'N Justice page on screen. GREETINGS_PAGE (CODE:4886) stores 46AFh instead, read with DS unchanged by CODE:4197, 405E: the text in CODE
 comment    CODE:33D0 a second handler through INT 93h AH=4 BL=1 (as KBD_IRQ at CODE:A05C): CODE:340A, reached by the ptr below
 ds         CODE:3416-3450 CODE     ; DS from CODE:131D, a copy of DS (CODE:4CFB), presumably CODE
-comment    CODE:340A a keyboard handler: the scan code (port 60h) into a ring of 16 bytes at CODE:1906 (index CODE:1903), shifted into the dword at CODE:1538; releases (80h and up) skipped; when it is installed not looked at
+comment    CODE:340A a keyboard handler: the scan code (port 60h) into a ring of 16 bytes at CODE:1906 (index CODE:1903), shifted into KEY_HISTORY (CODE:1538); releases (80h and up) skipped; installed (CODE:33B8) with the chooser's table menu (run 2026-09-29: t=100.56, at Space)
 ds         CODE:4C8C-4C92 CODE     ; DS from CODE:131D, as above
 comment    CODE:4C85 the routine handed to the sound driver with command 0Eh at CODE:4CB6: counts the dword at CODE:1548 (presumably a timer tick, not checked)
 comment    CODE:4C93 the routine handed with command 0Fh (ECX 1999h) at CODE:4CD1: the CRT start address (3D4h, 0Ch/0Dh) from CODE:1323 while CODE:191A is 1
@@ -540,6 +550,7 @@ dptr       CODE:44A2 CODE	; MOV 5D7Bh: argument of the call to CODE:4476
 dptr       CODE:4552 CODE	; MOV 4A1Bh: stored as a pointer
 dptr       CODE:45E0 CODE	; MOV 5767h: argument of the call to CODE:3CFD
 dptr       CODE:462B CODE	; MOV 5767h: argument of the call to CODE:3CFD
+dptr       CODE:4886 CODE	; MOV 46AFh: the text of the GREETINGS page, read with DS unchanged (CODE:4197, 405E; run 2026-09-29: on screen)
 dptr       CODE:4895 CODE	; MOV 5A67h: addresses memory
 dptr       CODE:491B CODE	; MOV 5767h: argument of the call to CODE:3CFD
 dptr       CODE:496D CODE	; MOV 5767h: argument of the call to CODE:3CFD
