@@ -24,6 +24,11 @@ uint16_t pmax_video_sel(void)
     return 0x48;
 }
 
+uint16_t pmax_code_sel(void)
+{
+    return 0x14;
+}
+
 /* ---- the configuration file */
 
 #define CFG_SIZE 0x220          /* a 20h-byte header, 200h bytes of options */
@@ -64,21 +69,51 @@ int pmax_cfg_header(uint32_t off)
     return 0;
 }
 
-/* ---- memory blocks
+/* ---- memory blocks and selectors
  *
- * pMAX's heap lies behind the image; in the run the first file loaded
- * (SETSOUND.DAT) had selector 4 and lay at the image's end + 10h, after a
- * 10h-byte header (docs/HANDOFF.md, "SETUP_ARGS in a run").  The port puts
- * its blocks there too, first fit, each after 10h bytes and on 16 bytes;
- * the selectors 4, 0Ch, 14h ... by slot.  Only the first block is seen;
- * the rest is a guess until a run shows more.  The headers themselves are
- * pMAX's and not written. */
+ * pMAX's heap lies behind the image; in the runs the first file loaded
+ * (SETSOUND.DAT, later the sound driver) had selector 4 and lay at the
+ * image's end + 10h, after a 10h-byte header (docs/HANDOFF.md, "SETUP_ARGS
+ * in a run", "The CD check and the driver's start in a run").  The port
+ * puts its blocks there too, first fit from the bottom, each after 10h
+ * bytes and on 16 bytes.  Allocations from the top (policy 2) and DOS
+ * memory are not done yet.  The headers themselves are pMAX's and not
+ * written.
+ *
+ * Selectors: the lowest free of 04h, 0Ch, 14h ... (steps of 8), with 14h
+ * (CS), 1Ch (DS), 24h and the video memory's 48h taken from the start; as
+ * the runs had 4, 0Ch, 34h, 44h, not checked beyond. */
 
 #define MAX_BLOCKS 64
+#define MAX_SELS 256
 
-static struct { uint32_t base, size; int used; } blocks[MAX_BLOCKS];
+static struct { uint32_t base, size; uint16_t sel; int used; } blocks[MAX_BLOCKS];
+static struct { uint32_t base; int used; } sels[MAX_SELS];
 
-static uint16_t slot_sel(int k) { return (uint16_t)(4 + 8 * k); }
+static void sels_init(void)
+{
+    static int done;
+    if (!done) {
+        sels[0x14 / 8].used = sels[0x1C / 8].used = sels[0x24 / 8].used = 1;
+        sels[0x48 / 8].used = 1;
+        done = 1;
+    }
+}
+
+/* the lowest free selector, given the linear base `base`; 0 if none */
+static uint16_t sel_new(uint32_t base)
+{
+    int k;
+
+    sels_init();
+    for (k = 0; k < MAX_SELS; k++)
+        if (!sels[k].used) {
+            sels[k].used = 1;
+            sels[k].base = base;
+            return (uint16_t)(8 * k + 4);
+        }
+    return 0;
+}
 
 static uint32_t block_alloc(uint32_t size, uint16_t *sel)
 {
@@ -101,12 +136,12 @@ static uint32_t block_alloc(uint32_t size, uint16_t *sel)
     for (k = 0; k < MAX_BLOCKS && free_slot < 0; k++)
         if (!blocks[k].used)
             free_slot = k;
-    if (free_slot < 0 || (uint64_t)at + size > PM_SIZE)
+    if (free_slot < 0 || (uint64_t)at + size > PM_SIZE || !(*sel = sel_new(at)))
         return 0;
     blocks[free_slot].base = at;
     blocks[free_slot].size = size;
+    blocks[free_slot].sel = *sel;
     blocks[free_slot].used = 1;
-    *sel = slot_sel(free_slot);
     return at;
 }
 
@@ -133,15 +168,24 @@ uint16_t pmax_alloc(uint32_t size)
     return block_alloc(size, &sel) ? sel : 0;
 }
 
+uint16_t pmax_alias(uint16_t sel)
+{
+    return sel_new(pmax_base(sel));
+}
+
 uint32_t pmax_base(uint16_t sel)
 {
-    int k = (sel - 4) / 8;
-    return k >= 0 && k < MAX_BLOCKS && slot_sel(k) == sel && blocks[k].used ? blocks[k].base : 0;
+    int k = sel / 8;
+    return (sel & 7) == 4 && k < MAX_SELS && sels[k].used ? sels[k].base : 0;
 }
 
 void pmax_free(uint16_t sel)
 {
-    int k = (sel - 4) / 8;
-    if (k >= 0 && k < MAX_BLOCKS && slot_sel(k) == sel)
-        blocks[k].used = 0;
+    int k;
+
+    for (k = 0; k < MAX_BLOCKS; k++)
+        if (blocks[k].used && blocks[k].sel == sel) {
+            blocks[k].used = 0;
+            sels[sel / 8].used = 0;
+        }
 }

@@ -22,6 +22,8 @@ uint16_t pmax_country(void);
 uint16_t pmax_rm_seg(void);
 /* INT 93h AH=5: the selector of video memory (48h in the runs) */
 uint16_t pmax_video_sel(void);
+/* the program's CS (14h in the runs; its DS is PI_SEL_CODE) */
+uint16_t pmax_code_sel(void);
 
 /* INT 94h AH=8: the configuration file.  The port reads the player's file
  * at `path` (NULL or missing: none, the options all 0 and the header all
@@ -39,7 +41,10 @@ uint16_t pmax_load(const char *name);
 /* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
  * or 0 when there is no room */
 uint16_t pmax_alloc(uint32_t size);
-/* a block's linear base by its selector */
+/* INT 93h AH=8: a second selector for the block of `sel` (the driver's
+ * code selector, DX 409Ah); 0 when there is none */
+uint16_t pmax_alias(uint16_t sel);
+/* a selector's linear base (0 for one the port did not give) */
 uint32_t pmax_base(uint16_t sel);
 /* INT 92h AH=5: the block freed */
 void pmax_free(uint16_t sel);

@@ -2096,6 +2096,18 @@ selectors is not worked out; the port's heap (port/src/pmax.c) knows
 only the bottom-up case, which matched for SETSOUND.DAT and
 LOADING_PIC's block.
 
+### The driver loaded, in a run
+
+The run with NOSOUND.SDR in the header stopped at the driver's command 0
+(CODE:711D, linear 10804Dh, t=2.748817; `-mem` build/pm/ns_711d.mem):
+against CODE:70BD only the eleven selector words of HOST_CALLBACKS
+(1Ch -> 14h), DRIVER_SEL (4) and DRIVER_ENTRY's selector (0Ch) change.
+The driver's block is at 1473C0h behind the header `01 FF 04 00`, size
+3500h, then 7075h and 1Ch (CODE:7075, "Sound Driver", the name INT 94h
+AH=1 gets in ESI). The port (the lowest free selector, 14h, 1Ch, 24h and
+48h taken) gives the same 4 and 0Ch; its memory is equal there, the
+driver's block included (port/README.md, "Checked").
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2262,8 +2274,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
    - chosen by the user 2026-09-29: a silent stand-in driver first, the
      translation of NOSOUND.SDR (src/NOSOUND.hints, rebuilt identical
      since doskit's `bin` kind), compared with NOSOUND runs; real sound
-     later. Next: the driver loaded (INT 94h AH=1 by DRIVER_CFG's name),
-     INT 93h AH=8's alias (0Ch), CALLBACKS_CS, then NOSOUND's command 0
+     later. Done 2026-09-29: the driver loaded (the port always loads
+     NOSOUND.SDR), INT 93h AH=8's alias (0Ch), CALLBACKS_CS; memory
+     equal at CODE:711D (see "The driver loaded, in a run"). Next:
+     NOSOUND's command 0
      (CODE:09F0: CODE:10BB, 137A = host callback 0 of 800h bytes, 11C6 and
      1214 = the DMA buffer through callbacks 1, 3, 2, 053D = its own INT
      92h of 8202h bytes) and command 4 (CODE:1C28, the MOD loader).

@@ -7,9 +7,20 @@
 #include "pmax.h"
 #include "pmem.h"
 
+/* CODE:61D9: each selector word of HOST_CALLBACKS set to CS */
+static void CALLBACKS_CS(void)
+{
+    uint32_t p;
+
+    for (p = N_HOST_CALLBACKS; rd(p) != 0xFFFFFFFFu; p += 6)
+        ww(p + 4, pmax_code_sel());
+}
+
 /* CODE:7082: 1 (CF) when there is no CD or the driver fails */
 static int SOUND_START(void)
 {
+    uint16_t sel;
+
     if (CD_INSTALLED() != 0)
         pi_stop("SOUND_START: no CD (CODE:716A)");
     CD_LOCK(1);
@@ -18,9 +29,21 @@ static int SOUND_START(void)
     CD_LOCK(1);
     CD_LOCK(1);
 
-    /* the driver named in the configuration header */
+    /* the driver named in the configuration header, loaded and given a
+     * code selector (INT 94h AH=1, INT 93h AH=8 with DX 409Ah).  The port
+     * has only NOSOUND.SDR (src/NOSOUND.hints) and loads it whatever the
+     * header names; DRIVER_CFG keeps the player's name. */
     pmax_cfg_header(N_DRIVER_CFG);
-    pi_stop("SOUND_START's driver");
+    sel = pmax_load("NOSOUND.SDR");
+    if (!sel)
+        pi_stop("SOUND_START: NOSOUND.SDR not loaded");
+    ww(N_DRIVER_SEL, sel);
+    wd(N_DRIVER_ENTRY, 0);
+    ww(N_DRIVER_ENTRY + 4, pmax_alias(sel));
+    CALLBACKS_CS();
+
+    /* command 0 (FS:EDI the callbacks, ES:EBX the header, DS the driver) */
+    pi_stop("SOUND_START: the driver's command 0");
     return 0;
 }
 
