@@ -29,7 +29,8 @@ volume around a jingle"); bit 1 of an audio record's byte +0Ah, read
 by no instruction (see "Bit 1 of a record's byte +0Ah"); the lit
 records' timers, the lamps' blinking, a light group's stream and the
 lane change read from the code (see "The lit records' timers and the
-lamps"); the drop targets (see "The drop targets").
+lamps"); the drop targets (see "The drop targets"); the holes' eject (see
+"The holes' eject").
 
 ## The earlier analysis
 
@@ -1285,6 +1286,30 @@ the four modules (a throwaway script). No run was made for it.
   that CODE:28E7B fills and CODE:28F41 draws (another kind of object,
   not followed); a run that knocks a bank down.
 
+### The holes' eject
+
+Read 2026-09-29 from the code (hints: HOLE_EJECT_STEP CODE:30996,
+CODE:30BD6, CODE:30CFB). No run was made for it.
+
+- Opcodes 8 and 18h push a hole on the stack state+2A64h; one hole at a
+  time is ejected (state+2A68h). The words HANDOFF asked about are its
+  count +4: 4Ch (76 frames) when the hole the ball comes out of has an
+  object at +30h (a picture of the table CODE:285BC), else FFCEh (-50).
+- With a picture: 16 frames wait, the ball out at count 3Ch, then for
+  the last 50 frames the picture flickers (count AND 4) and every 8th
+  frame the hole's sound record +10h; at 0 the hole is free. Without:
+  the ball out after 50 frames, nothing drawn.
+- The ball out: its place from the hole's +6, +8, its speed words get
+  the hole's +0Ah, +0Ch added (their high bytes cleared first), and it
+  goes onto the level +0Eh as zone type 3 (0) or 2 (1) does. With
+  opcode 18h all of that is the second hole's.
+- A slip, as read: for a hole ejecting its own ball the sound record
+  is read from a scratch dword that still holds the drop-target queue's
+  place (DROPS_QUEUE_STEP), not from the hole. What sounds is not
+  checked; a port that wants the original's sound has to do the same.
+- Open: a run that sees the 76 frames and the ball's speed out of a
+  hole.
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
@@ -1390,10 +1415,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      it (the frame rate done 2026-09-29, see "The frame rate"; the
      slot-15 update CODE:2E8CD done 2026-09-29, see "The lit records'
      timers and the lamps"; opcode 4's objects done 2026-09-29, see "The
-     drop targets"): the animations of display opcodes 1 and 0Ch (who plays them and
-     clears state+2A50h); the hole
-     eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
-     +4); a port of the two interpreters needs these.
+     drop targets"; the hole eject done 2026-09-29, see "The holes'
+     eject"): the animations of display opcodes 1 and 0Ch (who plays them and
+     clears state+2A50h); a port of the two interpreters needs these.
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
      handlers"). Open from it: a run that checks the names (score,
      bonus, multiplier, extra ball: `-watch` on the player record);
