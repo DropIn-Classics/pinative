@@ -29,7 +29,7 @@ volume around a jingle"); bit 1 of an audio record's byte +0Ah, read
 by no instruction (see "Bit 1 of a record's byte +0Ah"); the lit
 records' timers, the lamps' blinking, a light group's stream and the
 lane change read from the code (see "The lit records' timers and the
-lamps").
+lamps"); the drop targets (see "The drop targets").
 
 ## The earlier analysis
 
@@ -1256,6 +1256,35 @@ No run was made for it.
   period; what the list at state+1822h is for; who clears a group's bit
   0 (CODE:2EEEC clears the lights of a chain, not followed).
 
+### The drop targets
+
+Read 2026-09-29 from the code (hints: DROP_SET, DROPS_DRAW, DROP_MASK,
+OBJECT_HITS, DROP_HIT, DROPS_RAISE_STEP, DROPS_QUEUE_STEP,
+DROPS_UP_ALL, DROPS_UP_BALL; the fields in the comment above them) and
+the four modules (a throwaway script). No run was made for it.
+
+- Event opcode 4's objects are drop targets: objects of type 1 in the
+  table of 0C0h dwords at header slot 4. Table 1 has one bank of 2,
+  table 4 three banks (3, 3, 2), tables 2 and 3 none (read as the code
+  reads the table; entries past its real end may be other data, table
+  3 shows one with a type 46AEh).
+- A target's state is drawn by DROPS_DRAW each frame when it changed:
+  a picture from drops.mgl, and its mask from masks.mgl cleared from
+  (down) or set in (up) a 1-bit map of the level, 42 bytes (336
+  pixels) a line; that the ball collides with that map is presumed.
+- A hit (OBJECT_HITS, by the ball's word +6Ch; who sets it is not
+  followed): the target's lamp bit, the bank's points, a sound record,
+  the target down. When the whole bank is down: the bank's event
+  stream, and unless the bank's +4 bit 0 is set, the bank is raised
+  64h frames later (one target a frame through the queue at
+  state+2A60h). All targets go up at the game start; at the next ball
+  all but those with +4 bit 0.
+- Opcode 4 sets the state directly (0 up, 1 or FFFFh down) and clears
+  +0Bh, so a target it puts down does not count as down for its bank.
+- Open: the object types 0 and 2 of OBJECT_HITS; the table CODE:285BC
+  that CODE:28E7B fills and CODE:28F41 draws (another kind of object,
+  not followed); a run that knocks a bank down.
+
 ### The frame rate
 
 Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
@@ -1360,8 +1389,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      tools/event_streams.py with tests/test_event_streams.py). Open from
      it (the frame rate done 2026-09-29, see "The frame rate"; the
      slot-15 update CODE:2E8CD done 2026-09-29, see "The lit records'
-     timers and the lamps"): the animations of display opcodes 1 and 0Ch (who plays them and
-     clears state+2A50h); opcode 4's objects (CODE:28EA6); the hole
+     timers and the lamps"; opcode 4's objects done 2026-09-29, see "The
+     drop targets"): the animations of display opcodes 1 and 0Ch (who plays them and
+     clears state+2A50h); the hole
      eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
      +4); a port of the two interpreters needs these.
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
