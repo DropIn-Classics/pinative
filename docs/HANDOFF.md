@@ -25,7 +25,8 @@ change a run (see "The jingle in the WAV"); a jingle alone, which
 stops the module's music for its 1.78 s (see "The jingle alone"); the
 CD's audio in a WAV of its own (see "The CD in a WAV"); the CD muted
 in a game, and around a jingle whose record asks for it (see "The CD's
-volume around a jingle").
+volume around a jingle"); bit 1 of an audio record's byte +0Ah, read
+by no instruction (see "Bit 1 of a record's byte +0Ah").
 
 ## The earlier analysis
 
@@ -1176,9 +1177,44 @@ volume setting (t=136-139), which did not stop it in this run's
 configuration (the tick count went on to t=145); presumably not in
 theirs either, not checked run by run.
 
-Not listened to. Open: bit 1 of the byte (MUSIC_REQUEST adds it while
-CODE:2BAD3 is set; no reader looked for); a bit-2 jingle whose track's
+Not listened to. Bit 1 of the byte: see the next section. Open: a bit-2 jingle whose track's
 time runs out during it (CODE:9D3C then, not run).
+
+### Bit 1 of a record's byte +0Ah
+
+Runs of 2026-09-29, on macOS (the bundle's `ILLUSION.CFG` by `-put`, no
+`-cue`; keys `106 space`, `112 enter`, `136 f1`, Enter at 137 and every
+15 s after, no flipper; `-watch` and `-rwatch 10DAC7 1` on state+59h,
+CODE:CB97; `-log` on MUSIC_REQUEST, its bit-1 branch CODE:2F888 and
+CODE:2B9F6, linear 13078Ch, 1307B8h, 12C926h). Hints: LOST_BALL_RUNOUT,
+MUSIC_REQUEST, the comment on CODE:2B9F6.
+
+- Bit 1 is read by no instruction. The readers of state+59h, by the code
+  (every `[CCB97]` and `+59H]` of build/ILLUSION.ASM) and in the runs:
+  CODE:9D99 (TEST 1, the timed track), 9E9A (TEST 4, the CD's volume
+  around a jingle), the OR that sets the bit (2F89A) and the copy to
+  +5Ah for a negative request (2F8E3). So a record's byte 2 (the ones
+  "in a few" records of "The CD's volume around a jingle") does nothing
+  found either; the lost ball's own record in these runs has it
+  (state+59h 02 at each loss, by the normal branch).
+- CODE:2BAD3 (LOST_BALL_RUNOUT) is set by CODE:2B9F6, a lost ball without
+  the ball save: it steps frames there until the two event streams and
+  the mode stream are empty, then clears it and sets GAME_PHASE 5. Only
+  MUSIC_REQUEST reads it. With no stream running it was set for 14 ms
+  (t=155.951..155.965), and the bit-1 branch did not run in a game of
+  three balls.
+- With START MODE forced (the two pokes of "A mode's track in a run",
+  and the zone put back to its own bytes at MUSIC_REQUEST's third call,
+  t=139.0, as over the whole table it held the ball) the ball was lost at
+  t=148.494 during the mode, and 128 ms later the mode's closing record
+  came through the bit-1 branch (t=148.621, state+59h 02, MUSIC_NEXT not
+  written, the CD muted); without the loss the same record comes when the
+  mode's timer runs out (t=197.3). That the mode stream gets there by
+  state+0D51h (CODE:2CD3C) is presumed, not traced.
+
+So a port can leave bit 1 out; what LOST_BALL_RUNOUT changes is only
+that MUSIC_NEXT is not written during the run-out. Not listened to;
+other tables not run.
 
 ### The frame rate
 
@@ -1308,8 +1344,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      audio in a WAV (see "The CD in a WAV"). Done 2026-09-29: the CD's
      volume around a jingle and how the driver ends a jingle (see "The
      CD's volume around a jingle"; a runner bug fixed on the way). Open
-     from it: bit 1 of a record's byte +0Ah; a track's time running out
-     during a jingle.
+     from it: a track's time running out during a jingle. Done
+     2026-09-29: bit 1 of a record's byte +0Ah (see "Bit 1 of a record's
+     byte +0Ah": read by no one).
    - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
      immediates (see "Offsets among the immediates"). Open from it: the
      selector in CODE:3B4B; names for the routines found in these
