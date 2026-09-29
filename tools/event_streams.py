@@ -197,12 +197,23 @@ def roots(module: Module) -> list[tuple[str, int, str]]:
     for group in m.pointer_list(14):
         add('E', group + 6, f'slot-14 group {group:X}h +6')
     # slot 15 records: +14h (lit, CODE:2D40E) and +18h (taken, CODE:2D97D)
-    # to CODE:2FEDB; +34h queued by handler 11h (CODE:2E5A2)
+    # to CODE:2FEDB; +34h queued by handler 11h (CODE:2E5A2); handler 1Ah
+    # (CODE:2E51D) picks one of the 8-byte entries at +34h (a flags word,
+    # a limit word, an event stream) by a number 0..FFh: a limit above
+    # FFh is the last one reached
     for rec in m.pointer_list(15):
         add('D', rec + 0x14, f'slot-15 record {rec:X}h +14h')
         add('D', rec + 0x18, f'slot-15 record {rec:X}h +18h')
-        if m.word(rec + 0x2C) == 0x11:
+        handler = m.word(rec + 0x2C)
+        if handler == 0x11:
             add('E', rec + 0x34, f'slot-15 record {rec:X}h +34h (handler 11h)')
+        elif handler == 0x1A:
+            at = m.pointer_at(rec + 0x34)
+            while True:
+                add('E', at + 4, f'slot-15 record {rec:X}h +34h (handler 1Ah) entry {at:X}h')
+                if m.word(at + 2) > 0xFF:
+                    break
+                at += 8
     # slot 16 counters: +48h (CODE:2DCA1), +4Ch; each threshold's +4
     # (CODE:2DD8A) from +50h, a negative threshold ends them
     for ctr in m.pointer_list(16):

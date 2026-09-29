@@ -249,11 +249,13 @@ Slot 15 contains a fixed 52-byte host-visible timed-effect state. Reset routine
 | `+0x0C` | Optional relocated audio-control pointer dispatched through `0x3007A`. |
 | `+0x10` | Optional relocated pointer to a 26-byte slot-31-style mutable display state. |
 | `+0x14`, `+0x18` | Optional relocated display streams queued through `0x2FEDB` when the record is lit (event opcode 1 or 2) and taken (opcode 5). |
-| `+0x24`, `+0x28` | The points of a take: a packed-BCD dword at `+0x28` (for example `0x05000000`) with a high word at `+0x24`, added to the player's score through `0x2FBBF` (checked 2026-09-29 in the hints; this row said `+0x2C` before). |
-| `+0x2C` | Handler word: one of the 28 handlers at `0x2DA0A` (0: none), called after a take. |
+| `+0x1C`, `+0x20` | Points of a take: a 12-digit packed-BCD number (high word `+0x1C`, low dword `+0x20`) added by `0x2FBBF` to the player record's `+8` (the score, presumably; checked 2026-09-29 in the hints). |
+| `+0x24`, `+0x28` | Points of a take too (for example `0x05000000` at `+0x28`), added by `0x2FBBF` to the player record's `+0x10` (the bonus, presumably; this row said "the score" before, checked 2026-09-29 in the hints). |
+| `+0x2C` | Handler word: one of the 28 handlers at `0x2DA0A` (0: none), called after a take; each is described in the hints (CODE:2E2E1 ... 2E7FC) and docs/HANDOFF.md, "The slot-15 handlers". |
 | `+0x2E` | Signed countdown, reset to `-1` and set from a duration scaled by runtime state. |
 | `+0x30` | Runtime active-list next pointer. |
-| `+0x34` | Present in longer records: a slot-16 counter or an event stream, by the handler the word at `+0x2C` selects from the 28 at `0x2DA0A` (checked 2026-09-29 in the hints: handler 6 counts the counter, 11h queues the stream; see docs/HANDOFF.md, "The tables and their CD tracks"). |
+| `+0x34` | Present in longer records, by the handler: a slot-16 counter (handlers 6, 7, 0Ah, 0Bh, 0Eh, 0Fh, 10h, 12h, 14h..16h, 18h, 1Bh), a slot-26 BCD counter (13h), an event stream (11h), a list of 8-byte random-award entries (1Ah), a word (5: the bonus multiplier; 17h: two words); handlers 1, 2 and 8 have no `+0x34` of their own (handler 2 reads it all the same, the next record's first word) (checked 2026-09-29 in the hints and the four modules). |
+| `+0x38`.. | By the handler: a word (0Ah, 14h), a 12-digit number `+0x38`/`+0x3C` (0Fh, 19h), a pointer to a slot-26 counter `+2` (1Bh). |
 
 Only `+0x04`, `+0x08`, `+0x0C`, `+0x10`, `+0x14`, and `+0x18` carry file
 relocations within the fixed state, and every non-null on-disk value in those
@@ -274,8 +276,9 @@ routine at `0x2FD11` establish the following host-visible fields:
 | `+0x06`, `+0x16` | Two arrays of eight per-player words. |
 | `+0x26` | Runtime/scaled interval word. |
 | `+0x28`, `+0x2C` | Configured dwords copied into runtime dwords at `+0x30`, `+0x34`. |
-| `+0x38` | Six-byte runtime BCD accumulator in an eight-byte field. |
-| `+0x40` | Six-byte configured BCD value, commonly the all-`FF` sentinel, in an eight-byte field. |
+| `+0x30`, `+0x34` | The step: a 12-digit packed-BCD number (high word, low dword), raised by slot-15 handlers 0Fh and 1Bh, lowered by 19h, paid by 0Eh (checked 2026-09-29 in the hints). |
+| `+0x38` | Six-byte runtime BCD accumulator in an eight-byte field: the value (high word `+0x38`, low dword `+0x3C`), raised by the step (handler 0Bh), paid by 7 and 0Ah. |
+| `+0x40` | Six-byte configured BCD value, commonly the all-`FF` sentinel, in an eight-byte field: the value's cap, presumably (handler 0Bh; a negative `+0x40` dword, the `FF` sentinel, no cap). |
 | `+0x48`, `+0x4C` | Optional relocated queued-event pointers. |
 | `+0x50` | Start of the threshold-action run. |
 

@@ -104,6 +104,23 @@ class EventStreamsTest(unittest.TestCase):
         self.assertEqual(sorted(mode), [0, 4, 0xA, 0xE, 0x18, 0x1A])
         self.assertEqual(mode[0xE], (0x1C, [0, 5, 0x1A]))
 
+    def test_handler_1a_entries_up_to_the_limit_above_ffh(self):
+        b = sample()
+        b.word(0x180 + 0x2C, 0x1A)
+        b.ptr(0x180 + 0x34, 0x500)
+        b.word(0x500, 1, 0x80)
+        b.ptr(0x504, 0x300)
+        b.word(0x508, 0, 0x100)
+        b.ptr(0x50C, 0x340)
+        b.ptr(0x514, 0x360)  # past the last entry: not a root
+        streams = es.walk(b.module())
+        self.assertIn("slot-15 record 180h +34h (handler 1Ah) entry 500h",
+                      streams[("E", 0x300)]["from"])
+        self.assertIn("slot-15 record 180h +34h (handler 1Ah) entry 508h",
+                      streams[("E", 0x340)]["from"])
+        self.assertNotIn("slot-15 record 180h +34h (handler 1Ah) entry 510h",
+                         streams[("E", 0x360)]["from"])
+
     def test_listing(self):
         text = es.listing(es.walk(sample().module()))
         self.assertIn("event 300h\n  from zone 100h (slot 5, type 4) object 140h +14h", text)

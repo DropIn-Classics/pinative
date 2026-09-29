@@ -13,7 +13,8 @@ All four tables load and scroll; which CD track each plays is found
 (see "The tables and their CD tracks"); a mode's track played in a run
 (see "A mode's track in a run"). The two stream languages are read, and
 tools/event_streams.py lists every stream of a module (see "The event
-language").
+language"); what the 28 handlers of a take do is read (see "The slot-15
+handlers").
 
 ## The earlier analysis
 
@@ -573,7 +574,8 @@ types at CODE:2C40F ... 2C719). No run was made for it.
   with where it hangs from; `--check` only counts. All four modules
   parse to the end of every stream with relocated pointers and no
   stream in both languages: 79/82/68/73 event and 87/98/89/85 display
-  streams for tables 1..4. Each CD track of the table in "The tables
+  streams for tables 1..4 (79/90/68/81 and 87/99/89/85 since handler
+  1Ah's entries are roots too, see "The slot-15 handlers"). Each CD track of the table in "The tables
   and their CD tracks" comes out of an opcode 13h in a stream under the
   same counter or record. Slot 33's four records (docs/bpc-module.md:
   passed to CODE:2FEDB at CODE:2A6CE) look like display streams whose
@@ -587,6 +589,52 @@ types at CODE:2C40F ... 2C719). No run was made for it.
   the forced run are that 7-s wait, presumably; that they are 6.3 and
   not 7 is not explained (the word at state+50h, which the waits are
   multiplied by, not checked against the frame rate).
+
+### The slot-15 handlers
+
+Read 2026-09-29, on Windows, from the code (hints: a comment per
+handler, CODE:2E2E1 ... 2E7FC, and on CODE:2FBBF, 2FD11, 2BD95, 2A4B1,
+2BBC6) and a throwaway script over the four modules' slot-15 records.
+No run was made for it; the names (score, bonus, multiplier, extra
+ball) are presumed from what the code does with the fields.
+
+- The player record (state+0D76h) holds two 12-digit packed-BCD numbers:
+  +8 (high word +0, low dword +4), shown by display opcode 8, the score;
+  +10h (high word +8, low dword +0Ch), the bonus: at a lost ball
+  (CODE:2BD95) it is added up word +12h times (at least once) and the
+  sum goes to +8; CODE:2A4B1 then clears +10h unless byte +11h is set,
+  word +12h unless byte +14h is set. Byte +10h counts extra balls
+  (CODE:2BBC6, beside the text "EXTRA BALL").
+- A take pays two numbers (CODE:2FBBF): the record's +24h/+28h to the
+  bonus, +1Ch/+20h to the score. The hints and docs/bpc-module.md had
+  +24h/+28h as the score; corrected.
+- The handlers by what they do (table counts are list entries of the
+  four modules, 1/2/3/4): 1 extra ball and header slot 25's first lamp
+  (3/3/2/6); 2 bonus held (table 2 only); 5 bonus multiplier = the word
+  +34h (5/5/4/5); 8 multiplier held (table 1 only); 6, 15h count a
+  slot-16 counter up (16h runs the threshold equal to its word +16h, 18h
+  counts down); 7 pays the counter's value, 0Ah pays it up to n times,
+  0Eh pays its step; 0Bh raises the value by the step (capped,
+  presumably), 0Fh and 1Bh raise the step, 19h lowers it; 10h = 0Bh, 6,
+  7 and 12h = 0Bh, 6; 11h queues a stream; 13h pays a slot-26 BCD
+  counter's value; 14h sets the counter's word +26h to seconds; 17h sets
+  the waiting mode's timer; 1Ah picks a random award. 3, 4, 9, 0Ch, 0Dh
+  and 19h are in no record (4 and 0Ch are a RET).
+- Two things that look like slips in the program, as read: handler 17h
+  computes the timer plus +34h and stores the smaller of +34h and +36h
+  instead (table 3's record 75C4h: 5 s, whatever was left); handler 0Ah
+  sets the count to 0 only when it is below the word, and does not
+  lower it otherwise. Handler 2 writes FFh to [+34h], which is 2 in its
+  one record (the next record's first word): CODE:0002, a scratch dword.
+- Handler 1Ah (tables 2 and 4, one record each): a number from the low
+  byte of CODE:BAD4, the first of 8 entries whose limit is above it;
+  entries with flag bit 0 are given once (bit 1 marks them, the number
+  goes on by 5Dh). tools/event_streams.py now takes these entries as
+  roots: 8 more event streams in tables 2 and 4 each. Table 2's (looked
+  at): takes of records, among them 4072h (handler 6) and 7402h (2,
+  once), a light of 72FEh (1, once), and one with an opcode 13h of
+  record 39 (track 0); table 4's not looked at. Where CODE:BAD4 is counted is not
+  disassembled (see the hint on CODE:2F7DE).
 
 ### The GOG release on the Mac
 
@@ -677,10 +725,11 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      clears state+2A50h); opcode 4's objects (CODE:28EA6); the hole
      eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
      +4); a port of the two interpreters needs these.
-   - The slot-15 handlers: the 28 at CODE:2DA0A, what each does (hints
-     comments); what +2Ch = 0, 5, 7, 13h, 1Ah mean (the "+0x2C value
-     operand" row of docs/bpc-module.md is corrected already: the points
-     are at +28h).
+   - done 2026-09-29: the slot-15 handlers (see "The slot-15
+     handlers"). Open from it: a run that checks the names (score,
+     bonus, multiplier, extra ball: `-watch` on the player record);
+     who reads a slot-16 counter's word +26h (handler 14h); where
+     CODE:BAD4 is counted; table 4's random awards.
    - Table 2's music: the template copy (module 9A55h, 9ADAh, 9CD9h),
      its index word at 9D88h, and who uses record 12 (track 15);
      MUSIC_REQUEST's switch on word +2 (CODE:2F91C) and what the mode
