@@ -17,6 +17,14 @@ code       CODE:35DDC CD_PLAY      ; EBX = the track: the play request at CODE:3
 code       CODE:35E4F CD_STOP      ; the request at CODE:35E94 (command 85h, stop audio)
 code       CODE:9D83 MUSIC_TRACK   ; stops the CD and plays track EBX; when bit 0 of CODE:CB97 is set, the length times [CCB8E] / 75 to CODE:9DBD, counted down at CODE:9CEA, which plays the track again at 0 (run, table 1: again after 159.3 s of a 182.9 s track, not explained)
 comment    CODE:9BCA the table's first music record ([CODE:F470], header slot 35 of the table module): its word +8 the CD track, its byte +0Ah to CODE:CB97 (runs: tracks 2, 0Eh, 1Ah, 27h for tables 1..4, the byte 1 for all four)
+code       CODE:2F85C MUSIC_REQUEST ; [CODE:0000] = an audio record of the table module (12 bytes, word +0 = 4): its word +8 to MUSIC_NEXT, its byte +0Ah to CODE:CB97 (state+59h); while CODE:2BAD3 is set only the byte, with bit 1 added
+name       CODE:F5BE MUSIC_NEXT    ; state+2A80h: a track asked for; CODE:9E13 plays it through MUSIC_TRACK when not 0 and sets it to 0 (runs, table 1: only 0 written in a game of three balls)
+comment    CODE:2D5E0 event opcode 13h (word x 4 into CODE:2D18F): its dword operand an audio record, to MUSIC_REQUEST (run, table 1: record 1, track 0)
+comment    CODE:2ABA4 the score (CODE:0020/0024) against the list of 10-byte entries at state+C0CFCh: the first time an entry is passed, header slot 37's record (tracks 8, 18, 34, 48 for tables 1..4); presumably the high-score music, not reached in runs
+comment    CODE:2AA90 header slot 36's record (track 0, byte +0Ah 2 in all four tables; run, table 1: once, at t=193.8, what happened then not looked at)
+comment    CODE:2B1DC header slot 34's record, record 0 (track 0; run, table 1: at t=130.0, the F1 start, 135.8 and 147.2)
+comment    CODE:2B8ED header slot 38's record while state+2A75h is set (track 0 in all four tables); runs every frame in a game
+comment    CODE:3007A by the type of the record at [CODE:0000] (its first byte AND 7): 4, an audio record, to MUSIC_REQUEST; 2 to CODE:9F2C (run, table 1: record 42, track 0, came from none of the other callers logged; this way, presumably)
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 
 ; 16-bit addresses without a register (67h): no source form in a USE32

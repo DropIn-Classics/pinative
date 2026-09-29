@@ -377,14 +377,40 @@ four) goes to CODE:CB97; with its bit 0 `MUSIC_TRACK` counts the
 track's length down and plays it again. Run on table 1 to t=330: track 2
 again at t=283.37, 159.3 s after the first play, while the track lasts
 182.9 s (13,717 frames); why is not found (the counter's rate against
-the runner's clock, presumably). Plays during a game come through
-CODE:F5BE (read at CODE:9E13; not seen in the runs, who writes it not
-looked at). CODE:4FE8 plays track 51 near the chooser's loading of
+the runner's clock, presumably). CODE:4FE8 plays track 51 near the chooser's loading of
 `infodata.mgl`; it did not run up to t=126.
 
-Tracks 3..13, 15..25, 27..38 and 40..51 are not heard in the runs:
-presumably the other music of each table (the 12-byte records of header
-slot 34), not checked.
+Tracks 3..13, 15..25, 27..38 and 40..51 are not heard in the runs.
+Who asks for them (found 2026-09-29; hints `MUSIC_REQUEST`,
+`MUSIC_NEXT` and the comments near them):
+
+- plays during a game come through `MUSIC_NEXT` (CODE:F5BE, state
+  +2A80h), which CODE:9E13 plays through `MUSIC_TRACK` when it is not 0;
+  its one writer is `MUSIC_REQUEST` (CODE:2F85C): word +8 of an audio
+  record (header slot 34's array) to it, byte +0Ah to CODE:CB97 (state
+  +59h, the flags `MUSIC_TRACK` reads);
+- `MUSIC_REQUEST` is called by opcode 13h of the event interpreter
+  (CODE:2D5E0, a dword operand: the record), by a dispatcher on a
+  record's type (CODE:3007A; type 4 is an audio record), and with the
+  records of header slots 34, 36, 37, 38 (state +292Eh..293Eh, the
+  copied header at 28A6h + 4 x slot). Slot 37's (tracks 8, 18, 34, 48)
+  comes the first time the score passes an entry of a list at state
+  +C0CFCh (CODE:2ABA4): presumably the high-score music, not reached;
+- the records' word +8 (a throwaway script over the four modules):
+  tracks 2..8, 10..13 (table 1), 14, 15, 18, 19, 22, 25 (2), 26..38
+  (3), 39..50 (4); 9, 16, 17, 20, 21, 23, 24 and 51 in no record (table
+  2 copies three records over records 0..2 at run time,
+  docs/bpc-module.md; those templates not looked at). A scan for the
+  word 13h before a relocated pointer to a record finds most of the
+  others in each module's event streams (heuristic, the streams not
+  parsed);
+- run on table 1 (`130 f1`, `131 enter`, both flippers every 0.6 s to
+  t=330, a Enter every 20 s; 195.000 points, ball 3 at t=160):
+  `MUSIC_REQUEST` ten times (slot 34's record 0 three times, event
+  opcode 13h with record 1 three times, record 42 three times (by none of the
+  callers logged: through CODE:3007A, presumably), slot 36's once), every time track 0, so no play; each
+  request was followed by an IOCTL output 03h (audio channel control,
+  CD_VOLUME). The events whose records carry a track were not hit.
 
 ### The GOG release on the Mac
 
@@ -448,7 +474,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      keys").
    - done 2026-09-29: the other three tables in the runner and each
      table's first CD track (see "The tables and their CD tracks").
-     next: who asks for the other tracks during a game (CODE:F5BE);
+     done 2026-09-29: who asks for the other tracks (see "The tables
+     and their CD tracks"); not seen in a run: an event that plays
+     one (the table module's streams parsed would say which);
      x87 is not emulated, not needed up to t=240.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
