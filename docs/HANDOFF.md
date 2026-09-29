@@ -11,14 +11,17 @@ table, which scrolls by itself (see "The loader in the runner"); a ball
 is played on it with the game's own keys (see "The keys", 2026-09-29).
 All four tables load and scroll; which CD track each plays is found
 (see "The tables and their CD tracks"); a mode's track played in a run
-(see "A mode's track in a run").
+(see "A mode's track in a run"). The two stream languages are read, and
+tools/event_streams.py lists every stream of a module (see "The event
+language").
 
 ## The earlier analysis
 
 Kept: its notes (docs/*.md) and its data-format tools with their
 synthetic tests, `tools/bpc_inspect.py`, `asset_inspect.py`,
 `sdr_inspect.py`, `cfg_inspect.py` (`python3 -m unittest discover -s
-tests`: 45 tests ok, Python 3.9). Run on `build/files/` 2026-09-29 they
+tests`: 45 tests ok, Python 3.9; 52 with tests/test_event_streams.py,
+Python 3.12 on Windows, 2026-09-29). Run on `build/files/` 2026-09-29 they
 accept all four tables (`DATA\S00n`, `SOURCE\T00n.BPC`/`.REL`) and every
 driver but `SNDSCAPE.SDR` ("no EAX jump-table dispatch", the driver the
 notes already call anomalous); `cfg_inspect.py` is not run, there is no
@@ -483,9 +486,10 @@ docs/bpc-module.md had it; that they are the two levels' zones is a
 guess (the ball's dword +64h picks the list). The ones for this mode:
 
 - zone 352Fh (slot 11, 190..210 x 195..215, type 1) -> object 4B66h,
-  whose dword +6 is stream 4B90h: its opcode 1 lights record 4362h;
+  whose dword +6 is stream 4B8Ch (its commands from 4B90h, the number
+  used here before): its opcode 1 lights record 4362h;
 - zone 3447h (slot 5, 55..85 x 170..200, type 4) -> object 4F18h (the
-  slot-15 layout), whose +14h is stream 4F54h: `17 @4362 78h` (opcode
+  slot-15 layout), whose +14h is stream 4F50h (commands from 4F54h): `17 @4362 78h` (opcode
   17h: past the take unless 4362h is lit) and `5 @4362` (the take).
 
 That record 4362h is the START MODE insert on the table is presumed (the
@@ -501,7 +505,7 @@ in every run so far):
 - blind play to t=240: the word +16h counts 1 at the launch (t=132.29)
   and in bursts to 9 (back to 1 by CODE:2DF20), 33 writes; record 41E6h
   taken 27 times; record 4362h never lit (its byte +1 stays 0), so no
-  mode and no play. The pointers to streams 4B90h and 4F54h are read by
+  mode and no play. The pointers to streams 4B8Ch and 4F50h are read by
   no instruction in play (only by the loader's relocation, CODE:B762,
   B789), because the zone reaches their object's start;
 - forced: `-poke 12F026#1 2D8403 01` (at the first count-up, CODE:2E0F6,
@@ -513,7 +517,76 @@ in every run so far):
   threshold -> opcode 9 -> mode stream -> opcode 13h -> play is seen
   once, for threshold 1 of table 1; the other thresholds and tables are
   not run. What the 6.3 s between the take and the play are (the mode
-  stream's commands before its opcode 13h) is not looked at.
+  stream's commands before its opcode 13h) is not looked at (but see
+  "The event language": a wait of 7 s).
+
+### The event language
+
+Read 2026-09-29, on Windows, from the handlers (hints: one comment per
+handler, CODE:2D36E ... 2DBDF and CODE:2F68D ... 2FBA7; the runners at
+CODE:2D080, 2CD3C, 2F35C and the display queue at CODE:2FEDB; the zone
+types at CODE:2C40F ... 2C719). No run was made for it.
+
+- Two languages. Event streams: a word, the position word at +2,
+  commands from +4, run by the event queue (EVENT_QUEUE, one command a
+  frame, presumably: a call a frame not checked) and by the mode stream
+  (opcode 9). Display streams: a flags word (bit 0: the background
+  stream), two priority bytes, the position word at +4, commands from
+  +6, queued by CODE:2FEDB. Each table has a record of 4 bytes an opcode
+  (handler offset, command size); a position is a byte offset from the
+  first command. The HANDOFF sections above named two streams by their
+  first command (4B90h, 4F54h); they are corrected to the streams
+  (4B8Ch, 4F50h).
+- The event opcodes, in short (the hints have what each does): 1 light,
+  2 light for a time, 3 block, 4 an object's state by its number at
+  +44h, 5 take (points, handler), 6/7/0Dh/12h/15h/16h the fields of a
+  slot-16 counter, 8 eject a hole's ball, 9 start a mode, 0Ah jump, 0Bh
+  ball save (presumably), 0Ch unblock, 0Eh unlight, 0Fh/10h start/stop
+  a slot-26 BCD counter, 11h queue a display stream, 13h music, 14h
+  call module code, 17h jump unless lit, 18h eject a hole's ball at
+  another hole, 19h no effect, 1Ah the held ball back to be served, 1Bh
+  multiball, 1Ch the mode stream waits (for a record to be taken or a
+  time), 1Dh/1Fh loop, 1Eh where a waiting mode goes when the multiball
+  ends.
+- The display opcodes: 1 and 0Ch animations, 3 and 1Ah text, 6, 8, 9,
+  0Eh numbers (0Eh the seconds left of the mode's wait), 7 and 0Ah
+  waits, 2, 0Dh, 0Fh clear the buffers, 10h a record through
+  CODE:3007A, 13h/14h loop, 18h/19h the DAC colours FCh..FFh; 4, 5,
+  0Bh, 11h, 12h, 15h..17h are in no stream the tool finds (4, 11h,
+  15h..17h are a RET).
+- The zone types (the switch at CODE:2C3DD): 0 and 1 a target (points,
+  a record through CODE:3007A at +2, an event stream at +6; type 0
+  first queues header slot 27's or 28's stream when state+0D2Fh is set:
+  a skill shot, presumably), 2 and 3 put the ball onto the level of
+  header slots 6..11 or 0..5 (docs/bpc-module.md corrected), 4 a hole
+  that holds the ball (its event stream at +14h). The object of opcode
+  8, 18h, 1Ah is such a hole; the second operand of 18h is a hole too,
+  not a stream.
+- Slot-15 records: the points of a take are the packed-BCD dword at
+  +28h (05000000h for record 4362h), the word +2Ch the handler; the
+  row in docs/bpc-module.md that had the points at +2Ch is corrected.
+- `python3 tools/event_streams.py build/files/SOURCE/T001.BPC
+  build/files/SOURCE/T001.REL` lists every stream reached from the roots
+  the program is seen to use (zones of slots 5 and 11, slot-14 groups,
+  slot-15 +14h, +18h and +34h with handler 11h, slot-16 +48h, +4Ch and
+  the thresholds, slots 27 and 28) and from the stream operands, each
+  with where it hangs from; `--check` only counts. All four modules
+  parse to the end of every stream with relocated pointers and no
+  stream in both languages: 79/82/68/73 event and 87/98/89/85 display
+  streams for tables 1..4. Each CD track of the table in "The tables
+  and their CD tracks" comes out of an opcode 13h in a stream under the
+  same counter or record. Slot 33's four records (docs/bpc-module.md:
+  passed to CODE:2FEDB at CODE:2A6CE) look like display streams whose
+  opcode 1 runs into the next record; they are left out of the roots.
+- Table 1's mode stream 7FEAh (threshold 1 of counter 421Eh), as the
+  tool lists it: blocks four records, lights six, queues a display,
+  `1C wait 0 7 +4C` (7 s), a display, a take, `13 music @11DB9` (track
+  4), `18 eject_at @4F18 @4DB0`, starts BCD counter 8428h, lights 82F0h
+  and waits for it up to 60 s; at the end unlights, stops the music
+  (track 0) and unblocks. So the 6.3 s between the take and the play in
+  the forced run are that 7-s wait, presumably; that they are 6.3 and
+  not 7 is not explained (the word at state+50h, which the waits are
+  multiplied by, not checked against the frame rate).
 
 ### The GOG release on the Mac
 
@@ -593,20 +666,21 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    hints):
    - done 2026-09-29: a mode's track in a run (see "A mode's track in a
      run"; forced with `-poke`, which doskit had already). Open from it:
-     a blind run that lights START MODE through zone 352Fh; what the
-     zone types 0..4 do (the switch at CODE:2C3DD); correct the slots
-     0-11 rows of docs/bpc-module.md once the flipper bundles are read
-     again.
-   - The event language: every opcode of CODE:2D18F (32) and CODE:2F625
-     (26) read from its handler, its operands and effect in the hints
-     (one comment per handler); then a parser tool (tools/, standard
-     library, synthetic tests in tests/) that lists every stream of a
-     module with the root it hangs from (slot 14/15/16 structures,
-     opcode 9 and the other pointer operands). Replaces the throwaway
-     scripts of this session; check it against the table above.
+     a blind run that lights START MODE through zone 352Fh. Done
+     2026-09-29 with the next item: the zone types, the slots 0-11 rows
+     of docs/bpc-module.md.
+   - done 2026-09-29: the event language (see "The event language";
+     tools/event_streams.py with tests/test_event_streams.py). Open from
+     it: the word at state+50h against the frame rate (every wait is
+     multiplied by it); the slot-15 update CODE:2E8CD (timed lights);
+     the animations of display opcodes 1 and 0Ch (who plays them and
+     clears state+2A50h); opcode 4's objects (CODE:28EA6); the hole
+     eject at CODE:30BD6 (the words 4Ch and FFCEh it puts in the hole's
+     +4); a port of the two interpreters needs these.
    - The slot-15 handlers: the 28 at CODE:2DA0A, what each does (hints
-     comments); what +2Ch = 0, 5, 7, 13h, 1Ah mean; correct
-     docs/bpc-module.md's "+0x2C value operand" if it is wrong.
+     comments); what +2Ch = 0, 5, 7, 13h, 1Ah mean (the "+0x2C value
+     operand" row of docs/bpc-module.md is corrected already: the points
+     are at +28h).
    - Table 2's music: the template copy (module 9A55h, 9ADAh, 9CD9h),
      its index word at 9D88h, and who uses record 12 (track 15);
      MUSIC_REQUEST's switch on word +2 (CODE:2F91C) and what the mode

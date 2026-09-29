@@ -155,8 +155,8 @@ slot address, even when the instruction reaches it through runtime state.
 
 | Slot | Main address | Observed use |
 | ---: | ---: | --- |
-| 0-5 | `0xF3E4`-`0xF3F8` | First flipper resource/geometry bundle. The routine at `0x2C414` copies all six pointers into a runtime object and marks it as bundle 1. Slot 5 is a list of 14-byte zones (x0, y0, x1, y1, type, relocated object; `-1` ends it), checked against each ball at `0x2C1DA` (docs/HANDOFF.md, "A mode's track in a run", 2026-09-29); "flipper" for the whole bundle is not checked. |
-| 6-11 | `0xF3FC`-`0xF410` | Second flipper resource/geometry bundle, copied by the adjacent routine at `0x2C467` and marked as bundle 2. Slot 11 is a second zone list like slot 5's. |
+| 0-5 | `0xF3E4`-`0xF3F8` | First bundle of six pointers. `0x2C414` copies them into a ball's `+0x50`..`+0x64` and clears its byte `+8`: zone type 3 does this (checked 2026-09-29 in the hints), and a hole puts a ball out with it or the other bundle by its word `+0x0E` (`0x30D78`). So the two bundles are two levels a ball can be on, presumably; "flipper" for the whole bundle is not checked. Slot 5 is a list of 14-byte zones (x0, y0, x1, y1, type, relocated object; `-1` ends it), checked against each ball at `0x2C1DA`; the types are in the hints (`0x2C3DD`). |
+| 6-11 | `0xF3FC`-`0xF410` | Second bundle, copied by `0x2C467` (byte `+8` set to `0xFF`), by zone type 2 and when a ball is placed at `0x29A5A`. Slot 11 is a second zone list like slot 5's. |
 | 12-13 | `0xF414`-`0xF418` | Self-sized 16-bit offset directories selecting variable-size gameplay records. |
 | 14 | `0xF41C` | Null-terminated registry of light-group descriptors and linked light states. |
 | 15 | `0xF420` | Null-terminated registry of fixed 52-byte timed-effect states. |
@@ -171,7 +171,7 @@ slot address, even when the instruction reaches it through runtime state.
 | 24 | `0xF444` | One-byte pending-object selector consumed and cleared by the timed update at `0x2F322`. |
 | 25 | `0xF448` | Pair of special gameplay-object pointers immediately following the slot-14 list. |
 | 26 | `0xF44C` | Null-terminated registry of 42-byte bounded BCD accumulators. |
-| 27-28 | `0xF450`-`0xF454` | Alternative presentation records submitted to the queue routine at `0x2FE8E`. |
+| 27-28 | `0xF450`-`0xF454` | Two event streams; zone type 0 (`0x2C59C`) queues one of them through `0x2FE8E` (checked 2026-09-29 in the hints). |
 | 29 | module-local | Path template `DATA\\S00x\\MOD@MUSIC@P`, retained for module-side loading. |
 | 30 | module-local | Path template `DATA\\S00x\\MOD@MUSIC2@P`; null for table 4, which has no second music module. |
 | 31 | module-local | Base of a mutable 26-byte record bank described below. BPC command streams contain relocated aliases to its first record. |
@@ -248,8 +248,9 @@ Slot 15 contains a fixed 52-byte host-visible timed-effect state. Reset routine
 | `+0x04`, `+0x08` | Optional relocated primary and secondary light-state pointers. |
 | `+0x0C` | Optional relocated audio-control pointer dispatched through `0x3007A`. |
 | `+0x10` | Optional relocated pointer to a 26-byte slot-31-style mutable display state. |
-| `+0x14`, `+0x18` | Optional relocated presentation pointers queued through `0x2FEDB`. |
-| `+0x2C` | Value operand passed to the host value/score path at `0x2FBBF`; the precise gameplay unit is unresolved. |
+| `+0x14`, `+0x18` | Optional relocated display streams queued through `0x2FEDB` when the record is lit (event opcode 1 or 2) and taken (opcode 5). |
+| `+0x24`, `+0x28` | The points of a take: a packed-BCD dword at `+0x28` (for example `0x05000000`) with a high word at `+0x24`, added to the player's score through `0x2FBBF` (checked 2026-09-29 in the hints; this row said `+0x2C` before). |
+| `+0x2C` | Handler word: one of the 28 handlers at `0x2DA0A` (0: none), called after a take. |
 | `+0x2E` | Signed countdown, reset to `-1` and set from a duration scaled by runtime state. |
 | `+0x30` | Runtime active-list next pointer. |
 | `+0x34` | Present in longer records: a slot-16 counter or an event stream, by the handler the word at `+0x2C` selects from the 28 at `0x2DA0A` (checked 2026-09-29 in the hints: handler 6 counts the counter, 11h queues the stream; see docs/HANDOFF.md, "The tables and their CD tracks"). |
@@ -393,10 +394,11 @@ The run ends at the first non-tag-2 structure.
 
 This bank is live module data rather than a header-only compatibility export.
 Relocated aliases to its first record occur 21, 3, 8, and 9 times outside the
-header in tables 1 through 4. Several lie directly in main-interpreter command
-streams as the pointer operand of opcode `0x10`; handler `0x2DB7B` clears the
-first byte of the selected record. The exact state-machine meaning of that
-mutation remains open.
+header in tables 1 through 4. Several lie directly in display
+streams as the operand of display opcode `0x10`, which hands it to
+`0x3007A` (type 2). Event opcode `0x10`, which this paragraph named
+before, takes slot-26 records instead (checked 2026-09-29 with
+tools/event_streams.py on the four modules).
 
 ### Slot-33 descriptor bank
 
@@ -513,3 +515,11 @@ path, whose nested host calls temporarily restore that saved vector.
 This was found with an earlier scanner (`bpc_events.py`) that is no longer in the
 repository (it is in build/earlier/ on the machine it was removed on);
 to be checked again in the hints once the 32-bit stage 1 exists.
+
+Checked 2026-09-29 in the hints: every opcode of this table and of the
+display streams' table at `0x2F621` (streams queued through `0x2FEDB`:
+a flags word, two priority bytes, the position word at `+4`, commands
+from `+6`), one comment per handler, and the queue at `+0x2A1E` is the
+event queue, not a display one. `tools/event_streams.py` lists every
+stream of a module with the roots it hangs from; docs/HANDOFF.md, "The
+event language", has the summary.
