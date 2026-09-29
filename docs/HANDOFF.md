@@ -42,8 +42,8 @@ seen in the ball's speed and the ball save (see "The table angle and the
 ball save in a run"); the multiball option and a multiball in a run (see
 "The multiball in a run"); the work on Linux (see "Start here"); the
 selector in CODE:3B4B, the chooser's Info page and a hidden greetings
-page, the chooser's keys and how its pages are left (see "The Info page
-and the greetings page").
+page, the chooser's keys, captions and backdrop, and how its pages are
+left (see "The Info page and the greetings page").
 
 ## The earlier analysis
 
@@ -1743,10 +1743,30 @@ GREETINGS_TEXT, the comments at CODE:4532 and 505C.
   run's 108.53 not accounted for), MENU_LOOP again at 112.74. `100
   space, 106 enter, 108 f3`: CODE:35F8 at 108.00, AL=2 at CODE:526D at
   108.57, Extreme Sports on screen at 139.
-- Not done: the captions (CODE:1890, the records at CODE:1898 and the
-  three per-row tables at CODE:18C8, 18D8, 18E8, drawn through far
-  pointers at +18h/+1Eh), the attract cycle of CODE:36F4 (CODE:1919,
-  1917 = 300 frames).
+- The captions: all text on the chooser's backdrop (the credits in
+  CHOOSER_WAIT, the table list in MENU_LOOP) is a caption record of 24h
+  bytes, six far pointers to routines CAPTION_BUILD (CODE:302E) makes
+  from a layout in CODE (CODE:1AE6..226E; the command format in the
+  hints there). CAPTION (CODE:1890) is the one drawn. CHOOSER_WAIT steps
+  through CAPTIONS (CODE:1898, 11 records); MENU_LOOP takes the list
+  picture of MENU_ROW from one of three tables: the table boxed, Info
+  boxed, or no box while MENU_BLINK (CODE:18FA) is 1, so the box blinks.
+  The list scrolls so that the marked row is always at the box's y.
+- The backdrop (ATTRACT_STEP, CODE:36F4): a new palette every 300
+  frames, and after nine a new backdrop, one of three in turn.
+- Run with no keys (`build/menu/e.txt`, screenshots every 3 s from 90):
+  the chooser (CODE:4FF9) at 107.70, CHOOSER_WAIT at 107.87; a caption
+  every 5.05 s from 109.63 (Pinball Illusions at 111, Production at 147,
+  Press Space Bar at 159, round again at 165.86); palette stages 5.03 s
+  apart from 112.90; the cubes gave way to crosses at 148.42. Without
+  Space at 100 the credits run 3.7 s longer.
+- The pointer tables (CAPTIONS, MENU_PICS...) are left numbers: the
+  kit's `words` hint with CODE as the target also seeds code there, and
+  the records they point at are zeros in the image. A `words` form
+  without code seeding would be a kit change (AGENTS.md rule 7).
+- Not done: the routines CODE:2E35 makes (presumably compiled drawing
+  code, not read) and why there are six of them per caption; why
+  ATTRACT_START is reached at 104.21, before CODE:4FF9 (not looked at).
 - A note for byte searches: CODE:x is file offset x + 24h in
   ILLUSION.386 (checked on CODE:4532, 4886), not + 28h.
 
