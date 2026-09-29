@@ -5,9 +5,9 @@ top of an earlier analysis (docs/*.md other than this file). The game's
 files are listed. The main program, `ILLUSION.386`, is in stage 1:
 `src/ILLUSION.hints` rebuilds it byte for byte (doskit reads pMAX images
 since 2026-09-29), with few hints yet (see "Stage 1" below).
-The runner runs the game now (protected mode and MSCDEX in doskit,
-2026-09-29) past its CD check through the intro, to a still picture at
-about 100 s (see "The loader in the runner").
+The runner runs the game now (protected mode, MSCDEX, VGA mode 0Dh in
+doskit, 2026-09-29) through the intro and the chooser to the first
+table, which scrolls by itself (see "The loader in the runner").
 
 ## The earlier analysis
 
@@ -273,14 +273,33 @@ if in protected mode).
   (`introani.roy`, `intropix.mgl`, `SCROLL.DLT`, `BKGR.FLD`,
   `PCSKY.FLD`); the intro's pictures to t=90 (text over clouds, the
   credits);
-- from about t=100 to 150 (the end of the run) the screen is one still
-  picture, black, 304x50 as the runner reads the CRTC. The busiest loops
-  are CODE:25C0 (waits for the dword at CODE:1548 to change; written by
-  CODE:4C8C every 0.03 s from t=97.8, so it is not stuck there) and
-  CODE:6E2A (waits for the vertical retrace). What the game waits for,
-  or whether the runner's VGA reads the mode wrongly, is not found. The
-  image's base in that run is linear 100F30h (found by its bytes in a
-  memory dump; `-watch 102478` is CODE:1548). The runner's `-prof`
+- at about t=95 the game sets BIOS mode 0Dh (16 colours, planar) and
+  reprograms the CRTC to 304x224 (CR 1 = 25h, split at line 444). The
+  runner knew no mode 0Dh and left the graphics controller in text mode
+  at B8000h, so the writes to A0000h were lost and the screen stayed
+  black (the "still picture" of earlier runs; `-vgastate`, doskit
+  afb3541, showed it; fixed in doskit 55ecb38). Now the chooser's
+  attract screens come ("Pinball Illusions" over turning cubes, "Press
+  Space Bar for Table Menu / Press ESC to quit");
+- `-key 100 space`: the table menu (Law 'n Justice, Babewatch, Extreme
+  Sports, The Vikings, Info); `-key 106 enter` takes the first. At t=106.56
+  a CD stop, then `ILLUSION.CFG`, `SB16.SDR`, `data\s001\music.mod`,
+  `music2.mod`, `special\vm_data.mgl`, the five `data\misc\font*.m`,
+  `anims\allanims.mgl`, `source\t001.bpc` (t=114.8) and `.rel`,
+  `link1`, `pixels1`, `mask1`, `hide1.m`, `angle1`, the same with 2,
+  `stage.m`, `stage.c`, `masks\lights.mgl`, `drops.mgl`, `masks.mgl`,
+  `data\misc\flipdat1.m` (t=121.9). At t=124.08 a stop and a play of
+  frames 24470..38187 with `-cue`: all of track 2. Which track goes with
+  which table or screen is not looked at further;
+- from t=120 the table is on screen, 336x350 in unchained 256 colours
+  (Mode X like; split at line 317 for the score display, "5 XXX
+  50.000.000"), and it scrolls by itself up to t=200 (a new picture in
+  every shot 2 s apart): the attract mode, presumably (not checked). No
+  instruction the runner does not know (x87 or other) came up to t=200
+  (`-v`). The busiest code then is 000C:98BC, not in ILLUSION.386's
+  selector 14h; which image it is was not looked at;
+- the image's base in those runs is linear 100F30h (found by its bytes
+  in a memory dump; `-watch 102478` is CODE:1548). The runner's `-prof`
   prints linear addresses as if real mode (0014:25CC as 0270C).
 
 The key script for the set-up: `3 down` ... (7 downs 0.3 s apart), `5.5 enter`,
@@ -348,10 +367,13 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      plays are kept on the emulated clock, nothing sounds), INT 21h
      AH=57h. The game gets through its intro (see "The loader in the
      runner").
-   - next: the still picture at t=100 (what the game waits for there,
-     or what the runner's VGA shows wrongly); then on to the chooser
-     and a table, with `-cue`, to see when the game plays CD tracks and
-     what else the runtime lacks (x87 is not emulated either).
+   - done 2026-09-29: BIOS modes 0Dh/0Eh in the runner (doskit
+     55ecb38); the game gets to the first table (see "The loader in
+     the runner").
+   - next: a ball played on a table (the keys for plunger and flippers
+     are not known yet), the
+     other three tables, which CD track goes with what; x87 is not
+     emulated, not needed up to t=200.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
    once more is known, the copy protection first); displacements with
