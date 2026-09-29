@@ -266,8 +266,21 @@ Seen by chance: Git Bash turns the lone `/` argument into a path
 (`MSYS_NO_PATHCONV=1` stops it); the game then showed its options
 screen ("Pinball Illusions Options": balls per game, table angle,
 scrolling, multiball maximum, tilt sensitivity, resolution) instead of
-the intro. Which character of the argument asks for it is not checked
-(the GOG set-up passes `/o`).
+the intro. Why, found 2026-09-29 (hint `SETUP_ARGS`, CODE:32F39): the
+program reads the command tail from its first `/`, at most 20h
+characters, and sets a flag for each S (sound set-up), O (options
+screen) and R (options back to the standard) in it, case ignored; `?`
+prints the help text and exits. "C:/Program Files/Git/" has all three,
+so those runs also cleared the options (R) in the state layer. Runs:
+`/?` printed the help text ("ILLUSION S - runs the Setsound soundcard
+configuration program ...", exit code 32), `/o` alone the options
+screen. The texts come from `SETSOUND\SETSOUND.DAT` in English, German
+or Swedish by the country code of INT 93h AH=15h ('SV' Swedish, 'GR'
+and 'SG' German). The options are the 200h bytes at CODE:009D
+(`OPTIONS`); byte +5 is the resolution (`OPT_RESOLUTION`: Enter on it in
+a run wrote 1 and showed "SVGA 640x480"), which picks the display mode
+of CODE:910E (see "The frame rate"); the other bytes are not matched to
+options yet.
 
 ### The gaps
 
@@ -802,8 +815,9 @@ Found 2026-09-29 from the run above (`-watch` on CODE:CB8E, linear
 10DABEh) and the code (hints `FRAME_RATE`, `MEASURE_RATE`, CODE:910E).
 The waits of both stream languages and the music's countdown are in
 frames, multiplied by `FRAME_RATE` (state+50h). The display mode's
-routine (by the byte at CODE:00A2, presumably the configuration's
-resolution; the runs' mode is the first, 336x350) sets it to 46h (70)
+routine (by the byte at CODE:00A2, the options screen's
+resolution: `OPT_RESOLUTION`, VGA 360x350, SVGA 640x480, SVGA 800x600,
+VGA 320x240; the runs' mode is the first, 336x350 of it on the screen) sets it to 46h (70)
 or 3Ch; then `MEASURE_RATE` times one vertical retrace with the PIT and
 stores 1234DCh / the ticks, at most 3Dh. So on a 70 Hz display the game
 counts 61 frames a second and runs 70 of them: a game second lasts
@@ -917,5 +931,7 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      selector in CODE:3B4B; names for the routines found in these
      sessions (METHOD.md), keeping build.py IDENTICAL. Done 2026-09-29:
      the self-patched call at CODE:298C5 (see "The self-patched call in
-     a run": not patched in runs). Open from it: the options screen's
-     argument; what Esc does during a game.
+     a run": not patched in runs). Done 2026-09-29: the options screen's
+     argument (see "The self-patched call in a run", the end). Open from
+     it: what Esc does during a game; the other option bytes; the SVGA
+     modes in the runner (FRAME_RATE then 60, presumably).
