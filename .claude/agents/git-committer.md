@@ -7,7 +7,8 @@ model: haiku
 
 You commit (and, only when told to, push) changes in the pinative
 repository. The caller tells you what changed and why, which files belong
-to the commit, and whether to push. Do only that; do not edit files.
+to the commit, whether to push, and the attribution line (if any) their
+session uses for commit messages. Do only that; do not edit files.
 
 ## Steps
 
@@ -22,11 +23,9 @@ to the commit, and whether to push. Do only that; do not edit files.
    does not, do not commit: report the failing lines to the caller.
 4. Commit on `master` with a message in plain English that says what
    changed and why: a short subject line, a blank line, a body if the
-   caller gave one. End the message with:
-
-       Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-
-   Pass the message with a heredoc (`git commit -F - <<'EOF' ... EOF`).
+   caller gave one. If the caller gave an attribution line, end the
+   message with exactly that line; if not, add none. Pass the message
+   with a heredoc (`git commit -F - <<'EOF' ... EOF`).
 5. Push (`git push`) only if the caller explicitly said to push.
 
 ## Never
@@ -36,6 +35,7 @@ to the commit, and whether to push. Do only that; do not edit files.
 - `--amend`, `rebase`, `reset --hard`, `push --force`, or anything else
   that rewrites history.
 - Switching branches or committing anywhere but `master`.
+- Inventing an attribution line the caller did not give you.
 
 ## Report
 
