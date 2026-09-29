@@ -114,3 +114,9 @@ code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, wi
 code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX (CODE:4DB3); RET
 words      CODE:29912 4 CODE       ; called in turn at CODE:298A7 through the pointer at CODE:2982E, which holds 29912h in the file; CODE:29873 (not reached yet) sets it to 29922h, a like table of four after this one
 words      CODE:7AC0 0C0 CODE stride=8 ; records of 8 bytes from CODE:7ABC to 80BCh, a dword ascending (presumably a time) and a handler: CODE:704E calls [ESI+4] while [CODE:8124] reaches the first dword ([CODE:8128] set to 7ABCh at CODE:789A)
+; two interpreters of word streams (the stream's word an index, 0 ends it):
+; records of 4 bytes, a 16-bit offset from the table's second record and a
+; number added to the stream's position; no bound check, the counts are up
+; to the code after the table (its first offset)
+rwords     CODE:2D18F 20 stride=4 from=2D193 ; LEA at CODE:2CF36 and CODE:2D148, call through CODE:2CF57 and CODE:2D169; record 0 leads to a RET
+rwords     CODE:2F625 1A stride=4 from=2F625 ; LEA at CODE:2F4A4 and CODE:2F5A2, call through CODE:2F4C5 and CODE:2F5C4; record 0 at CODE:2F621 is 0,0 (index 0 not called)
