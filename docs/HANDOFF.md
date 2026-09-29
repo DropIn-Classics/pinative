@@ -44,7 +44,9 @@ ball save in a run"); the multiball option and a multiball in a run (see
 selector in CODE:3B4B, the chooser's Info page and a hidden greetings
 page, the chooser's keys, captions and backdrop, and how its pages are
 left (see "The Info page and the greetings page"); table 1's shooting
-game on the display (see "Table 1's shooting game in a run"); table 4's
+game on the display (see "Table 1's shooting game in a run"; its
+25-hit extra ball never given, see "Table 1's shooting game when the
+lives run out"); table 4's
 sea game (see "Table 4's sea game in a run"); table 3 has no
 opcode-14h object (see "Table 3's opcode-14h record").
 
@@ -1781,9 +1783,10 @@ Found 2026-09-29, on Linux, from table 1's module and runs (`build/vm/`;
 the details in docs/bpc-module.md, "Table 1's shooting game"). Table
 1's opcode-14h object (module 9A46h) is a game on the display: bad
 guys in four windows, a crosshair moved by the flippers, a bad guy in
-the crosshair's window shot when it aims; four lives; 25 hits light the
-extra ball, 30 end the game with 50,000,000 more and the game's score
-paid to the player.
+the crosshair's window shot when it aims; four lives; 30 hits end the
+game with 50,000,000 more, the game's score paid to the player and the
+extra ball lit (the 25-hit extra ball of the code is never given, see
+"Table 1's shooting game when the lives run out").
 
 - Runs as in "The table angle and the ball save in a run" (`-put` of
   the GOG `ILLUSION.CFG`, keys `106 space`, `112 enter`, `136 f1`, `137
@@ -1805,16 +1808,47 @@ paid to the player.
   (linear 10E7E8h, byte +7) went from 0 to 80h at 178.0 (and +6 from 10h
   to 20h at 179.5, presumably a take; not looked at). The display: "EXCELLENT" at 178, a number
   at 180 (not legible at the shot's size), "EXTRA BALL IS LIT" at 184.
-- Not run: the lives-out paths ("YOU SHOT nn BAD GUYS" with fewer than
-  25 hits, the extra ball alone with 25..29; the first run ended on this
-  path, its display not looked at), whether the game's score is paid
-  there (read: it is not), which `vm_*` picture is which, the extra ball
-  collected afterwards.
+- Not run: which `vm_*` picture is which, the extra ball collected
+  afterwards. (The lives-out paths: next section.)
 - Found on the way: the key times of the earlier Windows runs (`130
   f1`, `131 enter`) do not reach a table with `-put` of the GOG
   configuration (F1 in CHOOSER_WAIT is dropped, see "The Info page and
   the greetings page"); `seq` writes decimal commas under a German
   locale, which the runner's `-keys` does not read (`LC_ALL=C`).
+
+### Table 1's shooting game when the lives run out
+
+Found 2026-09-29, on Linux, from table 1's module, the main program and
+runs (`build/vmend/`; keys and the three pokes of "Table 1's shooting
+game in a run", the state poked at the first update, `-poke 2DDBC5#1
+2DE23F ...`). Hint: the comment at CODE:30368.
+
+- The code (module 9D3Eh..9DD2h): the hits go through host vector +18h
+  (CODE:30368, a word to decimal text) into "YOU SHOT 00 BAD GUYS";
+  then the module reloads its state pointer from [CODE:0004] and tests
+  byte +8 (FFh from the 25th hit, set at module 9EBAh, read nowhere
+  else): FFh would queue event stream 5F96h (`light @5FC6`, the extra
+  ball), otherwise 5FA2h (`display @6030`). CODE:30368 uses CODE:0004
+  as a work cell and leaves it pointing into its digit tables
+  (CODE:30585 + 2n - 2 for 1..15 hits, CODE:305A5 for 16..29), where
+  the byte at +8 is not FFh for any count 1..29 (read from the image;
+  the tables are only read). So in the original the extra ball is lit
+  only by 30 hits; 25..29 hits end as fewer do.
+- Runs: hits 7, lives 1: lives 0 between 146.0 and 146.5, "YOU SHOT 07
+  BAD GUYS" and "0" on the display at 147. Hits 26, `+8` FFh, lives 1:
+  the same with "26"; the shots of the two runs differ only in the
+  number, from 148 not at all; the event queue (CODE:2FE8E) and the
+  display queue (CODE:2FEDB) called at the same moments (146.155,
+  146.165); module 9DAFh (the 5FA2h branch) reached, 9D8Bh not, SI at
+  the test 05A5h (the runner prints 16 bits: CODE:305A5, presumably);
+  record 5FC6h's byte +1 not written up to t=149.
+- Hits 7, lives 1 and the game's score's bytes +0Eh..+11h poked to
+  `00 07 00 00`: "YOU SHOT 07 BAD GUYS" and "700" on the display at
+  147; the player's score (linear 10E7E8h) the same as in the run with
+  score 0 at every half second up to 149.5 (it counts up from 147.5 in
+  both, something else of the mode's end; not looked at). So the game's
+  score is shown, not paid. How the score's bytes map to the digits
+  shown is not worked out.
 
 ### Table 4's sea game in a run
 

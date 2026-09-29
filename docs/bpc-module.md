@@ -257,10 +257,16 @@ in the crosshair's window is shot when it aims.
   (picture 14, 16 x 15, transparent, `0xA142`) at the display offset
   from `0xA1EB` / 2.
 - The end: lives at 0: the hits written into "YOU SHOT 00 BAD GUYS"
-  (`0x6050`); with 25 hits or more (`+8`) stream `0x5F96` is queued (it
-  lights slot-15 record `0x5FC6`, handler 1: the extra ball), else
-  `0x5FA2` (the text and the game's score for 2 s). The score is not
-  paid on this path (read, not checked in a run). 30 hits: the score +
+  (`0x6050`) by host vector `+0x18`; then `+8` is tested through `[4]`
+  (module `0x9D80`): `0xFF` would queue stream `0x5F96` (it lights
+  slot-15 record `0x5FC6`, handler 1: the extra ball), else `0x5FA2`
+  (display `0x6030`: the text and the game's score for 2 s). But the
+  host routine uses `[4]` as a work cell (CODE:30368 in the hints), so
+  the test reads a byte of the host's digit tables, never `0xFF`: the
+  extra ball is not lit on this path however many hits (read for 1..29
+  from the image; seen in a run with 26 hits, docs/HANDOFF.md, "Table
+  1's shooting game when the lives run out"). The game's score is not
+  paid on this path (seen in a run). 30 hits: the score +
   50,000,000 (the BCD at `0xA437`), the whole score added to the current
   player's (state `+0xD76`'s record `+0`), stream `0x5FAE` queued
   ("EXCELLENT" with the palette flashing, the score, "EXTRA BALL IS
