@@ -218,6 +218,44 @@ Not done: everything the method's stage 1 asks beyond the byte identity
 (the `ptr`/`dptr` of the many 32-bit immediates that
 are offsets, which the analysis does not find by itself; names).
 
+## The loader in the runner
+
+`run.py -until 2 -dos ILLUSION.EXE` (2026-09-29, the runner as it was:
+386 real mode only) prints the game's and pMAX's banners, then "No
+memory manager present" and "00562kb low and 65472kb high memory
+available"; then the program is lost (it executes the interrupt table
+at 0000:00D8 and ends at t=0.24 s). A trace (`-trace`, 1.38 million
+lines) shows why: the loader, decoded in memory, calls `INT 15h AX=8900h`
+at 0076:473B (the BIOS's "switch to protected mode": GDT at ES:SI, the
+PIC bases in BX, BH and BL swapped just before) with the return address
+in CX (473Dh). The runner's INT 15h fails that call and returns to
+real mode, where the loader goes on as if in protected mode: it loads
+DS..GS and SS with selectors (18h and others), then `MOV CR3,EAX` (0),
+`POPFD` (3002h: IOPL 3), `LIDT`, `LLDT`, `LTR`, `RET`. So without a memory
+manager pMAX takes the BIOS way in, and it uses an LDT and a task
+state segment. Not known yet: whether it runs the program at ring 3 or
+in V86 mode for DOS calls, whether it pages (CR3 = 0 says presumably
+not), how it gets back to real mode, and where the 65472 KB come from
+(the runner's INT 15h AH=88h says 0 KB).
+
+With a memory manager (EMS, DPMI, as in DOSBox) pMAX presumably takes
+another way (VCPI or DPMI); not looked at. The runner has none, so the
+raw way is the one to emulate first.
+
+What the runner needs for that, in steps (each with a test program in
+doskit's tests, written for the kit):
+
+1. INT 15h AH=89h and AH=88h in bios.c (the GDT's layout as IBM's BIOS
+   defines it; memory above 1 MB, RAM_SIZE is 16 MB now);
+2. cpu.c: CR0.PE, segment registers with descriptors from the GDT and
+   LDT (base, limit, 16/32-bit code and stack), LGDT/LIDT/LLDT/LTR,
+   far jumps and calls through selectors, interrupts and exceptions
+   through the IDT;
+3. privilege levels and the TSS's stacks, V86 mode or the way back to
+   real mode, as the loader turns out to use them;
+4. the runner's addresses (-break etc.) with selectors, run.py taking
+   the pMAX image's segments as a program's.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -239,8 +277,10 @@ are offsets, which the analysis does not find by itself; names).
      write_pmax cannot know it writes as ILLUSION.386 has it: the
      header's first word 0, format 1, allocation = image size, the
      entry as an image offset (descriptor 0 has base 0, so either way);
-   - then the runner: protected mode or pMAX's services (INT 90h..94h)
-     emulated, still to decide.
+   - then the runner. Decided 2026-09-29: it emulates protected mode
+     (the 386's, in cpu.c and bios.c), not pMAX's services, so that other
+     DOS extenders run on it too. See "The loader in the runner" below
+     for what pMAX asks of it.
 2. Stage 1 for the main program, on from the above: the gaps are looked
    at (see "The gaps"; the unreferenced code there wants a second look
    once more is known, the copy protection first); displacements with
