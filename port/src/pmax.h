@@ -17,6 +17,12 @@ extern char pmax_tail_buf[160];
  * 'GR' or 'SG' German); the port says neither, as the runs had it */
 uint16_t pmax_country(void);
 
+/* INT 93h AH=13h: the real-mode segment of pMAX's transfer buffer
+ * (0B3Eh in the runs) */
+uint16_t pmax_rm_seg(void);
+/* INT 93h AH=5: the selector of video memory (48h in the runs) */
+uint16_t pmax_video_sel(void);
+
 /* INT 94h AH=8: the configuration file.  The port reads the player's file
  * at `path` (NULL or missing: none, the options all 0 and the header all
  * FFh; the original then creates it and runs the sound set-up, which the

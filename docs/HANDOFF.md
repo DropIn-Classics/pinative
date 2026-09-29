@@ -2252,6 +2252,31 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      second block seen: SETSOUND.DAT's place again, freed before). The
      DAC is not compared (memcmp.py has no DAC; the same 300h bytes go
      to it).
+   - done 2026-09-29: CHOOSER_LOAD's start and SOUND_START's CD check
+     (port/src/cd.c, sound.c: CD_INSTALLED, CD_LOCK, CD_READ_TOC and a
+     MSCDEX of one data track in pMAX's real-mode buffer 0B3Eh, as dosrun
+     without -cue); CODE equal at CODE:70BD (linear 107FEDh) against a run
+     with NOSOUND.SDR in the header (build/pm/nosound.cfg made as in "The
+     CD check and the driver's start in a run"). The real-mode buffer
+     differs where pMAX itself put the header (its file I/O), not modelled.
+   - chosen by the user 2026-09-29: a silent stand-in driver first, the
+     translation of NOSOUND.SDR (src/NOSOUND.hints, rebuilt identical
+     since doskit's `bin` kind), compared with NOSOUND runs; real sound
+     later. Next: the driver loaded (INT 94h AH=1 by DRIVER_CFG's name),
+     INT 93h AH=8's alias (0Ch), CALLBACKS_CS, then NOSOUND's command 0
+     (CODE:09F0: CODE:10BB, 137A = host callback 0 of 800h bytes, 11C6 and
+     1214 = the DMA buffer through callbacks 1, 3, 2, 053D = its own INT
+     92h of 8202h bytes) and command 4 (CODE:1C28, the MOD loader).
+   - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
+     headers `01, used FFh/00, selector, size rounded to 16, name offset,
+     name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
+     from the bottom for policy 0; MOD.INT (host callback 6, INT 92h AH=8
+     BL=1) cut from the top (data at FA8060h, header policy word 2); host
+     callback 1's block (BL=2, selector 34h) not in the chain but at linear
+     13120h, DOS memory (the trace after callback 3 at driver CODE:1258).
+     Selectors: the lowest free of 04h, 0Ch, ... in steps of 8, with 14h,
+     1Ch, 24h taken from the start; 48h (video) apart. port/src/pmax.c
+     does only the bottom-up case so far.
    - on from HISCORE_INIT: CODE:757D,
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts

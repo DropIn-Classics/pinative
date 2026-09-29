@@ -14,6 +14,16 @@ uint16_t pmax_country(void)
     return 0;
 }
 
+uint16_t pmax_rm_seg(void)
+{
+    return 0x0B3E;
+}
+
+uint16_t pmax_video_sel(void)
+{
+    return 0x48;
+}
+
 /* ---- the configuration file */
 
 #define CFG_SIZE 0x220          /* a 20h-byte header, 200h bytes of options */

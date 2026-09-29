@@ -27,5 +27,11 @@ void SVGA_CHECK(void);
 /* CODE:049A, CODE:046E */
 void VGA_INIT(void);
 void HISCORE_INIT(void);
+/* CODE:757D */
+void CHOOSER_LOAD(void);
+/* cd.c: CODE:35B52 and 35C58 return 1 for CF */
+int CD_INSTALLED(void);
+void CD_LOCK(uint8_t bl);
+int CD_READ_TOC(void);
 
 #endif

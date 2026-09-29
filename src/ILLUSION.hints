@@ -63,6 +63,19 @@ name       CODE:08AC HISCORE_DEFAULTS ; C8h bytes as HISCORES has them ("ICE", "
 code       CODE:046E HISCORE_INIT  ; HISCORE_DEFAULTS to HISCORES when HISCORES's first byte is 0 or FFh (after the first VGA_INIT)
 code       CODE:049A VGA_INIT      ; BIOS mode 13h, CR 13h 1Eh (240-byte lines), CR 9 40h, the line compare 108h, 15 retraces waited; LOADING_PIC unpacked into a 13EAh-byte block (INT 92h AH=4; run 2026-09-29: at linear 1473C0h, where SETSOUND.DAT was), its palette to the DAC and its pixels to A000:A916h (INT 93h AH=5's selector), the block freed
 name       CODE:0974 LOADING_PIC   ; the "Loading" picture, run-length packed ("TCB", byte +5 the mark: mark, count, value); unpacked a RIX3 picture of 240x18 (+4 width, +6 height, +0Ah the palette, +30Ah the pixels; run 2026-09-29: on the screen at t=2.645)
+code       CODE:757D CHOOSER_LOAD  ; after HISCORE_INIT: SOUND_START (through CODE:4CF2), then the chooser's files by INT 94h AH=1 (cube.rix, tube.rix, torus.rix, tinyfont.fnt ...)
+name       CODE:6354 VIDEO_SEL     ; INT 93h AH=5's selector (run 2026-09-29: 48h; the video memory's, presumably, as VGA_INIT writes A000:A916h through it)
+name       CODE:635E HOST_DS       ; DS kept by CHOOSER_LOAD
+name       CODE:6358 DRIVER_SEL    ; the sound driver's block (INT 94h AH=1 by the name in DRIVER_CFG; run: 4)
+name       CODE:6360 DRIVER_CFG    ; the configuration header again (INT 94h AH=5): the driver's name first; the driver's command 0 gets it as ES:EBX
+name       CODE:8134 DRIVER_ENTRY  ; a far pointer: offset 0, the selector INT 93h AH=8 makes of DRIVER_SEL (run: 0Ch)
+name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0
+code       CODE:61D9 CALLBACKS_CS  ; each selector word of HOST_CALLBACKS set to CS
+code       CODE:35B52 CD_INSTALLED ; INT 2Fh AX=1500h: CF when no CD drive; the first drive to CD_DRIVE, INT 93h AH=13h's real-mode segment to CD_IOCTL+10h
+code       CODE:35B7D CD_LOCK      ; IOCTL output (0Ch) with the control block CODE:35EFF (code 1: lock or unlock the door, BL to CODE:35F00; run: BL 1)
+code       CODE:35C58 CD_READ_TOC  ; IOCTL input (3): audio disk info (0Ah, the first and last track), then track info (0Bh) for each, its start to CD_TRACK_START; CF on an error (an error 0Fh tried once more)
+name       CODE:35EDC CD_IOCTL     ; the IOCTL request header (+2 the command, +0Eh the transfer address: an offset into it, +10h the real-mode segment), copied with the control blocks after it (64h bytes) to the real-mode buffer by CD_REQUEST
+name       CODE:3631B CD_DRIVE     ; INT 2Fh AX=1500h's CX: the first CD drive (run: 3, D:)
 comment    CODE:0310 INT 94h AH=7: OPTIONS from the configuration file's 200h bytes at +20h, stored chained: a byte XOR the stored byte four before it, the first four XOR "SN95" (runs 2026-09-29, crafted files: 200h random bytes read back exactly)
 ; 2A1h as a displacement with a register: a field offset, presumably, not CODE_SEL
 num        CODE:2636F
@@ -269,7 +282,7 @@ code       CODE:4CB6               ; computed at CODE:5026: the dword at CODE:22
 code       CODE:698A               ; computed at CODE:78D9: the dword at CODE:908B less the sum of the 16F6h bytes at CODE:6A20
 code       CODE:6E49               ; computed at CODE:795A: the dword at CODE:9043 less the sum of the 97h bytes at CODE:7341
 code       CODE:6FC0               ; computed at CODE:78EE: the dword at CODE:9097 less the sum of the 16F6h bytes at CODE:6A20
-code       CODE:7082               ; computed at CODE:75A2: the dword at CODE:9073 less the sum of the 16F6h bytes at CODE:6A20
+code       CODE:7082 SOUND_START   ; computed at CODE:75A2: the dword at CODE:9073 less the sum of the 16F6h bytes at CODE:6A20
 code       CODE:72BB               ; computed at CODE:7A0F: the dword at CODE:907F less the sum of the 16F6h bytes at CODE:6A20
 code       CODE:7341               ; computed at CODE:7895: the dword at CODE:904F less the sum of the 88Ch bytes at CODE:7230
 

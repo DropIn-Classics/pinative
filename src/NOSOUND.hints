@@ -1,0 +1,11 @@
+; NOSOUND.SDR, the sound driver for no sound: a raw 32-bit image the main
+; program loads through pMAX and calls at 0 (docs/audio-driver.md),
+; unpacked from the archive in ILLUSION.EXE by tools/illfiles.py.
+bin        build/files/NOSOUND.SDR
+segment    CODE 0 CODE             ; the whole file, code and data
+
+code       CODE:0933 DISPATCH      ; the jump at 0 goes here: the command in EAX through CMDS
+words      CODE:09A4 13 CODE       ; commands 00h..12h (docs/audio-driver.md, the command ABI)
+name       CODE:09A4 CMDS
+code       CODE:09F0 CMD_INIT      ; command 0
+code       CODE:0D2B CMD_LOAD_MODULE ; command 4: a module into slot BL from ES:EDX

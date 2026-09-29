@@ -72,5 +72,5 @@ void ENTRY(void)
      * followed): nothing in the port's memory */
     VGA_INIT();
     HISCORE_INIT();
-    pi_stop("L757D");
+    CHOOSER_LOAD();
 }
