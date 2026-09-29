@@ -182,7 +182,13 @@ jump or call to its start anywhere in the image), left as data:
   two of them are the start of a checksummed stretch), and CODE:5140
   itself (a loop on `SUB EAX,[EBX+3]` with EBX = [5DCBh], then on
   into CODE:5198); near the text "Manual Protection" (CODE:5DE3):
-  part of the copy protection, presumably, reached in a way not found;
+  part of the copy protection, presumably. In a run of the GOG release
+  the protection's question did not come (the user's test, reported
+  2026-09-29; how often or when the original asks is not known here).
+  Fits: the question's texts at CODE:5DE3, 5DF5 ("Please enter word"),
+  5E12 (" at page") have no reference anywhere in the image, not even as
+  a 16-bit value. How it was switched off (code cut loose, a flag) is
+  not found; so these pieces are presumably dead in this release;
 - routines after a RET: CODE:2FFA, 36A1 (waits for scan code 2 and its
   release), 73D8, 92CE, 9606 (after the text "HEJ!$"), A618/A61E,
   15340, 297A6, 2E886 and 302F8 (both in the interpreters' style),
