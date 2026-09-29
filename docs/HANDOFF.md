@@ -14,7 +14,8 @@ All four tables load and scroll; which CD track each plays is found
 (see "A mode's track in a run"). The two stream languages are read, and
 tools/event_streams.py lists every stream of a module (see "The event
 language"); what the 28 handlers of a take do is read (see "The slot-15
-handlers").
+handlers"). The offsets among the 32-bit immediates have hints (see
+"Offsets among the immediates").
 
 ## The earlier analysis
 
@@ -102,10 +103,11 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 30,022
-instructions, 3916 labels, 17 lines as DB, 19 s on the Mac used
-(2026-09-29); gaps.py: 210 gaps, 164,921 of 0x46480 bytes not reached as
-code (see "The gaps" below). The hints so far: the two descriptors as segments (`CODE` the
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 30,153
+instructions, 4195 labels, 17 lines as DB, 26 s on Windows (2026-09-29,
+after the offsets among the immediates, see "Offsets among the
+immediates"; 30,022 and 3916 before); gaps.py: 209 gaps, 164,557 of
+0x46480 bytes not reached as code (see "The gaps" below). The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
 point's name, the pointers found so far, a `stop` and the 17 `raw`
 lines:
@@ -174,6 +176,51 @@ Code reached through pointers so far:
   into the table module (docs/bpc-module.md: the host vector); the
   entries are instruction starts, what each does not looked at.
 
+### Offsets among the immediates
+
+Done 2026-09-29, on Windows: `ptr`/`dptr` hints for 425 of the 32-bit
+immediates, a block at the end of src/ILLUSION.hints. ptrscan.py found 49
+(a MOV r32,imm whose register then addresses memory); a throwaway scan
+(not kept) took every 4-byte immediate from 100h to the image's end that
+was no label, 642 besides the branches, and sorted them by how the
+register is used next (into an INT, a call, a memory operand, a store,
+a compare, a subtraction), then by eye, the unclear ones in the code. As
+read:
+
+- pMAX's services: INT 92h takes ESI, a name for the block (texts like
+  "Used by ..."; two point at a single 0 byte before a routine, CODE:2F13
+  and 39C7), and EBX, its size; INT 94h AH=1 EDX the file name and ESI
+  the byte before it; INT 93h AH=4 BL=1 ES:EDX an interrupt handler.
+- The selectors the program keeps: CODE:A10B (the start-up alias), 131D
+  and 635E hold copies of DS, taken for CODE (presumably; a run checked
+  only CODE:A10B, see "The keys"); CODE:130F, A117, 634A/634C and the ones
+  from INT 93h AH=5 are other memory (video among them), so offsets used
+  with them stay numbers; CODE:3B4B is freed with INT 92h AH=5, where it
+  is set is not found: 430Ah and 46AFh (the text "The GREETINGS Page",
+  in CODE) stored to CODE:3B58 and read with it are left numbers.
+- Numbers kept: counts, sizes, strides (C4E0h, 1500h, 5C0h, 580h), the
+  lengths of the checksummed stretches (the kit has no label
+  differences), a CD time (32200h at CODE:35DE8).
+- Code reached by the new `ptr`s (131 instructions): a second keyboard
+  handler at CODE:340A (installed at CODE:33D0; a 16-byte ring of scan
+  codes at CODE:1906); the routines handed to the sound driver, commands
+  0Eh, 0Fh (with a rate in ECX) and 11h (docs/audio-driver.md):
+  CODE:4C85/4C93, and CODE:B99C, B9B9, 9CD4. CODE:B99C (DRV_TICK) counts
+  CODE:BAD4, the word display opcode 1Ah blinks by and handler 1Ah draws
+  from; how often it runs is not checked. CODE:B9B9 sets the CRT start
+  address and the pel panning, the screen's scroll presumably.
+- CODE:523B writes EBX to [290FBh+7CBh] = CODE:298C6, the immediate of
+  `MOV EBX,14DE2h; CALL EBX` at CODE:298C5; EBX is [[CODE:5DCB]+13h] +
+  [CODE:55E3], and CODE:5DCB is what the dead copy-protection pieces
+  write (see "The gaps"). The call's target is computed at run time,
+  presumably by the protection; not followed, not seen in a run.
+
+After it, ptrscan.py lists two candidates, both numbers by the above
+(CODE:3D34, a count; CODE:523B). Not looked at: immediates below 100h,
+displacements with a register that land in data (see "The gaps"), and
+whether a `dptr` to a text is to its start (the scan took the address as
+the program has it).
+
 Calls that leave the image: through the sound driver's entry (far
 pointers at CODE:8134, CODE:98A0); through the fields of the state
 record at [CODE:0014] (CB3Eh or 12844h; `[ESI+2946h]`, `[ESI+294Ah]`,
@@ -238,9 +285,8 @@ taken the constant stored into it (CODE:7ABC) for code: about 2000
 "instructions" of data, now a data label. The earlier scanner reached
 12,018 bytes; not compared (the kit reached 11,405 then, 68,151 now).
 
-Not done: everything the method's stage 1 asks beyond the byte identity
-(the `ptr`/`dptr` of the many 32-bit immediates that
-are offsets, which the analysis does not find by itself; names).
+Not done: names (the `ptr`/`dptr` of the 32-bit immediates are done,
+see "Offsets among the immediates").
 
 ## The loader in the runner
 
@@ -775,11 +821,14 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
      handlers"). Open from it: a run that checks the names (score,
      bonus, multiplier, extra ball: `-watch` on the player record);
-     who reads a slot-16 counter's word +26h (handler 14h); where
-     CODE:BAD4 is counted; table 4's random awards.
+     who reads a slot-16 counter's word +26h (handler 14h); table 4's
+     random awards. Where CODE:BAD4 is counted: DRV_TICK (see "Offsets
+     among the immediates"), how often not checked.
    - done 2026-09-29: table 2's music (see "The audio records and
      table 2's music chooser"). Open from it: a run of the chooser, table
      1's and 4's opcode-14h objects.
-   - Stage 1 (item 2): ptrscan.py over the 32-bit immediates and `ptr`
-     hints for those that are offsets, then names for the routines
-     found in these sessions (METHOD.md); keep build.py IDENTICAL.
+   - done 2026-09-29: Stage 1 (item 2), the offsets among the 32-bit
+     immediates (see "Offsets among the immediates"). Open from it: the
+     selector in CODE:3B4B; the self-patched call at CODE:298C5 (a run
+     with `-watch` on CODE:298C6); names for the routines found in these
+     sessions (METHOD.md), keeping build.py IDENTICAL.

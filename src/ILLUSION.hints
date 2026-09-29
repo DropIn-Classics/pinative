@@ -252,7 +252,7 @@ comment    CODE:2FAE9 display opcode 13h (a word): the loop count state+2A4Eh (o
 comment    CODE:2FA56 display opcode 14h (a position): state+2A4Eh counted down; unless it is 0, a jump to the position: a loop
 comment    CODE:2F80C display opcode 18h: DAC colours FCh..FFh from the second set (CODE:BAB6)
 comment    CODE:2F9C9 display opcode 19h: DAC colours FCh..FFh from the first set (CODE:BA9B)
-comment    CODE:2F7DE display opcode 1Ah (a text record, a word): shown (CODE:27783) when the word AND the word at CODE:BAD4 is not 0; CODE:BAD4 is counted up by the code not disassembled after CODE:B993 (presumably a timer interrupt, not checked): blinking text
+comment    CODE:2F7DE display opcode 1Ah (a text record, a word): shown (CODE:27783) when the word AND the word at CODE:BAD4 is not 0; CODE:BAD4 is counted up by DRV_TICK (CODE:B99C, the sound driver's command-0Eh routine; how often not checked): blinking text
 ; the zones' types (the switch at CODE:2C3DD; the object at the zone's +0Ah)
 comment    CODE:2C59C zone type 0: as type 1 (from CODE:2C61F), first, when state+0D2Fh is set, the event stream of header slot 27 (state+2912h) or 28 (2916h) to EVENT_QUEUE by whether state+0E38h equals state+0D36h (not followed): a skill shot, presumably
 comment    CODE:2C4B5 zone type 1: on entry the object's points (from +1Eh; through CODE:2FD11 from +26h instead when the record at +0Ah has the player's bit already), its +2 through CODE:3007A, its +6 (an event stream) to EVENT_QUEUE
@@ -289,3 +289,453 @@ comment    CODE:2F300 Enter (KEY_DOWN+1Ch) launches the waiting ball (run: F1, t
 num        CODE:2F306
 num        CODE:2F315
 comment    CODE:2A7FD in the attract mode: Esc (KEY_DOWN+1) to CODE:2A8AB; F1..F8 (+3Bh..+42h, the field at [ESI+0E81h]) or keypad Enter (E0 1Ch) set [ESI+8Eh] to 2 and add the key's number (1..8; keypad Enter 1) to [ESI+0D70h] (run: F1 starts a game, "PLAYERS 1"; the others not tried)
+
+; offsets among the 32-bit immediates (2026-09-29): ptrscan.py (49) and a
+; throwaway scan of every 4-byte immediate from 100h to the image's end that
+; was no label (642 besides branches), each sorted by how its register is
+; used next and by eye. Numbers left as they are: counts in ECX, sizes in
+; EBX for INT 92h, strides (C4E0h, 1500h, 5C0h), offsets in other selectors
+; (video memory after OUT 3C4h; ES/DS/FS from INT 93h AH=5, CODE:130F, A117,
+; 634A/634C, 3B4B) and a CD time (CODE:35DE8). ES from CODE:A10B, 131D, 635E
+; is taken for CODE (copies of DS, presumably the start-up alias). Lengths of
+; checksummed stretches (ECX before CODE:4CE8/4CF2/7438/7441) stay numbers:
+; the kit has no label differences.
+comment    CODE:523B the dword at 290FBh+7CBh = CODE:298C6 is the immediate of MOV EBX,14DE2h; CALL EBX at CODE:298C5: overwritten here with [[CODE:5DCB]+13h]+[CODE:55E3] (the variable the dead copy-protection pieces write), so the call's target is computed, presumably by the protection; not followed, the base 290FBh left a number
+comment    CODE:4532 [CODE:3B58] is read with DS from CODE:3B4B (a block freed with INT 92h AH=5, where it is set not found): 430Ah here and 46AFh at CODE:4886 (the text "The GREETINGS Page" in CODE) left numbers until that selector is known
+comment    CODE:33D0 a second handler through INT 93h AH=4 BL=1 (as KBD_IRQ at CODE:A05C): CODE:340A, reached by the ptr below
+ds         CODE:3416-3450 CODE     ; DS from CODE:131D, a copy of DS (CODE:4CFB), presumably CODE
+comment    CODE:340A a keyboard handler: the scan code (port 60h) into a ring of 16 bytes at CODE:1906 (index CODE:1903), shifted into the dword at CODE:1538; releases (80h and up) skipped; when it is installed not looked at
+ds         CODE:4C8C-4C92 CODE     ; DS from CODE:131D, as above
+comment    CODE:4C85 the routine handed to the sound driver with command 0Eh at CODE:4CB6: counts the dword at CODE:1548 (presumably a timer tick, not checked)
+comment    CODE:4C93 the routine handed with command 0Fh (ECX 1999h) at CODE:4CD1: the CRT start address (3D4h, 0Ch/0Dh) from CODE:1323 while CODE:191A is 1
+ds         CODE:9CDC-9CE3 CODE     ; DS from CODE:A10B, as KBD_IRQ
+comment    CODE:9CD4 the completion routine handed with command 11h at CODE:9B31: sets CODE:9CE5 to FFh
+name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: counts CODE:BAD4 (the blinking of display opcode 1Ah, the random awards of handler 1Ah)
+ds         CODE:B9AA-B9B7 CODE     ; DS from CODE:A10B
+comment    CODE:B9B9 handed with command 0Fh at CODE:9BAF (ECX from CODE:9B8E: DDDDh, E898h, EEEEh or F258h, set at CODE:9725..9882): sets CODE:BAD1 to FFh, the CRT start address from CODE:BAD2 (+54h while the word at CODE:D884 is not 0) and, when CODE:00A2 is 3, the attribute controller's pel panning (4 or 6 by the sign of CODE:D884): presumably the screen's scroll per frame, not checked
+ds         CODE:B9C3-BA7A CODE     ; DS from CODE:A10B
+dptr       CODE:02D1 CODE	; MOV 86Ch: a pointer (read after a jump)
+dptr       CODE:02F8 CODE	; MOV 86Ch: passed to the INT
+dptr       CODE:0305 CODE	; MOV 7E2h: passed to the INT
+dptr       CODE:0368 CODE	; MOV 7B4h: passed to the INT
+dptr       CODE:0374 CODE	; MOV 37Dh: passed to the INT
+dptr       CODE:0487 CODE	; MOV 8ACh: addresses memory
+dptr       CODE:051C CODE	; MOV 974h: addresses memory
+dptr       CODE:2846 CODE	; MOV 282Bh: passed to the INT
+dptr       CODE:284B CODE	; MOV 281Bh: passed to the INT
+dptr       CODE:2881 CODE	; MOV 55E7h: addresses memory
+dptr       CODE:2886 CODE	; MOV 140Ah: addresses memory
+dptr       CODE:28CF CODE	; MOV 1554h: addresses memory
+dptr       CODE:28EC CODE	; CMP 1890h: compared with a pointer (a loop end)
+dptr       CODE:29DC CODE	; MOV 13A4h: addresses memory
+dptr       CODE:2E04 CODE	; ADD 150Ch: a table base, an index added
+dptr       CODE:2E19 CODE	; ADD 151Ch: a table base, an index added
+dptr       CODE:2ECE CODE	; MOV 2F13h: passed to the INT
+dptr       CODE:2F9E CODE	; MOV 2F13h: passed to the INT
+dptr       CODE:335F CODE	; MOV 13A4h: addresses memory
+dptr       CODE:339E CODE	; MOV 226Fh: passed to the INT
+ptr        CODE:33D0 CODE	; MOV 340Ah: passed to the INT
+dptr       CODE:3726 CODE	; ADD 191Bh: a table base, an index added
+dptr       CODE:3890 CODE	; MOV 1898h: addresses memory
+dptr       CODE:38A7 CODE	; CMP 1728h: compared with a pointer (a loop end)
+dptr       CODE:39CF CODE	; MOV 39C7h: passed to the INT
+dptr       CODE:39E2 CODE	; MOV 1AE6h: argument of the call to CODE:302E
+dptr       CODE:39E7 CODE	; MOV 1554h: argument of the call to CODE:302E
+dptr       CODE:39F1 CODE	; MOV 1B5Ch: argument of the call to CODE:302E
+dptr       CODE:39F6 CODE	; MOV 15E4h: argument of the call to CODE:302E
+dptr       CODE:3A00 CODE	; MOV 1E96h: argument of the call to CODE:302E
+dptr       CODE:3A05 CODE	; MOV 1674h: argument of the call to CODE:302E
+dptr       CODE:3A0F CODE	; MOV 1BD2h: argument of the call to CODE:302E
+dptr       CODE:3A14 CODE	; MOV 1578h: argument of the call to CODE:302E
+dptr       CODE:3A1E CODE	; MOV 1C48h: argument of the call to CODE:302E
+dptr       CODE:3A23 CODE	; MOV 1608h: argument of the call to CODE:302E
+dptr       CODE:3A2D CODE	; MOV 1EF6h: argument of the call to CODE:302E
+dptr       CODE:3A32 CODE	; MOV 1698h: argument of the call to CODE:302E
+dptr       CODE:3A3C CODE	; MOV 1CBEh: argument of the call to CODE:302E
+dptr       CODE:3A41 CODE	; MOV 159Ch: argument of the call to CODE:302E
+dptr       CODE:3A4B CODE	; MOV 1D34h: argument of the call to CODE:302E
+dptr       CODE:3A50 CODE	; MOV 162Ch: argument of the call to CODE:302E
+dptr       CODE:3A5A CODE	; MOV 1F56h: argument of the call to CODE:302E
+dptr       CODE:3A5F CODE	; MOV 16BCh: argument of the call to CODE:302E
+dptr       CODE:3A69 CODE	; MOV 1DAAh: argument of the call to CODE:302E
+dptr       CODE:3A6E CODE	; MOV 15C0h: argument of the call to CODE:302E
+dptr       CODE:3A78 CODE	; MOV 1E20h: argument of the call to CODE:302E
+dptr       CODE:3A7D CODE	; MOV 1650h: argument of the call to CODE:302E
+dptr       CODE:3A87 CODE	; MOV 1FB6h: argument of the call to CODE:302E
+dptr       CODE:3A8C CODE	; MOV 16E0h: argument of the call to CODE:302E
+dptr       CODE:3A96 CODE	; MOV 226Eh: argument of the call to CODE:302E
+dptr       CODE:3A9B CODE	; MOV 1728h: argument of the call to CODE:302E
+dptr       CODE:3AA5 CODE	; MOV 2016h: argument of the call to CODE:302E
+dptr       CODE:3AAA CODE	; MOV 1704h: argument of the call to CODE:302E
+dptr       CODE:3AB4 CODE	; MOV 202Bh: argument of the call to CODE:302E
+dptr       CODE:3AB9 CODE	; MOV 174Ch: argument of the call to CODE:302E
+dptr       CODE:3AC3 CODE	; MOV 2055h: argument of the call to CODE:302E
+dptr       CODE:3AC8 CODE	; MOV 1794h: argument of the call to CODE:302E
+dptr       CODE:3AD2 CODE	; MOV 2076h: argument of the call to CODE:302E
+dptr       CODE:3AD7 CODE	; MOV 17B8h: argument of the call to CODE:302E
+dptr       CODE:3AE1 CODE	; MOV 20DCh: argument of the call to CODE:302E
+dptr       CODE:3AE6 CODE	; MOV 17DCh: argument of the call to CODE:302E
+dptr       CODE:3AF0 CODE	; MOV 2124h: argument of the call to CODE:302E
+dptr       CODE:3AF5 CODE	; MOV 1800h: argument of the call to CODE:302E
+dptr       CODE:3AFF CODE	; MOV 2169h: argument of the call to CODE:302E
+dptr       CODE:3B04 CODE	; MOV 1824h: argument of the call to CODE:302E
+dptr       CODE:3B0E CODE	; MOV 21C5h: argument of the call to CODE:302E
+dptr       CODE:3B13 CODE	; MOV 1848h: argument of the call to CODE:302E
+dptr       CODE:3B1D CODE	; MOV 220Ah: argument of the call to CODE:302E
+dptr       CODE:3B22 CODE	; MOV 1770h: argument of the call to CODE:302E
+dptr       CODE:3B2C CODE	; MOV 2236h: argument of the call to CODE:302E
+dptr       CODE:3B31 CODE	; MOV 186Ch: argument of the call to CODE:302E
+dptr       CODE:3D2F CODE	; MOV 5767h: addresses memory
+dptr       CODE:3D88 CODE	; MOV 5A67h: addresses memory
+dptr       CODE:4273 CODE	; MOV 8A3Ch: argument of the call to CODE:3CFD
+dptr       CODE:42CD CODE	; MOV 433Eh: addresses memory
+dptr       CODE:4363 CODE	; MOV 43DDh: addresses memory
+dptr       CODE:4459 CODE	; MOV 5D67h: addresses memory
+dptr       CODE:44A2 CODE	; MOV 5D7Bh: argument of the call to CODE:4476
+dptr       CODE:4552 CODE	; MOV 4A1Bh: stored as a pointer
+dptr       CODE:45E0 CODE	; MOV 5767h: argument of the call to CODE:3CFD
+dptr       CODE:462B CODE	; MOV 5767h: argument of the call to CODE:3CFD
+dptr       CODE:4895 CODE	; MOV 5A67h: addresses memory
+dptr       CODE:491B CODE	; MOV 5767h: argument of the call to CODE:3CFD
+dptr       CODE:496D CODE	; MOV 5767h: argument of the call to CODE:3CFD
+ptr        CODE:4CB6 CODE	; MOV 4C85h: argument of the call through CODE:8134 (the sound driver)
+ptr        CODE:4CD1 CODE	; MOV 4C93h: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:4D0D CODE	; MOV 8A3Ch: addresses memory
+dptr       CODE:4D36 CODE	; MOV 4D06h: argument of the call to CODE:4CF2
+dptr       CODE:4D51 CODE	; MOV 2613h: argument of the call to CODE:4CF2
+dptr       CODE:4D66 CODE	; MOV 5140h: argument of the call to CODE:4CF2
+dptr       CODE:4D7B CODE	; MOV 5140h: argument of the call to CODE:4CF2
+ptr        CODE:4D90 CODE	; PUSH 4DB7h: pushed
+dptr       CODE:4D9E CODE	; MOV 5589h: addresses memory
+dptr       CODE:4DBC CODE	; MOV 26F1h: argument of the call to CODE:4CF2
+dptr       CODE:4DD1 CODE	; MOV 277Dh: argument of the call to CODE:4CF2
+dptr       CODE:4DE6 CODE	; MOV 2810h: argument of the call to CODE:4CF2
+dptr       CODE:4DFB CODE	; MOV 28F5h: argument of the call to CODE:4CF2
+dptr       CODE:4E10 CODE	; MOV 24AFh: argument of the call to CODE:4CF2
+dptr       CODE:4E45 CODE	; MOV 5140h: argument of the call to CODE:4CF2
+dptr       CODE:4E5A CODE	; MOV 2389h: argument of the call to CODE:4CF2
+dptr       CODE:4E9E CODE	; MOV 4E87h: passed to the INT
+dptr       CODE:4EA3 CODE	; MOV 4E80h: passed to the INT
+dptr       CODE:4EE1 CODE	; MOV 4ECAh: passed to the INT
+dptr       CODE:4EE6 CODE	; MOV 4EC3h: passed to the INT
+dptr       CODE:4F24 CODE	; MOV 4F0Ch: passed to the INT
+dptr       CODE:4F29 CODE	; MOV 4F06h: passed to the INT
+dptr       CODE:4F6D CODE	; MOV 4F52h: passed to the INT
+dptr       CODE:4F72 CODE	; MOV 4F49h: passed to the INT
+dptr       CODE:4FBE CODE	; MOV 4FA3h: passed to the INT
+dptr       CODE:4FC3 CODE	; MOV 4F92h: passed to the INT
+dptr       CODE:4FFE CODE	; MOV 4D06h: argument of the call to CODE:4CE8
+dptr       CODE:501B CODE	; MOV 505Ch: argument of the call to CODE:4CF2
+dptr       CODE:5030 CODE	; MOV 448Bh: argument of the call to CODE:4CF2
+dptr       CODE:504C CODE	; MOV 5289h: argument of the call to CODE:4CF2
+dptr       CODE:50C9 CODE	; MOV 50EEh: addresses memory
+dptr       CODE:50D9 CODE	; MOV 5E21h: a pointer (read after a jump)
+dptr       CODE:50E0 CODE	; MOV 6023h: a pointer (read after a jump)
+dptr       CODE:50E7 CODE	; MOV 5F22h: a pointer (read after a jump)
+dptr       CODE:5110 CODE	; MOV 2B0A2h: a pointer (read after a jump)
+dptr       CODE:5212 CODE	; MOV 50A9h: argument of the call to CODE:4CE8
+dptr       CODE:524C CODE	; MOV 5130h: argument of the call to CODE:4CE8
+dptr       CODE:61D9 CODE	; MOV 618Dh: addresses memory
+dptr       CODE:620E CODE	; MOV 61FEh: passed to the INT
+dptr       CODE:6257 CODE	; MOV 6247h: passed to the INT
+dptr       CODE:62B3 CODE	; MOV 629Ch: passed to the INT
+dptr       CODE:6AEE CODE	; MOV 813Ch: argument of the call to CODE:6F1F
+dptr       CODE:6B7A CODE	; MOV 813Ch: argument of the call to CODE:6F1F
+dptr       CODE:6F2D CODE	; MOV 6380h: addresses memory
+dptr       CODE:6F71 CODE	; MOV 6680h: addresses memory
+dptr       CODE:6FB2 CODE	; MOV 6680h: addresses memory
+dptr       CODE:6FC0 CODE	; MOV 698Ah: argument of the call to CODE:7441
+dptr       CODE:700D CODE	; MOV 843Ch: argument of the call to CODE:6EBE
+dptr       CODE:7054 CODE	; CMP 80BCh: compared with a pointer (a loop end)
+dptr       CODE:70B6 CODE	; MOV 6360h: passed to the INT
+dptr       CODE:70BF CODE	; MOV 6360h: passed to the INT
+dptr       CODE:70C4 CODE	; MOV 7075h: passed to the INT
+dptr       CODE:7106 CODE	; MOV 618Dh: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:7110 CODE	; MOV 6360h: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:7133 CODE	; MOV 80BCh: argument of the call through CODE:8134 (the sound driver)
+ptr        CODE:7147 CODE	; MOV 4CF2h: stored as a pointer
+dptr       CODE:715A CODE	; MOV 7449h: passed to the INT
+dptr       CODE:7172 CODE	; MOV 74F2h: passed to the INT
+dptr       CODE:718B CODE	; MOV 6360h: passed to the INT
+dptr       CODE:7190 CODE	; MOV 7075h: passed to the INT
+dptr       CODE:71D2 CODE	; MOV 618Dh: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:71DC CODE	; MOV 6360h: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:71FD CODE	; MOV 80CAh: argument of the call through CODE:8134 (the sound driver)
+dptr       CODE:7343 CODE	; MOV 6F43h: argument of the call to CODE:7441
+dptr       CODE:7592 CODE	; MOV 6A20h: argument of the call to CODE:4CF2
+dptr       CODE:75D9 CODE	; MOV 75C2h: passed to the INT
+dptr       CODE:75DE CODE	; MOV 75C1h: passed to the INT
+dptr       CODE:7616 CODE	; MOV 75FFh: passed to the INT
+dptr       CODE:761B CODE	; MOV 75FEh: passed to the INT
+dptr       CODE:7654 CODE	; MOV 763Ch: passed to the INT
+dptr       CODE:7659 CODE	; MOV 763Bh: passed to the INT
+dptr       CODE:7695 CODE	; MOV 767Ah: passed to the INT
+dptr       CODE:769A CODE	; MOV 7679h: passed to the INT
+dptr       CODE:76D6 CODE	; MOV 76BBh: passed to the INT
+dptr       CODE:76DB CODE	; MOV 76BAh: passed to the INT
+dptr       CODE:7717 CODE	; MOV 76FCh: passed to the INT
+dptr       CODE:771C CODE	; MOV 76FBh: passed to the INT
+dptr       CODE:7756 CODE	; MOV 773Dh: passed to the INT
+dptr       CODE:775B CODE	; MOV 773Ch: passed to the INT
+dptr       CODE:77AB CODE	; MOV 7792h: passed to the INT
+dptr       CODE:77B0 CODE	; MOV 7791h: passed to the INT
+dptr       CODE:77E8 CODE	; MOV 77D1h: passed to the INT
+dptr       CODE:77ED CODE	; MOV 77D0h: passed to the INT
+dptr       CODE:7824 CODE	; MOV 780Fh: passed to the INT
+dptr       CODE:7829 CODE	; MOV 780Eh: passed to the INT
+dptr       CODE:7861 CODE	; MOV 784Bh: passed to the INT
+dptr       CODE:7866 CODE	; MOV 784Ah: passed to the INT
+dptr       CODE:7885 CODE	; MOV 7230h: argument of the call to CODE:7438
+ptr        CODE:78BF CODE	; MOV 7074h: stored as a pointer
+dptr       CODE:78C9 CODE	; MOV 6A20h: argument of the call to CODE:4CF2
+dptr       CODE:78DE CODE	; MOV 6A20h: argument of the call to CODE:4CF2
+dptr       CODE:794A CODE	; MOV 7341h: argument of the call to CODE:7438
+dptr       CODE:7980 CODE	; MOV 80DAh: passed to the INT
+dptr       CODE:79D4 CODE	; MOV 8D3Ch: argument of the call to CODE:6F1F
+dptr       CODE:79FF CODE	; MOV 6A20h: argument of the call to CODE:4CF2
+dptr       CODE:7AA4 CODE	; MOV 4CE8h: a table base or a length (two addresses subtracted)
+dptr       CODE:7AA9 CODE	; MOV 55E3h: a table base or a length (two addresses subtracted)
+dptr       CODE:9133 CODE	; MOV AA2Bh: argument of the call to CODE:92FA
+dptr       CODE:91E1 CODE	; MOV AA2Bh: argument of the call to CODE:92FA
+dptr       CODE:9227 CODE	; MOV 921Dh: passed to the INT
+dptr       CODE:994A CODE	; MOV 98FEh: addresses memory
+dptr       CODE:997F CODE	; MOV 996Fh: passed to the INT
+dptr       CODE:99C8 CODE	; MOV 99B8h: passed to the INT
+dptr       CODE:9A24 CODE	; MOV 9A0Dh: passed to the INT
+dptr       CODE:9ABD CODE	; MOV 98A8h: passed to the INT
+dptr       CODE:9AC6 CODE	; MOV 98A8h: passed to the INT
+dptr       CODE:9ACB CODE	; MOV 98C8h: passed to the INT
+dptr       CODE:9B0D CODE	; MOV 98FEh: argument of the call through CODE:98A0 (the sound driver)
+dptr       CODE:9B17 CODE	; MOV 98A8h: argument of the call through CODE:98A0 (the sound driver)
+ptr        CODE:9B31 CODE	; MOV 9CD4h: argument of the call through CODE:98A0 (the sound driver)
+dptr       CODE:9B4E CODE	; MOV 98D5h: argument of the call through CODE:98A0 (the sound driver)
+dptr       CODE:9B61 CODE	; MOV 98E9h: argument of the call through CODE:98A0 (the sound driver)
+ptr        CODE:9B93 CODE	; MOV B99Ch: argument of the call through CODE:98A0 (the sound driver)
+ptr        CODE:9BAF CODE	; MOV B9B9h: argument of the call through CODE:98A0 (the sound driver)
+ptr        CODE:A05C CODE	; MOV A076h: passed to the INT
+ptr        CODE:A386 CODE	; MOV A39Ch: stored as a pointer
+dptr       CODE:A3B5 CODE	; MOV 698Ah: a table base or a length (two addresses subtracted)
+dptr       CODE:A3BA CODE	; MOV 7ABCh: a table base or a length (two addresses subtracted)
+ptr        CODE:A499 CODE	; MOV A4A9h: stored as a pointer
+dptr       CODE:A537 CODE	; SUB A1F1h: a length (an address subtracted)
+dptr       CODE:A567 CODE	; SUB A125h: a length (an address subtracted)
+dptr       CODE:A5A4 CODE	; MOV A125h: addresses memory
+dptr       CODE:A5C1 CODE	; MOV A1F1h: stored as a pointer
+dptr       CODE:A5D0 CODE	; MOV A1F1h: addresses memory
+dptr       CODE:A670 CODE	; MOV BA83h: addresses memory
+dptr       CODE:A69B CODE	; MOV AA2Bh: argument of the call to CODE:A704
+dptr       CODE:A6D2 CODE	; MOV AA2Bh: argument of the call to CODE:A704
+dptr       CODE:A704 CODE	; MOV A72Bh: addresses memory
+dptr       CODE:A722 CODE	; CMP AA2Bh: compared with a pointer (a loop end)
+dptr       CODE:B03A CODE	; MOV A72Bh: addresses memory
+dptr       CODE:B05D CODE	; MOV B04Ah: passed to the INT
+dptr       CODE:B1D0 CODE	; MOV B19Bh: a pointer (read after a jump)
+dptr       CODE:B1EE CODE	; MOV B1D7h: passed to the INT
+dptr       CODE:B23C CODE	; MOV BBABh: addresses memory
+dptr       CODE:B382 CODE	; MOV D83Ah: addresses memory
+dptr       CODE:B3BD CODE	; MOV D83Ah: pushed
+dptr       CODE:B3F5 CODE	; MOV BBA3h: a pointer (read after a jump)
+dptr       CODE:B413 CODE	; MOV B3FCh: passed to the INT
+dptr       CODE:B460 CODE	; MOV BBAFh: addresses memory
+dptr       CODE:B47E CODE	; MOV BBA3h: a pointer (read after a jump)
+dptr       CODE:B4AD CODE	; MOV B485h: passed to the INT
+dptr       CODE:B502 CODE	; MOV F3E4h: a pointer (read after a jump)
+dptr       CODE:B562 CODE	; MOV B551h: passed to the INT
+dptr       CODE:B5EC CODE	; MOV B5D4h: passed to the INT
+dptr       CODE:B64D CODE	; MOV B635h: passed to the INT
+dptr       CODE:B6B0 CODE	; MOV B6A0h: passed to the INT
+dptr       CODE:BAA4 CODE	; MOV BA83h: addresses memory
+dptr       CODE:BABF CODE	; MOV BA8Fh: addresses memory
+ptr        CODE:1014E CODE	; MOV 1010Ah: stored as a pointer
+ptr        CODE:101A0 CODE	; MOV 1010Ah: stored as a pointer
+dptr       CODE:104C5 CODE	; MOV 10066h: stored as a pointer
+dptr       CODE:104D2 CODE	; MOV 1004Ch: stored as a pointer
+dptr       CODE:1050E CODE	; MOV 10066h: stored as a pointer
+dptr       CODE:1051B CODE	; MOV 1004Ch: stored as a pointer
+dptr       CODE:10754 CODE	; MOV 25FC9h: stored as a pointer
+dptr       CODE:107E8 CODE	; MOV 10594h: stored as a pointer
+dptr       CODE:1133D CODE	; MOV 10674h: stored as a pointer
+dptr       CODE:1145B CODE	; MOV 168C9h: stored as a pointer
+dptr       CODE:1177E CODE	; MOV C33Eh: stored as a pointer
+dptr       CODE:118DF CODE	; MOV 21981h: stored as a pointer
+dptr       CODE:12348 CODE	; MOV 100B4h: stored as a pointer
+dptr       CODE:1236B CODE	; MOV 100B4h: stored as a pointer
+dptr       CODE:12C20 CODE	; MOV 16D81h: stored as a pointer
+dptr       CODE:12C2B CODE	; MOV 16981h: stored as a pointer
+dptr       CODE:13681 CODE	; MOV 24C19h: a table base or a length (two addresses subtracted)
+dptr       CODE:13837 CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:13844 CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:13851 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:139A0 CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:139AD CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:139BA CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:13AED CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:13AFA CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:13B07 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:13C57 CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:13C64 CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:13C71 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:13DC6 CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:13DD3 CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:13DE0 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:13F3D CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:13F4A CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:13F57 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:1409F CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:140AC CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:140B9 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:141EC CODE	; MOV 17F81h: a table base or a length (two addresses subtracted)
+dptr       CODE:141F9 CODE	; MOV 1B381h: a table base or a length (two addresses subtracted)
+dptr       CODE:14206 CODE	; MOV 1E781h: a table base or a length (two addresses subtracted)
+dptr       CODE:15055 CODE	; MOV 1503Ah: passed to the INT
+dptr       CODE:1505A CODE	; MOV 15032h: passed to the INT
+dptr       CODE:15186 CODE	; MOV 15172h: passed to the INT
+dptr       CODE:15215 CODE	; MOV 151E4h: passed to the INT
+dptr       CODE:1639E CODE	; MOV 14E4Eh: argument of the call to CODE:16482
+dptr       CODE:16499 CODE	; MOV 14E4Eh: argument of the call to CODE:16482
+dptr       CODE:26F10 CODE	; MOV 26EF7h: passed to the INT
+dptr       CODE:26F15 CODE	; MOV 26EF0h: passed to the INT
+dptr       CODE:26F65 CODE	; MOV 26F4Ch: passed to the INT
+dptr       CODE:26F6A CODE	; MOV 26F45h: passed to the INT
+dptr       CODE:26FBA CODE	; MOV 26FA1h: passed to the INT
+dptr       CODE:26FBF CODE	; MOV 26F9Ah: passed to the INT
+dptr       CODE:2700F CODE	; MOV 26FF6h: passed to the INT
+dptr       CODE:27014 CODE	; MOV 26FEFh: passed to the INT
+dptr       CODE:2705E CODE	; MOV 27046h: passed to the INT
+dptr       CODE:27063 CODE	; MOV 27040h: passed to the INT
+dptr       CODE:270D1 CODE	; MOV 270BEh: passed to the INT
+dptr       CODE:271C1 CODE	; MOV 27208h: passed to the INT
+dptr       CODE:271E6 CODE	; MOV 271D4h: passed to the INT
+dptr       CODE:27338 CODE	; MOV 26BA0h: stored as a pointer
+dptr       CODE:2734C CODE	; MOV 26AABh: stored as a pointer
+dptr       CODE:2737D CODE	; MOV 26BA0h: stored as a pointer
+dptr       CODE:27391 CODE	; MOV 26AABh: stored as a pointer
+dptr       CODE:273C2 CODE	; MOV 26CA1h: stored as a pointer
+dptr       CODE:273D6 CODE	; MOV 26B12h: stored as a pointer
+dptr       CODE:27407 CODE	; MOV 26CA1h: stored as a pointer
+dptr       CODE:2741B CODE	; MOV 26B12h: stored as a pointer
+dptr       CODE:2744C CODE	; MOV 26DA2h: stored as a pointer
+dptr       CODE:27460 CODE	; MOV 26B79h: stored as a pointer
+ptr        CODE:275EF CODE	; MOV 26ED3h: stored as a pointer
+dptr       CODE:27627 CODE	; MOV 27711h: addresses memory
+dptr       CODE:278D8 CODE	; MOV 2791Fh: a pointer (read after a jump)
+dptr       CODE:278F6 CODE	; MOV 278DFh: passed to the INT
+dptr       CODE:27984 CODE	; MOV 27978h: passed to the INT
+dptr       CODE:279B0 CODE	; MOV 2799Fh: passed to the INT
+dptr       CODE:28C51 CODE	; MOV 283BEh: addresses memory
+dptr       CODE:28C5D CODE	; MOV 284BDh: addresses memory
+dptr       CODE:28C7A CODE	; MOV 28CE1h: a pointer (read after a jump)
+dptr       CODE:28C90 CODE	; MOV 28C81h: passed to the INT
+dptr       CODE:28D64 CODE	; MOV 28E29h: a pointer (read after a jump)
+dptr       CODE:28D85 CODE	; MOV 28D6Bh: passed to the INT
+dptr       CODE:28DB8 CODE	; MOV 28E43h: a pointer (read after a jump)
+dptr       CODE:28DDB CODE	; MOV 28DBFh: passed to the INT
+ptr        CODE:298C5 CODE	; MOV 14DE2h: argument of CALL EBX
+dptr       CODE:29E55 CODE	; MOV F618h: stored as a pointer
+dptr       CODE:2A36C CODE	; MOV F71Ch: stored as a pointer
+dptr       CODE:2A402 CODE	; MOV FA24h: stored as a pointer
+dptr       CODE:2A40C CODE	; MOV F920h: stored as a pointer
+dptr       CODE:2A416 CODE	; MOV FA48h: stored as a pointer
+dptr       CODE:2A492 CODE	; MOV FA24h: stored as a pointer
+dptr       CODE:2A49C CODE	; MOV F920h: stored as a pointer
+dptr       CODE:2A4A6 CODE	; MOV FA48h: stored as a pointer
+dptr       CODE:2A55E CODE	; MOV 2A92Ch: stored as a pointer
+dptr       CODE:2A59C CODE	; MOV 2A95Ah: stored as a pointer
+dptr       CODE:2A79F CODE	; MOV 2A968h: stored as a pointer
+dptr       CODE:2A8DF CODE	; MOV 2A93Eh: stored as a pointer
+dptr       CODE:2AA50 CODE	; MOV 1009Ah: stored as a pointer
+dptr       CODE:2ACDF CODE	; MOV 2B040h: stored as a pointer
+dptr       CODE:2ACEF CODE	; MOV 2B058h: stored as a pointer
+dptr       CODE:2AD32 CODE	; MOV 2B06Ah: stored as a pointer
+dptr       CODE:2AD42 CODE	; MOV 2B07Ch: stored as a pointer
+dptr       CODE:2AD59 CODE	; MOV 2B094h: stored as a pointer
+dptr       CODE:2ADA5 CODE	; MOV 2B09Dh: stored as a pointer
+dptr       CODE:2AE4D CODE	; MOV 2B09Dh: stored as a pointer
+dptr       CODE:2AE95 CODE	; MOV 2B06Ah: stored as a pointer
+dptr       CODE:2AEA5 CODE	; MOV 2B07Ch: stored as a pointer
+dptr       CODE:2AEC3 CODE	; MOV 2B094h: stored as a pointer
+dptr       CODE:2B24B CODE	; MOV 2B39Ah: stored as a pointer
+dptr       CODE:2B272 CODE	; MOV 2B38Ah: stored as a pointer
+dptr       CODE:2B284 CODE	; MOV 2B3ADh: stored as a pointer
+dptr       CODE:2B2AD CODE	; MOV 2B39Ch: stored as a pointer
+dptr       CODE:2B2BD CODE	; MOV 2B3BCh: stored as a pointer
+dptr       CODE:2B2EA CODE	; MOV 2B3AEh: stored as a pointer
+dptr       CODE:2B5C2 CODE	; MOV 2B6C5h: stored as a pointer
+dptr       CODE:2B5EC CODE	; MOV 2B6DAh: stored as a pointer
+dptr       CODE:2B601 CODE	; MOV 2B6FCh: stored as a pointer
+dptr       CODE:2B66F CODE	; MOV 2A93Eh: stored as a pointer
+dptr       CODE:2B750 CODE	; MOV 2B761h: stored as a pointer
+dptr       CODE:2BAF3 CODE	; MOV 2BB2Bh: stored as a pointer
+dptr       CODE:2BB89 CODE	; MOV 2BBB2h: stored as a pointer
+dptr       CODE:2BD4B CODE	; MOV 1009Ah: stored as a pointer
+dptr       CODE:2BEDC CODE	; MOV 2CD10h: stored as a pointer
+dptr       CODE:2BFCA CODE	; MOV 2A95Ah: stored as a pointer
+dptr       CODE:2C131 CODE	; MOV 10080h: stored as a pointer
+dptr       CODE:2C7CD CODE	; MOV 100CEh: stored as a pointer
+dptr       CODE:2D04D CODE	; MOV 2CD10h: stored as a pointer
+ptr        CODE:2D9F9 CODE	; MOV 2DA09h: pushed
+dptr       CODE:2DBD3 CODE	; MOV 2CD10h: stored as a pointer
+dptr       CODE:2ED8E CODE	; CMP E2FAh: compared with a pointer (a loop end)
+dptr       CODE:2EE85 CODE	; CMP E364h: compared with a pointer (a loop end)
+dptr       CODE:2F2EF CODE	; MOV 1009Ah: stored as a pointer
+dptr       CODE:2FF80 CODE	; MOV F71Ch: stored as a pointer
+dptr       CODE:30377 CODE	; MOV 30581h: addresses memory
+dptr       CODE:305E8 CODE	; MOV 30782h: addresses memory
+dptr       CODE:307D7 CODE	; CMP FA24h: compared with a pointer (a loop end)
+dptr       CODE:3087F CODE	; CMP F920h: compared with a pointer (a loop end)
+dptr       CODE:30AF3 CODE	; MOV 100E8h: stored as a pointer
+dptr       CODE:30BE8 CODE	; CMP FA48h: compared with a pointer (a loop end)
+dptr       CODE:30EA1 CODE	; MOV 30D98h: passed to the INT
+dptr       CODE:3175B CODE	; MOV 331C6h: passed to the INT
+dptr       CODE:317CF CODE	; MOV 331C6h: argument of the call to CODE:315ED
+dptr       CODE:317D4 CODE	; MOV 33450h: argument of the call to CODE:315ED
+dptr       CODE:317D9 CODE	; MOV 33B26h: argument of the call to CODE:315ED
+dptr       CODE:317E3 CODE	; MOV 33B26h: argument of the call to CODE:31679
+dptr       CODE:317ED CODE	; MOV 33B26h: argument of the call to CODE:316B1
+dptr       CODE:317F2 CODE	; MOV 33C52h: argument of the call to CODE:316B1
+dptr       CODE:3184E CODE	; MOV 31807h: argument of the call to CODE:3106C
+dptr       CODE:318B0 CODE	; MOV 33C52h: argument of the call to CODE:3144E
+dptr       CODE:319F6 CODE	; MOV 34230h: addresses memory
+dptr       CODE:31A0D CODE	; MOV 34230h: addresses memory
+dptr       CODE:31A3B CODE	; MOV 34230h: addresses memory
+dptr       CODE:31C34 CODE	; MOV 35230h: a table base or a length (two addresses subtracted)
+dptr       CODE:31C72 CODE	; MOV 35230h: stored as a pointer
+dptr       CODE:31CA1 CODE	; MOV 35230h: a pointer (read after a jump)
+dptr       CODE:31D63 CODE	; MOV 30D99h: passed to the INT
+dptr       CODE:31D9D CODE	; MOV 3309Ah: the pointer on one path of two
+dptr       CODE:31DAC CODE	; MOV 3312Bh: argument of the call to CODE:31D13
+dptr       CODE:31DFE CODE	; MOV 30DB2h: passed to the INT
+dptr       CODE:31E61 CODE	; MOV 31E1Ah: argument of the call to CODE:3106C
+dptr       CODE:31F10 CODE	; MOV 35A30h: addresses memory
+dptr       CODE:31F23 CODE	; MOV 35A30h: pushed
+dptr       CODE:31F83 CODE	; MOV 30DB2h: addresses memory
+dptr       CODE:320BD CODE	; MOV 320D2h: argument of the call to CODE:31F80
+dptr       CODE:32102 CODE	; MOV 321F2h: argument of the call to CODE:320E0
+dptr       CODE:321DC CODE	; MOV 321FCh: argument of the call to CODE:31F80
+dptr       CODE:32214 CODE	; MOV 3238Fh: argument of the call to CODE:320E0
+dptr       CODE:32379 CODE	; MOV 32399h: argument of the call to CODE:31F80
+dptr       CODE:324BB CODE	; MOV 32838h: argument of the call to CODE:320E0
+dptr       CODE:32635 CODE	; MOV 3285Fh: argument of the call to CODE:31F80
+dptr       CODE:326E2 CODE	; MOV 3286Dh: argument of the call to CODE:31F80
+dptr       CODE:32799 CODE	; MOV 3287Bh: argument of the call to CODE:31F80
+dptr       CODE:32813 CODE	; MOV 32889h: argument of the call to CODE:31F80
+dptr       CODE:328B6 CODE	; MOV 3290Fh: passed to the INT
+dptr       CODE:328BB CODE	; MOV 3290Fh: passed to the INT
+dptr       CODE:328F7 CODE	; MOV 32925h: passed to the INT
+dptr       CODE:32BEF CODE	; MOV 32DE9h: pushed
+dptr       CODE:32C34 CODE	; MOV 32DEBh: argument of the call to CODE:32C1C
+dptr       CODE:33014 CODE	; MOV 30DB2h: passed to the INT
+dptr       CODE:33033 CODE	; MOV 30DB2h: passed to the INT
+dptr       CODE:35BAA CODE	; MOV 35EDCh: a table base or a length (two addresses subtracted)
+dptr       CODE:35BAF CODE	; MOV 35EFFh: a table base or a length (two addresses subtracted)
+dptr       CODE:35C3C CODE	; MOV 35EDCh: a table base or a length (two addresses subtracted)
+dptr       CODE:35C41 CODE	; MOV 35EF6h: a table base or a length (two addresses subtracted)
+dptr       CODE:35C7F CODE	; MOV 35EDCh: a table base or a length (two addresses subtracted)
+dptr       CODE:35C84 CODE	; MOV 35F02h: a table base or a length (two addresses subtracted)
+dptr       CODE:35CAE CODE	; MOV 35EDCh: a table base or a length (two addresses subtracted)
+dptr       CODE:35CB3 CODE	; MOV 35F02h: a table base or a length (two addresses subtracted)
+dptr       CODE:35CE8 CODE	; MOV 35EDCh: a table base or a length (two addresses subtracted)
+dptr       CODE:35CED CODE	; MOV 35F09h: a table base or a length (two addresses subtracted)
+dptr       CODE:35E22 CODE	; MOV 35EA1h: argument of the call to CODE:35B0D
+dptr       CODE:35E56 CODE	; MOV 35E94h: argument of the call to CODE:35B0D
+dptr       CODE:3D3E4 CODE	; MOV 3D40Bh: addresses memory
