@@ -82,15 +82,15 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 27,633
-instructions, 3772 labels, 16 lines as DB, 18 to 38 s on the Mac used
-(2026-09-29); gaps.py: 215 gaps (174,360 of 0x46480 bytes not reached as
-code) not looked at one by one yet. The hints so far: the two descriptors as segments (`CODE` the
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 29,973
+instructions, 4025 labels, 17 lines as DB, 19 s on the Mac used
+(2026-09-29); gaps.py: 210 gaps, 165,070 of 0x46480 bytes not reached as
+code (see "The gaps" below). The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
-point's name, the pointers found so far, a `stop` and the 16 `raw`
+point's name, the pointers found so far, a `stop` and the 17 `raw`
 lines:
 
-- eleven instructions with a 16-bit address and no register (67h, e.g.
+- twelve instructions with a 16-bit address and no register (67h, e.g.
   `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
   ask for that address size;
 - CODE:31649 `64 66 AD`: FS before 66h, the one such order;
@@ -134,13 +134,61 @@ Code reached through pointers so far:
   CODE:71E9 and CODE:9B24: presumably its host callbacks
   (docs/audio-driver.md), not checked. The kit does not take far
   pointers for code by itself (CODE holds data too), so 22 `code` lines.
+- CODE:29912: four pointers CODE:298A7 calls in turn through the
+  pointer at CODE:2982E (29912h in the file). CODE:29873 sets it to
+  29922h, a like table after it (and CODE:29932 looks like a third);
+  CODE:29873 is not reached, so neither table is in the hints.
+- CODE:7ABC..80BC: 192 records of 8 bytes, an ascending dword and a
+  handler (14 different ones); CODE:704E calls [ESI+4] while the counter
+  at CODE:8124 has reached the first dword. The intro's timing,
+  presumably (not checked). `words ... stride=8`, new in doskit.
+- two interpreters of word streams (CODE:2CF36 and CODE:2F4A4, a second
+  caller each): a word of the stream indexes records of 4 bytes, a
+  16-bit offset from the table's second record and a step for the
+  stream; 0 ends the stream. CODE:2D18F (32 records) and CODE:2F625
+  (26, record 0 at CODE:2F621 is 0,0). No bound check: counts up to the
+  code after the table. `rwords ... stride=4 from=`, new in doskit.
+  docs/bpc-module.md describes the first as the event interpreter.
+- CODE:2DA0A: 28 pointers, `PUSH 2DA09h; PUSH [EBX*4+2DA0A]; RET`.
+- CODE:2CD10: 11 pointers the program puts in CODE:0010 before it calls
+  into the table module (docs/bpc-module.md: the host vector); the
+  entries are instruction starts, what each does not looked at.
 
-Not reached yet, seen: calls through offsets kept in records
-(`LEA EDX,[EBX+2D193h]`, EBX a word from a record; also CODE:2F625),
-through record fields (`[ESI+2946h]`, ESI = [CODE:0014]), through a
-pointer at CODE:2982E (four in turn), and `CALL [ESI+4]` at CODE:7067.
-Calls through the sound driver's entry (far pointers at CODE:8134,
-CODE:98A0) leave the image.
+Calls that leave the image: through the sound driver's entry (far
+pointers at CODE:8134, CODE:98A0); through the fields of the state
+record at [CODE:0014] (CB3Eh or 12844h; `[ESI+2946h]`, `[ESI+294Ah]`,
+`[EDI+2926h]`, `[[ESI+2A70h]+4]`), zero in the file, which
+docs/bpc-module.md has as the table module's header copied to F3E4h;
+`CALL [EAX]` at [CODE:A11D]+9Ch, the module's base (the same notes).
+Not checked in a run.
+
+### The gaps
+
+Looked at one by one on 2026-09-29 (a throwaway classifier: zeros,
+text, dwords into the image, a clean decode; then by eye). Most are
+data: inline strings (the `INT 94h AH=1` file names around CODE:75C1..
+785B, messages), zero-filled buffers (CODE:6348, 32DE3, 33068 and on),
+tables (the scan-code table at CODE:26A6E, the records at CODE:168C9..
+2600D, 63,300 bytes, 54h apart in part), and CODE:3D409 to the end
+(36,983 bytes) not looked at closely. CODE:4A1B..4CB6 looks random; its
+address is stored as data at CODE:4552 (`MOV [3B54h],4A1Bh`, read at
+CODE:3FCA as EBX): a table, presumably (not checked).
+
+Code with no reference found (no dword, no immediate, no relative
+jump or call to its start anywhere in the image), left as data:
+
+- eight 12-byte pieces `MOV AL,40h; MOV [5DCBh],EAX; JMP 5140h` right
+  after routines (CODE:2396, 2541, 254E, 26F1, 277D, 28C3, 29F3, 2CB5;
+  two of them are the start of a checksummed stretch), and CODE:5140
+  itself (a loop on `SUB EAX,[EBX+3]` with EBX = [5DCBh], then on
+  into CODE:5198); near the text "Manual Protection" (CODE:5DE3):
+  part of the copy protection, presumably, reached in a way not found;
+- routines after a RET: CODE:2FFA, 36A1 (waits for scan code 2 and its
+  release), 73D8, 92CE, 9606 (after the text "HEJ!$"), A618/A61E,
+  15340, 297A6, 2E886 and 302F8 (both in the interpreters' style),
+  35BC6, 35D20, 29832 (the one that sets CODE:2982E to 29922h);
+- one to three bytes after a RET or JMP (CODE:A497, A653, 32902,
+  32A79, 3300F, 35E37).
 
 Labels that are not addresses: the kit takes a displacement from 100h
 up with a register for an address (METHOD.md), but here records have
@@ -157,7 +205,7 @@ taken the constant stored into it (CODE:7ABC) for code: about 2000
 12,018 bytes; not compared (the kit reached 11,405 then, 68,151 now).
 
 Not done: everything the method's stage 1 asks beyond the byte identity
-(gaps.py: 195 gaps; the `ptr`/`dptr` of the many 32-bit immediates that
+(the `ptr`/`dptr` of the many 32-bit immediates that
 are offsets, which the analysis does not find by itself; names).
 
 ## Next
@@ -183,8 +231,9 @@ are offsets, which the analysis does not find by itself; names).
      entry as an image offset (descriptor 0 has base 0, so either way);
    - then the runner: protected mode or pMAX's services (INT 90h..94h)
      emulated, still to decide.
-2. Stage 1 for the main program, on from the above: gaps.py's 215 gaps
-   one by one (what is not reached yet, see "Stage 1"); the field
+2. Stage 1 for the main program, on from the above: the gaps are looked
+   at (see "The gaps"; the unreferenced code there wants a second look
+   once more is known, the copy protection first); the field
    offsets taken for addresses (a heuristic for flat 32-bit code in
    doskit, or `num` hints); offsets among the 32-bit immediates
    (ptrscan.py); names (doskit/docs/METHOD.md).
