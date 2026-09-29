@@ -2007,6 +2007,25 @@ Not found yet: where INT 92h's memory (the 2F0800h bytes ENTRY asks
 for) lies, which the port needs where the game keeps data outside the
 image.
 
+### The configuration file's options
+
+What ENTRY changes before SETUP_ARGS (CODE:32F39, linear 133E69h; runs
+2026-09-29 as above, `-mem` at both, memcmp.py): only CODE_SEL (1Ch)
+and CFG_NAME (`C:\ILLUSION.CFG` and its NUL), and OPTIONS by INT 94h
+AH=7, all 0 with the GOG file.
+
+The file's 200h bytes at +20h (all `SN95` in the GOG file,
+docs/configuration.md) are the options stored chained: stored byte i =
+option byte i XOR stored byte i-4, the first four XOR `S`, `N`, `9`,
+`5`; so options all 0 give `SN95` throughout. Found with crafted files
+put in place of the GOG one (`-put`): options 01 02 03 01 00 01 00 55
+XORed with `SN95` alone read back as 01 02 03 01 01 03 03 54 (each
+byte XOR the one four before); then 200h random bytes stored by the
+chained rule read back exactly (OPTIONS at SETUP_ARGS). Whether INT 94h
+AH=6 writes them the same way is presumed, not checked; the header's
+first 20h bytes (the driver's name, then bytes not read) are not
+looked at here.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2142,8 +2161,13 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      "Checked"). Not looked at: whether pMAX takes a loose
      `ILLUSION.386` before the archive's (the loader opens one), which the
      port does not;
-   - the main loop (GAME_PHASE's dispatch at CODE:BAD6), a routine not
-     yet translated stopping the port by its name; then the parts
+   - done 2026-09-29: ENTRY up to SETUP_ARGS in C (port/src/entry.c;
+     the configuration file read as "The configuration file's options"
+     says, port/src/pmax.c), the port stopping by name at the first
+     routine not translated; memory equal to the run's at SETUP_ARGS.
+   - on from ENTRY: SETUP_ARGS, SVGA_CHECK, the video set-up CODE:049A,
+     the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
+     the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts
      already read, each compared with memcmp.py;
    - stage 1 for `SOURCE\T001.BPC` before table 1's code is needed;
    - not read yet and wanted: the ball's physics and collisions

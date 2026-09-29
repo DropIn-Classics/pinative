@@ -44,6 +44,29 @@ name       CODE:D870 BALLS_ON_TABLE ; state+0D32h: balls in play (CODE:14DE2 wal
 name       CODE:D878 BALLS_TO_SERVE ; state+0D3Ah: balls waiting to be served, raised by event opcode 1Bh until they and BALLS_ON_TABLE make its count; while BALL_SAVE runs a lost ball is added here again (run 2026-09-29: the sum stayed 6, then 3 with THREE, until the save ran out)
 name       CODE:D87C BALL_SAVE     ; state+0D3Eh: the ball save's frames, set by SERVE_SECONDS at a serve and by event opcode 0Bh (CODE:2D210), 0 at a new ball (CODE:2BD2B); counted down one a frame by play only (CODE:2B86B; held at 1 while state+0FC5h is set), so not while GAME_PHASE is 7; while not 0 a lost ball goes to CODE:2B95A (served again, GAME_PHASE 7 "DON'T MOVE") instead of CODE:2B9F6, and header slot 25's second lamp blinks: every 4 frames above 100, every frame above 50, dark at 50 and below (CODE:2B883, read, not looked at). Runs 2026-09-29, table 1, no flipper: from the launch (t=138.269) one less a frame; the ball lost at 140.23, 143.05, 146.05 and served again each time, 1.3 s in GAME_PHASE 7 and launched with no key; lost for good at 155.95. With SERVE_SECONDS poked to 30: 1830 frames ran out at 176.27 (38.0 s, the phase-7 pauses between), the ball lost for good at 177.46
 name       CODE:D982 RES_CODE      ; state+0E44h: 1, 2, 3, 0 by OPT_RESOLUTION; read only by event opcode 19h (CODE:2D35E), which asks for 5
+name       CODE:02A1 CODE_SEL      ; ENTRY's DS, descriptor 0's selector (1Ch in runs)
+name       CODE:086C CFG_NAME      ; the configuration file's name, the command tail's first word (ENTRY; run 2026-09-29: "C:\ILLUSION.CFG"), opened by INT 94h AH=8
+comment    CODE:0310 INT 94h AH=7: OPTIONS from the configuration file's 200h bytes at +20h, stored chained: a byte XOR the stored byte four before it, the first four XOR "SN95" (runs 2026-09-29, crafted files: 200h random bytes read back exactly)
+; 2A1h as a displacement with a register: a field offset, presumably, not CODE_SEL
+num        CODE:2636F
+num        CODE:265A2
+num        CODE:267D5
+num        CODE:365FD
+num        CODE:36991
+num        CODE:36D2E
+num        CODE:370C1
+num        CODE:381FD
+num        CODE:38591
+num        CODE:3892E
+num        CODE:38CC1
+num        CODE:39DFD
+num        CODE:3A191
+num        CODE:3A52E
+num        CODE:3A8C1
+num        CODE:3B9FD
+num        CODE:3BD91
+num        CODE:3C12E
+num        CODE:3C4C1
 num        CODE:B7C1
 num        CODE:B7CC
 num        CODE:134F2
