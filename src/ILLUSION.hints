@@ -28,6 +28,33 @@ raw        CODE:13AD7
 raw        CODE:141D6
 raw        CODE:164B4
 
+; two tables of 11 far pointers (DF, ended by FFFFFFFFh) the program hands
+; to the sound driver (EDI=618Dh before the driver call at CODE:71E9,
+; EDI=98FEh before the one at CODE:9B24): presumably the host callbacks of
+; docs/audio-driver.md (not checked)
+code       CODE:6244               ; far pointer 1 at CODE:618D
+code       CODE:61ED               ; far pointer 2 at CODE:6193
+code       CODE:6234               ; far pointer 3 at CODE:6199
+code       CODE:626D               ; far pointer 4 at CODE:619F
+code       CODE:627B               ; far pointer 5 at CODE:61A5
+code       CODE:6280               ; far pointer 6 at CODE:61AB
+code       CODE:6285               ; far pointer 7 at CODE:61B1
+code       CODE:62EE               ; far pointer 8 at CODE:61B7
+code       CODE:6318               ; far pointer 9 at CODE:61BD
+code       CODE:632E               ; far pointer 10 at CODE:61C3
+code       CODE:633F               ; far pointer 11 at CODE:61C9
+code       CODE:99B5               ; far pointer 1 at CODE:98FE
+code       CODE:995E               ; far pointer 2 at CODE:9904
+code       CODE:99A5               ; far pointer 3 at CODE:990A
+code       CODE:99DE               ; far pointer 4 at CODE:9910
+code       CODE:99EC               ; far pointer 5 at CODE:9916
+code       CODE:99F1               ; far pointer 6 at CODE:991C
+code       CODE:99F6               ; far pointer 7 at CODE:9922
+code       CODE:9A5F               ; far pointer 8 at CODE:9928
+code       CODE:9A89               ; far pointer 9 at CODE:992E
+code       CODE:9A9F               ; far pointer 10 at CODE:9934
+code       CODE:9AB0               ; far pointer 11 at CODE:993A
+
 ; computed jumps (CODE:4CE8, CODE:4CF2, CODE:7438 and inline): a dword
 ; constant less the byte sum of a stretch of the image, presumably to make
 ; a changed program go astray. Worked out from the file's bytes; that

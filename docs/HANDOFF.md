@@ -82,9 +82,9 @@ games too), in the kit with tests (rule 7).
 
 ## Stage 1: ILLUSION.386
 
-`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 27,351
-instructions, 3762 labels, 16 lines as DB, 18 to 38 s on the Mac used
-(2026-09-29); gaps.py: 211 gaps (174,690 of 0x46480 bytes not reached as
+`python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 27,633
+instructions, 3772 labels, 16 lines as DB, 18 to 38 s on the Mac used
+(2026-09-29); gaps.py: 215 gaps (174,360 of 0x46480 bytes not reached as
 code) not looked at one by one yet. The hints so far: the two descriptors as segments (`CODE` the
 whole image, code and data; `TAIL` the empty one at its end), the entry
 point's name, the pointers found so far, a `stop` and the 16 `raw`
@@ -129,6 +129,11 @@ Code reached through pointers so far:
   (CODE:11AE9: a first try with 80h entries ran into the 78h data words
   after the eight, whose targets fell inside instructions).
 - CODE:14DE2: `MOV EBX,14DE2h; CALL EBX` (CODE:298CA).
+- the two tables of 11 far pointers at CODE:618D and CODE:98FE (ended
+  by FFFFFFFFh), handed to the sound driver in EDI before its calls at
+  CODE:71E9 and CODE:9B24: presumably its host callbacks
+  (docs/audio-driver.md), not checked. The kit does not take far
+  pointers for code by itself (CODE holds data too), so 22 `code` lines.
 
 Not reached yet, seen: calls through offsets kept in records
 (`LEA EDX,[EBX+2D193h]`, EBX a word from a record; also CODE:2F625),
@@ -178,11 +183,8 @@ are offsets, which the analysis does not find by itself; names).
      entry as an image offset (descriptor 0 has base 0, so either way);
    - then the runner: protected mode or pMAX's services (INT 90h..94h)
      emulated, still to decide.
-2. Stage 1 for the main program, on from the above: gaps.py's 41 gaps
-   (code reached only through pointers: e.g. the two tables of 11 far
-   pointers at CODE:618D and CODE:98FE, written as `DF` lines, whose
-   targets are not reached as code yet; presumably the sound drivers'
-   eleven host callbacks of docs/audio-driver.md, not checked), offsets
-   among the 32-bit immediates (ptrscan.py), names
-   (doskit/docs/METHOD.md). A heuristic for offsets in flat 32-bit code
-   would belong in doskit.
+2. Stage 1 for the main program, on from the above: gaps.py's 215 gaps
+   one by one (what is not reached yet, see "Stage 1"); the field
+   offsets taken for addresses (a heuristic for flat 32-bit code in
+   doskit, or `num` hints); offsets among the 32-bit immediates
+   (ptrscan.py); names (doskit/docs/METHOD.md).
