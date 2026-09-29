@@ -32,7 +32,9 @@ lane change read from the code (see "The lit records' timers and the
 lamps"); the drop targets (see "The drop targets"); the holes' eject (see
 "The holes' eject"); the display's animations (see "The display's
 animations"); the timed lamp, a drop-target bank and a hole
-seen in a run (see "The lamps, a drop-target bank and a hole in a run").
+seen in a run (see "The lamps, a drop-target bank and a hole in a run");
+the player record's names checked in a run (see "The player record
+in a run").
 
 ## The earlier analysis
 
@@ -1393,6 +1395,38 @@ a margin) is not known; a port that wants the original's timing counts
 61 a second at 70 Hz frames. The four mode routines' other effects
 (CODE:D890, D892, 9B8E, B922) are not looked at.
 
+### The player record in a run
+
+Runs 2026-09-29, on macOS (as in "The lamps, a drop-target bank and a
+hole in a run": the bundle's `ILLUSION.CFG` by `-put`, no `-cue`, the
+same key file; `build/names/`; 31 to 45 s each). state+0D76h held D8B8h
+(CODE:D8B8, linear 10E7E8h): player 1's record. `-dump 10E7E8 24
+-dumpevery 0.25`, `-watch` on GAME_PHASE (linear 10DAFCh), `-log` on
+TAKE_PAY, BONUS_ADD, BONUS_CLEAR, CODE:2BBC6 and the slot-15 handlers
+1, 2, 5, 7, 8, 0Ah.
+
+- Blind play, a game of three balls to t=217: 36 calls of TAKE_PAY, the score (the
+  6 BCD bytes at +0, +1, +4..+7) rose to 3,165,000; the bonus (+8, +9,
+  +0Ch..+0Fh) and bytes +10h..+14h stayed 0 all game, so no take of
+  those paid a bonus (the screen at the lost balls not looked at). None
+  of the handlers logged was reached.
+- Poked at the first lost ball (CODE:2BBC6, t=155.54): bonus 12,345,
+  word +12h 3, byte +10h 1. The screen showed "BONUS 12,345", then
+  "EXTRA BALL"; the score went from 395,000 to 432,035 (3 x 12,345) by
+  t=157.75; BONUS_CLEAR at 157.50 cleared the bonus and the word;
+  byte +10h went to 0 and GAME_PHASE to 8 (by CODE:2BC0B), 4 again at
+  the next Enter (t=168.14, CODE:2BBA8).
+- The same with bytes +11h and +14h FFh and no extra ball: GAME_PHASE 6
+  as usual; after BONUS_CLEAR the bonus 12,345 and the 3 stayed, both
+  bytes were 0.
+
+So score, bonus, multiplier, extra ball and the two "held" bytes are
+checked as the hints name them; the "presumably" is gone from those
+comments. Not checked: whether a multiplier shows on the display
+(the screenshots at 155.4..162 have only the two texts), and the
+handlers that set them (1, 2, 5, 8) in a run; no take in blind play
+reaches them.
+
 ### The GOG release on the Mac
 
 Looked at 2026-09-29 in `/Applications/Pinball Gold Illusions.app`
@@ -1484,9 +1518,9 @@ at 05:26:20 for 13,717 frames (182.9 s, as its Ogg says).
      see "The display's animations"). These were what a port of the two
      interpreters needed.
    - done 2026-09-29: the slot-15 handlers (see "The slot-15
-     handlers"). Open from it: a run that checks the names (score,
-     bonus, multiplier, extra ball: `-watch` on the player record);
-     who reads a slot-16 counter's word +26h (handler 14h); table 4's
+     handlers"). Done 2026-09-29: a run that checks the names
+     (score, bonus, multiplier, extra ball; see "The player record in a
+     run"). Open from it: who reads a slot-16 counter's word +26h (handler 14h); table 4's
      random awards. Where CODE:BAD4 is counted: DRV_TICK (see "Offsets
      among the immediates"), how often not checked.
    - done 2026-09-29: table 2's music (see "The audio records and

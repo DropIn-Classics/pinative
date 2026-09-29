@@ -79,7 +79,7 @@ name       CODE:97A4 MODE_SVGA640
 name       CODE:9822 MODE_SVGA800
 name       CODE:96E7 MODE_VGA320
 ; Esc on a table (2026-09-29; run on table 1, see docs/HANDOFF.md, "Esc")
-name       CODE:CBCC GAME_PHASE    ; state+8Eh: the number by which CODE:BAD6's routines are called each round (CODE:B993). Run 2026-09-29 (table 1, a game of three balls, -watch): 1 attract mode (CODE:2A4F8); F1: 2 game start (2A976), at once 6 the ball waits for its launch (2B1DC, "PLAYER 1 BALL n"); Enter: 4 play (2B76E); 7 a lost ball served again while the ball save runs (2BAD5, "DON'T MOVE"; from CODE:2B946), back to 4 after about 1.3 s; 5 the ball lost (2BBC6, the bonus, "NO BONUS"), then 6, or 8 for an extra ball (2BB3E, "EXTRA BALL"; not seen), or after the last ball 3 game over (2AA90, "GAME OVER"), then 1. Esc during play 3 (CODE:2BAB5), Esc in phase 6 1 (CODE:2B345). 0 (CODE:BAFE) and 9 (2B716, set at CODE:2B8ED, near the text "TILT": a tilt, presumably) not seen
+name       CODE:CBCC GAME_PHASE    ; state+8Eh: the number by which CODE:BAD6's routines are called each round (CODE:B993). Run 2026-09-29 (table 1, a game of three balls, -watch): 1 attract mode (CODE:2A4F8); F1: 2 game start (2A976), at once 6 the ball waits for its launch (2B1DC, "PLAYER 1 BALL n"); Enter: 4 play (2B76E); 7 a lost ball served again while the ball save runs (2BAD5, "DON'T MOVE"; from CODE:2B946), back to 4 after about 1.3 s; 5 the ball lost (2BBC6, the bonus, "NO BONUS"), then 6, or 8 for an extra ball (2BB3E, "EXTRA BALL"; seen with the player's byte +10h poked: set by 2BC0B, 4 again by 2BBA8 at the Enter that launches the ball), or after the last ball 3 game over (2AA90, "GAME OVER"), then 1. Esc during play 3 (CODE:2BAB5), Esc in phase 6 1 (CODE:2B345). 0 (CODE:BAFE) and 9 (2B716, set at CODE:2B8ED, near the text "TILT": a tilt, presumably) not seen
 name       CODE:CBCB QUIT_TABLE    ; state+8Dh: FFh leaves the table for the chooser (run: written by CODE:2BABB at t=140.01, Esc during play; the chooser's screens followed)
 comment    CODE:2A8AB Esc in the attract mode: the text "REALLY QUIT TABLE?" (CODE:2A93E) while the frame step goes on, until KEY_DOWN+15h (scan code 15h, Y on a QWERTY keyboard: yes, QUIT_TABLE FFh) or another key (LAST_KEY; on with the attract mode) (run: Esc at t=124 showed the text, Space at 127 went on; Y not tried there)
 comment    CODE:2B63B the same question for Esc at CODE:2B56D (the routine at CODE:2B543, its callers not followed; presumably while the ball waits for its launch, not run): Y QUIT_TABLE FFh, another key back to CODE:2B543
@@ -110,16 +110,20 @@ comment    CODE:2E08C handler 15h of CODE:2DA0A: as handler 6 (CODE:2DCA1) witho
 comment    CODE:2E5B7 handler 16h of CODE:2DA0A: the counter at +34h's threshold action equal to the current player's word +16h: its stream (+4) to EVENT_QUEUE (table 1: record 4362h, lit by zone 352Fh's stream, taken by zone 3447h's; run with it forced: threshold 1, opcode 9, the mode stream's opcode 13h plays track 4)
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 ; the other slot-15 handlers (2026-09-29, read from the code and the four
-; modules' records; no run made for them). "The player" is the record at
-; state+0D76h: its +8 a 12-digit packed-BCD number (high word +0, low
-; dword +4) shown by display opcode 8, the score presumably; its +10h
-; another (high word +8, low dword +0Ch), the bonus presumably
-; (CODE:2BD95); byte +10h, byte +11h, word +12h, byte +14h below
+; modules' records; no run made for the handlers). "The player" is the
+; record at state+0D76h (CODE:D8B8, player 1, in runs): its +8 a 12-digit
+; packed-BCD number (high word +0, low dword +4) shown by display opcode
+; 8, the score; its +10h another (high word +8, low dword +0Ch), the
+; bonus (CODE:2BD95); byte +10h, byte +11h, word +12h, byte +14h below.
+; The names checked in runs 2026-09-29 (table 1, docs/HANDOFF.md, "The
+; player record in a run"): the takes raise +8 only; the bonus 12,345
+; with word +12h 3 poked at a lost ball adds 37,035 to +8, the screen
+; shows "BONUS 12,345", then "EXTRA BALL" for byte +10h 1
 comment    CODE:2FBBF a take's points: [CODE:000C] points past a 12-digit packed-BCD number (high word at -8, low dword at -4), added to the player's +10h; the number 8 bytes before it added to the player's +8 (for a slot-15 record's +2Ch: +24h/+28h to +10h, +1Ch/+20h to +8; table 1 has records with both, e.g. 1000000 and 500000)
 comment    CODE:2FD11 the 12-digit number [CODE:000C] points past added to the player's +8; CODE:2FDD3 the same to the player's +10h
-comment    CODE:2BD95 at a lost ball, presumably: the player's +10h number added to state+2AC8h/2ACCh once, or word +12h times when that is above 1, and that sum later to the player's +8 (after the call through state+2926h): the bonus times its multiplier, presumably
-comment    CODE:2A4B1 the player's +10h number cleared unless byte +11h is set, word +12h cleared unless byte +14h is set; both bytes cleared: the bonus and its multiplier held for one ball, presumably
-comment    CODE:2BBC6 the player's byte +10h: not 0, one less and state+8Eh = 8 (after the text "EXTRA BALL" at CODE:2BBB2): extra balls, presumably
+comment    CODE:2BD95 at a lost ball (from CODE:2BBC6): the player's +10h number added to state+2AC8h/2ACCh once, or word +12h times when that is above 1, and that sum later to the player's +8 (after the call through state+2926h): the bonus times its multiplier (run: 12,345 x 3 in the score 2.0 to 2.2 s after the loss, between two dumps)
+comment    CODE:2A4B1 the player's +10h number cleared unless byte +11h is set, word +12h cleared unless byte +14h is set; both bytes cleared: the bonus and its multiplier held for one ball (run: with both bytes FFh the bonus and the 3 stayed, the bytes 0)
+comment    CODE:2BBC6 the player's byte +10h: not 0, one less and state+8Eh = 8 (after the text "EXTRA BALL" at CODE:2BBB2): extra balls (run: 1 poked, "EXTRA BALL" shown, GAME_PHASE 8 until the launch, the byte 0)
 comment    CODE:2E2E1 handler 1 of CODE:2DA0A: the first light state of header slot 25 (state+290Ah) gets byte +5 FFh, the player's byte +10h one more: an extra ball (the records' +34h not read)
 comment    CODE:2E31C handler 2 of CODE:2DA0A: byte +0 of [+34h] set to FFh when that is not 0 (table 2's one such record, 7402h, has 2 there, the next record's first word, so CODE:0002 is written, a scratch dword rewritten at once), the player's bit (CODE:003C, presumably) into byte +0 of the light state at +8, the player's byte +11h FFh (bonus held, CODE:2A4B1)
 comment    CODE:2E6AB handler 3 of CODE:2DA0A: the player's +10h number added to its +8 (in no record of the four tables)
