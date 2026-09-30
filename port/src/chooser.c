@@ -350,6 +350,7 @@ static void GEN_CODE(uint32_t si, uint32_t other, uint32_t rec, int latches)
     size = gen - rd(N_GEN_BUF);
     /* INT 92h AH=4 (name CODE:2F13), the bytes copied; INT 93h AH=14h CX
      * 9Ah (a code segment) leaves nothing in memory */
+    pmax_name(0x2F13, 0x1C);
     sel = pmax_alloc(size);
     if (!sel)
         pi_stop("GEN_CODE: no room (INT 92h AH=4)");
@@ -468,6 +469,7 @@ static void CAPTIONS_MAKE(void)
 
     /* INT 92h AH=6, 10000h bytes (name CODE:39C7); INT 93h AH=0Ch's
      * selector (80h in the run, flat) is the port's linear memory */
+    pmax_name(0x39C7, 0x1C);
     wd(N_GEN_BUF, pmax_alloc_linear(0x10000));
     if (!rd(N_GEN_BUF))
         pi_stop("CAPTIONS_MAKE: no room (INT 92h AH=6)");
@@ -1729,6 +1731,7 @@ uint8_t CHOOSER_START(void)
     READ_MODE1();
     VIDEO_TOP_SET();
     /* BITMAP_ALLOC (INT 92h AH=7, name CODE:226F) */
+    pmax_name(0x226F, 0x1C);
     ww(N_BITMAP_SEL, pmax_alloc_top(0x5C08));
     if (!rw(N_BITMAP_SEL))
         pi_stop("BITMAP_ALLOC: no room (INT 92h AH=7)");

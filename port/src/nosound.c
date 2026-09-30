@@ -73,7 +73,7 @@ static int CHAN_BUF_ALLOC(void)
     uint16_t bx;
     uint32_t k;
 
-    if (HCB_ALLOC(0x800, &bx))
+    if (HCB_ALLOC(rw(D_DRV_DS), 0x800, &bx))
         return 1;
     ww(D_CHAN_BUF_SEL, bx);
     for (k = 0; k < 4; k++)
@@ -88,7 +88,7 @@ static int DMA_ALLOC(void)
     uint16_t bp, bx;
     uint32_t lin, end;
 
-    if (HCB_ALLOC_LOW(rw(D_DMA_SIZE), &bp))
+    if (HCB_ALLOC_LOW(rw(D_DRV_DS), rw(D_DMA_SIZE), &bp))
         return 1;
     lin = HCB_LINEAR(bp);
     /* the buffer (from 20h bytes before it) must not cross a 64 KB line */
@@ -98,10 +98,10 @@ static int DMA_ALLOC(void)
          * freed (not reached in the runs) */
         if (bp)
             HCB_FREE(bp);
-        if (HCB_ALLOC_LOW(rw(D_DMA_SIZE) - (end & 0xFFFF), &bx))
+        if (HCB_ALLOC_LOW(rw(D_DRV_DS), rw(D_DMA_SIZE) - (end & 0xFFFF), &bx))
             return 1;
         ww(D_DMA_FILLER_SEL, bx);
-        if (HCB_ALLOC_LOW(rw(D_DMA_SIZE), &bp))
+        if (HCB_ALLOC_LOW(rw(D_DRV_DS), rw(D_DMA_SIZE), &bp))
             return 1;
         if (rw(D_DMA_FILLER_SEL)) {
             HCB_FREE(rw(D_DMA_FILLER_SEL));
@@ -118,7 +118,10 @@ static int DMA_ALLOC(void)
 /* CODE:053D: 1 for CF */
 static int VOLTAB_MAKE(void)
 {
-    uint16_t sel = pmax_alloc(0x8202);     /* INT 92h AH=0Ah, "Volume table" */
+    uint16_t sel;
+
+    pmax_name(0x053F, rw(D_DRV_DS));        /* INT 92h AH=0Ah, "Volume table" */
+    sel = pmax_alloc(0x8202);
     uint32_t base, i = 0;
     int v, b;
 
@@ -259,7 +262,7 @@ static int MOD_LOAD(uint16_t es, uint32_t edx)
     /* the patterns, each note converted */
     HCB_SEEK((uint16_t)(rw(D_SAMPLE_HDRS_SIZE) + 0x96 + rw(D_SIG_SIZE)));
     n = rb(D_NPATTERNS) * 0x400u;
-    if (HCB_ALLOC(n, &sel))
+    if (HCB_ALLOC(rw(D_DRV_DS), n, &sel))
         return load_error(1, 1);
     ww(D_PATTERNS_SEL + slot, sel);
     HCB_READ(sel, 0, n);
@@ -314,7 +317,7 @@ static int MOD_LOAD(uint16_t es, uint32_t edx)
 
         if (rw(r + 6) < 3)
             continue;
-        if (HCB_ALLOC(rw(r + 0x0A) + 0x800u, &sel))
+        if (HCB_ALLOC(rw(D_DRV_DS), rw(r + 0x0A) + 0x800u, &sel))
             return load_error(1, 1);
         ww(r, sel);
         HCB_READ(sel, 0, rw(r + 0x0A));

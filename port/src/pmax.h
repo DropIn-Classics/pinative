@@ -46,6 +46,9 @@ uint16_t pmax_load(const char *name, uint32_t *size);
 /* the same with the name read from the program's memory at DS:`off` (the
  * table's file names, whose digit TABLE_DIGITS writes) */
 uint16_t pmax_load_ds(uint32_t off, uint32_t *size);
+/* the name (DS:ESI, its offset and selector) the next block's header
+ * gets; the block allocated clears it (0:0 then) */
+void pmax_name(uint32_t off, uint16_t sel);
 /* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
  * or 0 when there is no room */
 uint16_t pmax_alloc(uint32_t size);

@@ -33,6 +33,7 @@ void VGA_INIT(void)
 
     /* LOADING_PIC's run-length data (byte +5 the mark: mark, count,
      * value) into a block of 13EAh bytes (INT 92h AH=4) */
+    pmax_name(0, 0x1C);              /* ESI 0 */
     sel = pmax_alloc(0x13EA);
     if (!sel)
         pi_stop("VGA_INIT (no memory)");

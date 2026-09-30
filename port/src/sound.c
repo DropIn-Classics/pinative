@@ -37,6 +37,7 @@ int SOUND_START(void)
      * has only NOSOUND.SDR (src/NOSOUND.hints) and loads it whatever the
      * header names; DRIVER_CFG keeps the player's name. */
     pmax_cfg_header(N_DRIVER_CFG);
+    pmax_name(0x7075, 0x1C);         /* "Sound Driver" */
     sel = pmax_load("NOSOUND.SDR", NULL);
     if (!sel)
         pi_stop("SOUND_START: NOSOUND.SDR not loaded");

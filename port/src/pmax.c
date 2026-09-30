@@ -84,16 +84,23 @@ int pmax_cfg_header(uint32_t off)
  * (SETSOUND.DAT, later the sound driver) had selector 4 and lay at the
  * image's end + 10h, after a 10h-byte header (docs/HANDOFF.md, "SETUP_ARGS
  * in a run", "The CD check and the driver's start in a run").  The port
- * puts its blocks there too, first fit from the bottom, each after 10h
- * bytes and on 16 bytes.  With policy 2 (INT 92h AH=8 BL=2) a block comes
+ * keeps pMAX's chain there as the runs' memory shows it (docs/HANDOFF.md,
+ * "pMAX's heap headers"): from that first header up to HEAP_TOP each
+ * block, used or free, after a header of 01h, used FFh or free 00h, the
+ * selector word, the size rounded to 16 (a dword), the name's offset (a
+ * dword) and selector (a word) and two bytes pMAX leaves as they were;
+ * at HEAP_TOP 00h FFh ends it.  Policy 0 takes the first free block from
+ * the bottom that the size fits, its rest a free block after it; policy
+ * 1 (and INT 92h AH=6, AH=7) cuts the new block from the top end of the
+ * highest free block it fits.  A freed block's header gets selector 0;
+ * a free block before it takes it in, its own header otherwise left
+ * (still FFh), else it is marked free; a free block after it is taken in
+ * either way.  Not modelled: pMAX's own blocks (FA00h bytes from the top
+ * while it loads a file, name 18h:33A7h), whose data stays in the free
+ * space at the top and under later headers there.  With policy 2 (INT 92h AH=8 BL=2) a block comes
  * from DOS memory: in the run the first at linear 13120h (docs/HANDOFF.md,
  * "The driver's command 0 in a run"); the port puts the next ones after
- * it the same way, not checked.  With policy 1 a block is cut from the
- * top: the heap's chain ends at FEFFF0h, and in the run MOD.INT (47F88h
- * bytes) lay at FA8060h, so that its size rounded to 16 ended there
- * (docs/HANDOFF.md, "The driver's command 4 in a run"); the port puts the
- * next ones below it the same way, not checked.  The headers themselves
- * are pMAX's and not written.
+ * it, with no headers (none looked at).
  *
  * Selectors: the lowest free of 04h, 0Ch, 14h ... (steps of 8, the local
  * table's), with 14h (CS), 1Ch (DS) and 24h taken from the start; the
@@ -103,6 +110,7 @@ int pmax_cfg_header(uint32_t off)
 
 #define MAX_BLOCKS 512
 #define MAX_SELS 1024
+#define MAX_SEGS 1024
 
 #define LOW_START 0x13120u
 #define LOW_END 0xA0000u
@@ -111,6 +119,128 @@ int pmax_cfg_header(uint32_t off)
 static struct { uint32_t base, size; uint16_t sel; int used; } blocks[MAX_BLOCKS];
 static uint8_t policy;
 static struct { uint32_t base; int used; } sels[MAX_SELS];
+
+/* the chain: each block's header address, its size (rounded) and whether
+ * it is used, in address order */
+static struct { uint32_t hdr, size; int used; } segs[MAX_SEGS];
+static int nsegs;
+/* the name the next block's header gets (pmax_name) */
+static uint32_t name_off;
+static uint16_t name_sel;
+
+void pmax_name(uint32_t off, uint16_t sel)
+{
+    name_off = off;
+    name_sel = sel;
+}
+
+static void hdr_write(int k, uint16_t sel, uint32_t noff, uint16_t nsel)
+{
+    uint32_t h = segs[k].hdr;
+
+    pmem[h] = 1;
+    pmem[h + 1] = segs[k].used ? 0xFF : 0;
+    lww(h + 2, sel);
+    lwd(h + 4, segs[k].size);
+    lwd(h + 8, noff);
+    lww(h + 12, nsel);
+}
+
+static void chain_init(void)
+{
+    if (nsegs)
+        return;
+    segs[0].hdr = ((pi_image.base + pi_image.alloc + 0x10 + 15) & ~15u) - 0x10;
+    segs[0].size = HEAP_TOP - segs[0].hdr - 0x10;
+    segs[0].used = 0;
+    nsegs = 1;
+    hdr_write(0, 0, 0, 0);
+    pmem[HEAP_TOP] = 0;
+    pmem[HEAP_TOP + 1] = 0xFF;
+}
+
+static void seg_insert(int at)
+{
+    memmove(&segs[at + 1], &segs[at], (size_t)(nsegs - at) * sizeof segs[0]);
+    nsegs++;
+}
+
+static void seg_remove(int at)
+{
+    memmove(&segs[at], &segs[at + 1], (size_t)(nsegs - at - 1) * sizeof segs[0]);
+    nsegs--;
+}
+
+/* a block of `size` bytes in the chain, from the top or the bottom; its
+ * data's address, 0 when there is no room.  The header is written once
+ * the selector is known (chain_name) */
+static int chain_alloc(uint32_t size, int top)
+{
+    uint32_t r = (size + 15) & ~15u;
+    int k;
+
+    chain_init();
+    if (nsegs + 1 >= MAX_SEGS)
+        return -1;
+    if (!top) {
+        for (k = 0; k < nsegs; k++)
+            if (!segs[k].used && segs[k].size >= r)
+                break;
+        if (k == nsegs)
+            return -1;
+        if (segs[k].size >= r + 0x10) {
+            seg_insert(k + 1);
+            segs[k + 1].hdr = segs[k].hdr + 0x10 + r;
+            segs[k + 1].size = segs[k].size - r - 0x10;
+            segs[k + 1].used = 0;
+            hdr_write(k + 1, 0, 0, 0);
+            segs[k].size = r;
+        }
+        segs[k].used = 1;
+        return k;
+    }
+    for (k = nsegs - 1; k >= 0; k--)
+        if (!segs[k].used && segs[k].size >= r + 0x10)
+            break;
+    if (k < 0)
+        return -1;
+    seg_insert(k + 1);
+    segs[k].size -= r + 0x10;
+    lwd(segs[k].hdr + 4, segs[k].size);
+    segs[k + 1].hdr = segs[k].hdr + 0x10 + segs[k].size;
+    segs[k + 1].size = r;
+    segs[k + 1].used = 1;
+    return k + 1;
+}
+
+/* the block whose data is at `base` freed in the chain: its header's
+ * selector 0; a free block before it takes it in (and a free one after
+ * it), its own header left as it was otherwise; else it is marked free
+ * and takes in a free block after it */
+static void chain_free(uint32_t base)
+{
+    int k;
+
+    for (k = 0; k < nsegs; k++)
+        if (segs[k].used && segs[k].hdr + 0x10 == base)
+            break;
+    if (k == nsegs)
+        return;
+    segs[k].used = 0;
+    lww(segs[k].hdr + 2, 0);
+    if (k > 0 && !segs[k - 1].used) {
+        segs[k - 1].size += 0x10 + segs[k].size;
+        seg_remove(k);
+        k--;
+    } else {
+        pmem[segs[k].hdr + 1] = 0;
+    }
+    if (k + 1 < nsegs && !segs[k + 1].used) {
+        segs[k].size += 0x10 + segs[k + 1].size;
+        seg_remove(k + 1);
+    }
+    lwd(segs[k].hdr + 4, segs[k].size);
+}
 
 static void sels_init(void)
 {
@@ -137,60 +267,69 @@ static uint16_t sel_new(uint32_t base)
     return 0;
 }
 
-/* a new block of `size` bytes by `policy`; its selector to *sel unless
- * `sel` is NULL (INT 92h AH=6: a linear address only); its base, 0 when
- * there is no room */
-static uint32_t block_alloc(uint32_t size, uint16_t *sel)
+/* a new block of `size` bytes by `policy` (`top`: from the top whatever
+ * the policy); its selector to *sel unless `sel` is NULL (INT 92h AH=6,
+ * AH=9: a linear address only); its base, 0 when there is no room.  The
+ * header gets the name pmax_name gave, which is then cleared */
+static uint32_t block_alloc_by(uint32_t size, uint16_t *sel, int top)
 {
-    uint32_t at = (pi_image.base + pi_image.alloc + 0x10 + 15) & ~15u, end = PM_SIZE;
-    int k, free_slot = -1;
+    uint32_t at = LOW_START;
+    int k, free_slot = -1, seg = -1;
 
-    if (policy == 2) {
-        at = LOW_START;
-        end = LOW_END;
-    } else if (policy == 1) {
-        /* the highest address below every block in use above it that the
-         * new one fits after */
-        uint32_t r = (size + 15) & ~15u;
+    for (k = 0; k < MAX_BLOCKS && free_slot < 0; k++)
+        if (!blocks[k].used)
+            free_slot = k;
+    if (free_slot < 0)
+        return 0;
+    if (policy == 2 && !top) {
+        /* the lowest address after every block in use that the new one
+         * fits before the next */
         int moved;
-
-        at = HEAP_TOP - r;
         do {
             moved = 0;
             for (k = 0; k < MAX_BLOCKS; k++)
                 if (blocks[k].used && at < blocks[k].base + blocks[k].size + 0x10
-                    && blocks[k].base < at + r + 0x10) {
-                    at = blocks[k].base - 0x10 - r;
+                    && blocks[k].base < at + size + 0x10) {
+                    at = (blocks[k].base + blocks[k].size + 0x10 + 15) & ~15u;
                     moved = 1;
                 }
         } while (moved);
-    } else if (policy != 0) {
+        if ((uint64_t)at + size > LOW_END)
+            return 0;
+    } else if (policy > 2) {
         pi_stop("pMAX: an allocation with another policy");
+    } else {
+        seg = chain_alloc(size, top || policy == 1);
+        if (seg < 0)
+            return 0;
+        at = segs[seg].hdr + 0x10;
     }
-
-    /* the lowest address after every block in use that the new one fits
-     * before the next (first fit over the used blocks, by address) */
-    while (policy != 1) {
-        int moved = 0;
-        for (k = 0; k < MAX_BLOCKS; k++)
-            if (blocks[k].used && at < blocks[k].base + blocks[k].size + 0x10
-                && blocks[k].base < at + size + 0x10) {
-                at = (blocks[k].base + blocks[k].size + 0x10 + 15) & ~15u;
-                moved = 1;
-            }
-        if (!moved)
-            break;
-    }
-    for (k = 0; k < MAX_BLOCKS && free_slot < 0; k++)
-        if (!blocks[k].used)
-            free_slot = k;
-    if (free_slot < 0 || (uint64_t)at + size > end || (sel && !(*sel = sel_new(at))))
+    if (sel && !(*sel = sel_new(at))) {
+        if (seg >= 0)
+            chain_free(at);
         return 0;
+    }
+    if (seg >= 0)
+        hdr_write(seg, sel ? *sel : 0, name_off, name_sel);
+    name_off = 0;
+    name_sel = 0;
     blocks[free_slot].base = at;
     blocks[free_slot].size = size;
     blocks[free_slot].sel = sel ? *sel : 0;
     blocks[free_slot].used = 1;
     return at;
+}
+
+static uint32_t block_alloc(uint32_t size, uint16_t *sel)
+{
+    return block_alloc_by(size, sel, 0);
+}
+
+static void block_free(int k)
+{
+    blocks[k].used = 0;
+    if (blocks[k].base >= LOW_END)
+        chain_free(blocks[k].base);
 }
 
 uint16_t pmax_load(const char *name, uint32_t *size)
@@ -231,24 +370,15 @@ uint16_t pmax_alloc(uint32_t size)
 
 uint16_t pmax_alloc_top(uint32_t size)
 {
-    uint8_t keep = policy;
     uint16_t sel = 0;
 
-    policy = 1;
-    block_alloc(size, &sel);
-    policy = keep;
+    block_alloc_by(size, &sel, 1);
     return sel;
 }
 
 uint32_t pmax_alloc_linear(uint32_t size)
 {
-    uint8_t keep = policy;
-    uint32_t at;
-
-    policy = 1;
-    at = block_alloc(size, NULL);
-    policy = keep;
-    return at;
+    return block_alloc_by(size, NULL, 1);
 }
 
 uint32_t pmax_alloc_linear_here(uint32_t size)
@@ -262,7 +392,7 @@ void pmax_free_linear(uint32_t base)
 
     for (k = 0; k < MAX_BLOCKS; k++)
         if (blocks[k].used && !blocks[k].sel && blocks[k].base == base)
-            blocks[k].used = 0;
+            block_free(k);
 }
 
 void pmax_policy(uint8_t bl)
@@ -289,7 +419,7 @@ void pmax_free(uint16_t sel)
 
     for (k = 0; k < MAX_BLOCKS; k++)
         if (blocks[k].used && sel && blocks[k].sel == sel) {
-            blocks[k].used = 0;
+            block_free(k);
             sels[sel / 8].used = 0;
         }
 }

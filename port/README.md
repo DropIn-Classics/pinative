@@ -499,6 +499,18 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   docs/HANDOFF.md, "GAME_PHASE 3 and 8 in the port"), so the ball's
   record differs from there. All of GAME_OVER, OVER_WAIT, EXTRA_BALL
   and CODE:2A557's branch ran in these runs (dosrun `-cover`).
+- 2026-09-30, Linux: pMAX's heap with its headers (src/pmax.c, see
+  docs/HANDOFF.md, "pMAX's heap headers"): the heap's whole range
+  (1473B0h to FF0000h) compared byte by byte (a scratch script) at the
+  end of the two-player game over above (CODE:2A67E) and at the first
+  lost ball on tables 3 and 4 (the runs of GAME_PHASE 4 above, CODE:2BBC6
+  first hit): equal but the driver's block (its clock) and the free space
+  at the top, where pMAX's own file buffers were (not modelled); the
+  "known leftovers" in "Hidelights mask", "Temp Text area" and "Spooky"
+  were stale headers and are equal now. The extra-ball game above is
+  now equal at the second lost ball (CODE:2BBC6 second hit, t=180.07)
+  and at the players' scores after its game over (CODE:2A573,
+  t=185.58): CODE but FRAME_SPINS and FRAME_COUNT, video memory equal.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

@@ -154,10 +154,13 @@ void BALLS_INIT(void)
 /* a file loaded as the INT 94h AH=1 stubs do, its name at DS:`name`: its
  * selector to the word `sel`, its size to the dword `size`; 1 (CF) when
  * it is not there */
-static int load(uint32_t name, uint32_t sel, uint32_t size)
+static int load(uint32_t esi, uint32_t name, uint32_t sel, uint32_t size)
 {
     uint32_t n = 0;
-    uint16_t s = pmax_load_ds(name, &n);
+    uint16_t s;
+
+    pmax_name(esi, rw(N_TABLE_DS));
+    s = pmax_load_ds(name, &n);
 
     ww(sel, s);
     wd(size, n);
@@ -168,10 +171,10 @@ static int load(uint32_t name, uint32_t sel, uint32_t size)
  * over) */
 static int DROPS_LOAD(void)
 {
-    if (load(N_DROPS_NAME, N_DROPS_SEL, N_DROPS_SIZE))
+    if (load(0x28D6B, N_DROPS_NAME, N_DROPS_SEL, N_DROPS_SIZE))
         return 1;
     if (rb(N_TABLE_NUM) != 2)
-        load(N_MASKS_NAME, N_MASKS_SEL, N_MASKS_SIZE);
+        load(0x28DBF, N_MASKS_NAME, N_MASKS_SEL, N_MASKS_SIZE);
     return 0;
 }
 
@@ -186,7 +189,7 @@ int LIGHTS_LOAD(void)
     }
     for (i = 0; i < 0x31380; i++)
         lwb(base + i, 0);
-    if (load(N_LIGHTS_NAME, N_LIGHTS_SEL, N_LIGHTS_SIZE))
+    if (load(0x28C81, N_LIGHTS_NAME, N_LIGHTS_SEL, N_LIGHTS_SIZE))
         return 1;
     wd(N_LIGHTS_POS, 0);
     return DROPS_LOAD();
@@ -247,6 +250,7 @@ static void FLIPPER_BLOCKS(void)
                 edx = 0x77;
         }
         n = ((uint32_t)bx + 0x32) * 0x40;
+        pmax_name(0x15172, rw(N_TABLE_DS));  /* "flipper gfx data" */
         sel = pmax_alloc(n);
         ww(N_FLIP_BLOCK_SEL, sel);
         blocks_add(sel);
@@ -255,6 +259,7 @@ static void FLIPPER_BLOCKS(void)
         for (i = 0; i < n; i++)
             lwb(at + i, 0);
         wd(p + 0x2C, n);
+        pmax_name(0x151E4, rw(N_TABLE_DS));  /* "flipper mask data ..." */
         sel = pmax_alloc(n);
         ww(N_FLIP_BLOCK_SEL, sel);
         blocks_add(sel);
@@ -268,7 +273,10 @@ static void FLIPPER_BLOCKS(void)
 /* CODE:15030: 1 (CF) when flipdat1.m is not there */
 int FLIPDAT_LOAD(void)
 {
-    uint16_t sel = pmax_load_ds(N_FLIPDAT_NAME, NULL);
+    uint16_t sel;
+
+    pmax_name(0x15032, rw(N_TABLE_DS));      /* "flipdat" */
+    sel = pmax_load_ds(N_FLIPDAT_NAME, NULL);
 
     if (!sel)
         return 1;

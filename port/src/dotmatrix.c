@@ -10,10 +10,13 @@
 /* a file loaded as the original's INT 94h AH=1 stubs do, its name at
  * CODE:`path`: its selector to the word `sel`, its size to the dword
  * `size`; 1 (CF) when it is not there */
-static int load(uint32_t path, uint32_t sel, uint32_t size)
+static int load(uint32_t esi, uint32_t path, uint32_t sel, uint32_t size)
 {
     uint32_t n = 0;
-    uint16_t s = pmax_load_ds(path, &n);
+    uint16_t s;
+
+    pmax_name(esi, rw(N_TABLE_DS));
+    s = pmax_load_ds(path, &n);
 
     ww(sel, s);
     wd(size, n);
@@ -41,11 +44,14 @@ void DM_ANIM_CLEAR(void)
 /* CODE:271BC */
 static int DM_TEXT_ALLOC(void)
 {
-    uint16_t sel = pmax_alloc(0x1400);
+    uint16_t sel;
 
+    pmax_name(0x27208, rw(N_TABLE_DS));      /* "dot matrix text area" */
+    sel = pmax_alloc(0x1400);
     if (!sel)
         return 1;
     ww(N_DM_TEXT, sel);
+    pmax_name(0x271D4, rw(N_TABLE_DS));      /* "Temp Text area" */
     sel = pmax_alloc(0x1400);
     ww(N_DM_TEXT_TEMP, sel);
     if (!sel)
@@ -57,11 +63,14 @@ static int DM_TEXT_ALLOC(void)
 /* CODE:27976 */
 static int DM_ANIM_ALLOC(void)
 {
-    uint16_t sel = pmax_alloc(0x1400);
+    uint16_t sel;
 
+    pmax_name(0x27978, rw(N_TABLE_DS));      /* "Animarea" */
+    sel = pmax_alloc(0x1400);
     ww(N_DM_ANIM, sel);
     if (!sel)
         return 1;
+    pmax_name(0x2799F, rw(N_TABLE_DS));      /* "Temp Animarea" */
     sel = pmax_alloc(0x1400);
     ww(N_DM_ANIM_TEMP, sel);
     if (!sel)
@@ -75,11 +84,13 @@ static int DM_FONTS_READ(void)
 {
     /* "data\misc\font1a.m", font1b, font2a, font2b, font3 */
     static const uint32_t files[] = { 0x26EF7, 0x26F4C, 0x26FA1, 0x26FF6, 0x27046 };
+    /* their blocks' names ("font1a" ..) */
+    static const uint32_t names[] = { 0x26EF0, 0x26F45, 0x26F9A, 0x26FEF, 0x27040 };
     int i;
 
     pmax_policy(1);
     for (i = 0; i < 5; i++) {
-        if (load(files[i], N_DM_FONT_FILES + 2 * (uint32_t)i,
+        if (load(names[i], files[i], N_DM_FONT_FILES + 2 * (uint32_t)i,
                  N_DM_FONT_SIZES + 4 * (uint32_t)i)) {
             pmax_policy(0);
             return 1;
@@ -101,6 +112,7 @@ static uint16_t DM_FONT_EXPAND(uint16_t src, uint32_t n)
 
     ww(N_DM_EXPAND_SRC, src);
     wd(N_DM_EXPAND_COUNT, n);
+    pmax_name(0x270BE, rw(N_TABLE_DS));      /* "dot matrix font" */
     sel = pmax_alloc(n * 4);
     ww(N_DM_EXPAND_SEL, sel);
     if (!sel)
@@ -142,7 +154,7 @@ static int DM_FONTS_LOAD(void)
 /* CODE:278D8: its CF from the load */
 static int DM_ANIMS_LOAD(void)
 {
-    return load(N_DM_ANIMS_NAME, N_DM_ANIMS_SEL, N_DM_ANIMS_SIZE);
+    return load(0x278DF, N_DM_ANIMS_NAME, N_DM_ANIMS_SEL, N_DM_ANIMS_SIZE);
 }
 
 /* CODE:2FBA8 */

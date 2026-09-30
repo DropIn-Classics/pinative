@@ -258,6 +258,7 @@ void TBL_VGA_INIT(void)
     STAGE_TO_VRAM(rd(N_MODULE_HEADER + 0x4C));
     MAP_MASK(0x0F);
     pmax_policy(0);
+    pmax_name(0x921D, rw(N_TABLE_DS));       /* "Spooky" */
     ww(N_SPOOKY_SEL, pmax_alloc(0x32DC0));
     if (!rw(N_SPOOKY_SEL))
         pi_stop("TBL_VGA_INIT: no room for Spooky (its CF is not looked at)");

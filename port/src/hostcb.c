@@ -9,16 +9,27 @@
 #include "pmax.h"
 #include "pmem.h"
 
-/* CODE:6244, callback 0: a block of `size` bytes (INT 92h AH=0Ah) */
-int HCB_ALLOC(uint32_t size, uint16_t *bx)
+/* the cells callbacks 6 to 9 keep the file in: HOST_CALLBACKS' own, or
+ * the table's copy's (TBL_CALLBACKS, CODE:98FE), which differs in them
+ * and in the names its callbacks give pMAX's headers */
+static uint32_t cell_sel = N_HCB_FILE_SEL, cell_cursor = N_HCB_CURSOR;
+static int in_table;
+
+/* CODE:6244 (the table's CODE:99B5), callback 0: a block of `size` bytes
+ * (INT 92h AH=0Ah, named "Used by MS32" at DS:6247h, 99B8h: the name's
+ * offset in CODE with the caller's DS `ds`) */
+int HCB_ALLOC(uint16_t ds, uint32_t size, uint16_t *bx)
 {
+    pmax_name(in_table ? 0x99B8 : 0x6247, ds);
     *bx = pmax_alloc(size);
     return *bx == 0;
 }
 
-/* CODE:61ED, callback 1: the same from DOS memory (policy 2 around it) */
-int HCB_ALLOC_LOW(uint32_t size, uint16_t *bx)
+/* CODE:61ED (the table's 9960), callback 1: the same from DOS memory
+ * (policy 2 around it; the name DS:61FEh, 996Fh) */
+int HCB_ALLOC_LOW(uint16_t ds, uint32_t size, uint16_t *bx)
 {
+    pmax_name(in_table ? 0x996F : 0x61FE, ds);
     pmax_policy(2);
     *bx = pmax_alloc(size);
     pmax_policy(0);
@@ -66,20 +77,16 @@ static uint32_t host_ds(void)
     return pi_image.desc[ILLUSION_CODE].base;
 }
 
-/* the cells callbacks 6 to 9 keep the file in: HOST_CALLBACKS' own, or
- * the table's copy's (TBL_CALLBACKS, CODE:98FE), which differs in them
- * only (and in the name its callback 0 gives a block, which the port does
- * not keep) */
-static uint32_t cell_sel = N_HCB_FILE_SEL, cell_cursor = N_HCB_CURSOR;
-
 void hcb_use_table(int table)
 {
+    in_table = table;
     cell_sel = table ? N_TBL_HCB_FILE_SEL : N_HCB_FILE_SEL;
     cell_cursor = table ? N_TBL_HCB_CURSOR : N_HCB_CURSOR;
 }
 
-/* CODE:6285, callback 6: the file named at DS:EBX loaded by INT 94h AH=1
- * with policy 1 (from the top) around it; its selector to HCB_FILE_SEL,
+/* CODE:6285 (the table's 99F6), callback 6: the file named at DS:EBX
+ * loaded by INT 94h AH=1 (the name DS:629Ch, 9A0Dh) with policy 1 (from
+ * the top) around it; its selector to HCB_FILE_SEL,
  * HCB_CURSOR 0 */
 int HCB_LOAD(uint16_t ds, uint32_t ebx)
 {
@@ -92,6 +99,7 @@ int HCB_LOAD(uint16_t ds, uint32_t ebx)
         name[i] = (char)lrb(at + i);
     name[i] = 0;
     pmax_policy(1);
+    pmax_name(in_table ? 0x9A0D : 0x629C, ds);  /* "temporary file" */
     sel = pmax_load(name, NULL);
     pmax_policy(0);
     /* AX, whatever INT 94h gave; the port's 0 when there is no file */

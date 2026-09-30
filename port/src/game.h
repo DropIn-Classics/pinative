@@ -46,8 +46,8 @@ uint32_t CD_PLAY(uint32_t ebx);
 void CD_VOLUME(uint8_t bl);
 
 /* hostcb.c: the host callbacks; 1 for CF */
-int HCB_ALLOC(uint32_t size, uint16_t *bx);
-int HCB_ALLOC_LOW(uint32_t size, uint16_t *bx);
+int HCB_ALLOC(uint16_t ds, uint32_t size, uint16_t *bx);
+int HCB_ALLOC_LOW(uint16_t ds, uint32_t size, uint16_t *bx);
 void HCB_FREE(uint16_t bx);
 uint32_t HCB_LINEAR(uint16_t bx);
 void HCB_GETVEC(uint8_t bl, uint16_t *es, uint32_t *edx);

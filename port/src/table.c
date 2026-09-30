@@ -444,6 +444,7 @@ static int TABLE_SOUND(void)
     NsRegs r;
 
     pmax_cfg_header(N_TBL_DRIVER_CFG);
+    pmax_name(0x98C8, rw(N_TABLE_DS));       /* "Sound Driver" */
     sel = pmax_load("NOSOUND.SDR", NULL);
     if (!sel)
         pi_stop("TABLE_SOUND: NOSOUND.SDR not loaded");
@@ -503,7 +504,10 @@ static int TABLE_LOAD(void)
 static int VM_DATA_LOAD(void)
 {
     uint32_t n = 0;
-    uint16_t sel = pmax_load_ds(N_VM_DATA_NAME, &n);
+    uint16_t sel;
+
+    pmax_name(0xB1D7, rw(N_TABLE_DS));       /* "VideoMode data" */
+    sel = pmax_load_ds(N_VM_DATA_NAME, &n);
 
     ww(N_VM_DATA_SEL, sel);
     wd(N_VM_DATA_SIZE, n);
@@ -513,7 +517,10 @@ static int VM_DATA_LOAD(void)
 /* CODE:B048 */
 static int TABLE_LOAD2(void)
 {
-    uint16_t sel = pmax_alloc(0x33450);
+    uint16_t sel;
+
+    pmax_name(0xB04A, rw(N_TABLE_DS));       /* "Hidelights mask" */
+    sel = pmax_alloc(0x33450);
 
     ww(N_HIDELIGHTS_SEL, sel);
     if (!sel)

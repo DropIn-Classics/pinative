@@ -3706,12 +3706,63 @@ before (not written by pMAX, presumably). The port's pmax.c would need
 them written at each allocation (the name's address from each caller;
 the driver's own allocations have selector 2Ch as the name's) and at a
 free, and the free rest of the chain (the run had one free block from
-3E8DA0h up to the top blocks). Next: that, then the slingshot's kick.
+3E8DA0h up to the top blocks). Done the same day, see "pMAX's heap
+headers"; next the slingshot's kick.
 
 Compared: see port/README.md, "Checked" (2026-09-30, GAME_PHASE 3 and
 8). Not run: a key KEY_CHARS gives FFh for in the name (read: it is
 passed over), a table other than 1,
 more than two players, a score equal to an entry.
+
+### pMAX's heap headers
+
+The port keeps pMAX's chain of blocks with their headers since
+2026-09-30 (port/src/pmax.c; each allocation names its block with
+pmax_name, the offset and selector the original's call has in ESI and
+DS). What the runs' memory showed, and the port now does:
+
+- A header: 01h, FFh used or 00h free, the selector word, the size
+  rounded to 16 (dword), the name's offset (dword) and selector (word),
+  and a last word pMAX leaves as it was. The chain starts at 1473B0h
+  (the image's end rounded, minus 10h) and ends at FEFFF0h with 00h FFh.
+- The name is DS:ESI of the call: the game's DS was 1Ch before TABLE and
+  its alias (04h in the runs) in it; the driver's own blocks and those
+  host callbacks 0 and 1 make for it have the driver's DS (2Ch) with
+  the callback's name offset in CODE ("Used by MS32" at 6247h, 61FEh,
+  in the table's copy 99B8h, 996Fh); callback 6's files "temporary
+  file" (629Ch, 9A0Dh) with the DS it is given; INT 94h AH=1 loads have
+  the ESI of the stub (for the intro's and the chooser's files the byte
+  before the file name, 0; for SETSOUND.DAT the file name itself).
+- Policy 0 takes the first free block from the bottom that the rounded
+  size fits and leaves the rest as a free block (a new header, selector
+  and name 0) after it; policy 1 and INT 92h AH=6/AH=7 cut the block from
+  the top end of the highest free block, whose size goes down.
+- A free (INT 92h AH=5 or AH=2) writes selector 0 into the header; when
+  the block before it is free, that one takes it in and the freed
+  block's header stays as it was but for the selector (so still FFh);
+  else the block is marked 00h; a free block after it is taken in either
+  way. So the chooser's captions (name 2F13h) left headers "01 FF 00 00
+  size 2F13 1C" in the table's blocks later: those were the "known
+  leftovers" of the earlier comparisons (in "Hidelights mask", "Temp
+  Text area", "Spooky"), now equal.
+- Not modelled: pMAX's own blocks while it loads a file (FA00h bytes
+  from the top, AH=7 from pMAX's code 0030:33A1, name 18h:33A7h; three
+  such headers were left in the free space at the top). Their data stays
+  in the top's free space and under the headers of later top blocks
+  (the last word of "table bin file relocation table"'s header was 2
+  on table 1 and 3 on tables 3 and 4 in the runs, something else in the
+  port): the only differences in the heap left, besides the driver's
+  clock.
+
+Compared (port/README.md, "Checked"): the whole heap range 1473B0h to
+FF0000h, byte by byte, at the end of the two-player game over and at
+the first lost ball on tables 3 and 4: equal but the driver's clock and
+the top's free space; the extra-ball game of "GAME_PHASE 3 and 8 in the
+port" now equal through its game over. Not compared since the change:
+the chooser's and the intro's stages (the chain there is presumed right
+because the table's blocks and the stale headers the chooser left lie
+where the runs have them). A block in policy 2's DOS memory gets no
+header (none looked at in a run).
 
 ## Next
 
@@ -3973,8 +4024,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30, see "GAME_PHASE 5 in the port"; GAME_PHASE 3, game
      over, and 8, the extra ball, with the players' scores of ATTRACT
      (CODE:2A557) done 2026-09-30, see "GAME_PHASE 3 and 8 in the
-     port"; next the headers of pMAX's heap in the port and the
-     slingshot's kick, same section); later table 2's slot 40, and the
+     port"; the headers of pMAX's heap done 2026-09-30, see "pMAX's heap
+     headers"; next the slingshot's kick, same section); later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
@@ -3987,7 +4038,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      Selectors: the lowest free of 04h, 0Ch, ... in steps of 8, with 14h,
      1Ch, 24h taken from the start; 48h (video) apart. port/src/pmax.c
      does policies 0, 1 and 2 (only the first block of each seen for 1
-     and 2).
+     and 2). The headers' last word is not a policy: pMAX leaves it as
+     it was (the 2 under MOD.INT's was data left there, presumably); the
+     port writes the headers since 2026-09-30, see "pMAX's heap
+     headers".
    - on from HISCORE_INIT: CODE:757D,
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts

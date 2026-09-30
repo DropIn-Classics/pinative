@@ -15,9 +15,12 @@
 /* INT 94h AH=1 with an empty block name (the byte before each file name in
  * CODE, which goes only into pMAX's header); the original does not look at
  * CF, the port stops */
-static uint16_t load(const char *name, uint32_t *size)
+static uint16_t load(uint32_t esi, const char *name, uint32_t *size)
 {
-    uint16_t sel = pmax_load(name, size);
+    uint16_t sel;
+
+    pmax_name(esi, 0x1C);
+    sel = pmax_load(name, size);
 
     if (!sel)
         pi_stop("CHOOSER_LOAD: a file not loaded");
@@ -555,19 +558,19 @@ void CHOOSER_LOAD(void)
 
     /* CODE:75B6 */
     ww(N_CHOOSER_LOADED, 1);
-    ww(N_CUBE_SEL, load("chooser\\cube.rix", NULL));
-    ww(N_TUBE_SEL, load("chooser\\tube.rix", NULL));
-    ww(N_TORUS_SEL, load("chooser\\torus.rix", NULL));
-    ww(N_TINYFONT_SEL, load("chooser\\tinyfont.fnt", NULL));
-    ww(N_INFODATA_SEL, load("chooser\\infodata.mgl", NULL));
-    ww(N_MENUCHAR_SEL, load("chooser\\menuchar.rix", NULL));
-    ww(N_INTROANI_SEL, load("intro\\introani.roy", &size));
+    ww(N_CUBE_SEL, load(0x75C1, "chooser\\cube.rix", NULL));
+    ww(N_TUBE_SEL, load(0x75FE, "chooser\\tube.rix", NULL));
+    ww(N_TORUS_SEL, load(0x763B, "chooser\\torus.rix", NULL));
+    ww(N_TINYFONT_SEL, load(0x7679, "chooser\\tinyfont.fnt", NULL));
+    ww(N_INFODATA_SEL, load(0x76BA, "chooser\\infodata.mgl", NULL));
+    ww(N_MENUCHAR_SEL, load(0x76FB, "chooser\\menuchar.rix", NULL));
+    ww(N_INTROANI_SEL, load(0x773C, "intro\\introani.roy", &size));
     wd(N_INTROANI_SIZE, size);
     wd(N_INTROANI_POS, 0);
-    ww(N_INTROPIX_SEL, load("intro\\intropix.mgl", NULL));
-    ww(N_SCROLL_SEL, load("intro\\SCROLL.DLT", NULL));
-    ww(N_BKGR_SEL, load("intro\\BKGR.FLD", NULL));
-    ww(N_PCSKY_SEL, load("intro\\PCSKY.FLD", NULL));
+    ww(N_INTROPIX_SEL, load(0x7791, "intro\\intropix.mgl", NULL));
+    ww(N_SCROLL_SEL, load(0x77D0, "intro\\SCROLL.DLT", NULL));
+    ww(N_BKGR_SEL, load(0x780E, "intro\\BKGR.FLD", NULL));
+    ww(N_PCSKY_SEL, load(0x784A, "intro\\PCSKY.FLD", NULL));
 
     /* CODE:7885: through CODE:7438's checksummed jump */
     INTRO_PALS_MAKE();

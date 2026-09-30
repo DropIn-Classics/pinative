@@ -145,8 +145,11 @@ static void REL_REPLACE(uint32_t edx, uint32_t eax)
  * and its selector added to BLOCKS; its DS offset, 0 when it failed */
 static uint32_t dataload(uint32_t name)
 {
-    uint16_t sel = pmax_load_ds(name, NULL);
+    uint16_t sel;
     uint32_t p = rd(N_BLOCKS_END);
+
+    pmax_name(0xB551, rw(N_TABLE_DS));       /* "DATALOAD" */
+    sel = pmax_load_ds(name, NULL);
 
     ww(p, sel);
     wd(N_BLOCKS_END, p + 2);
@@ -166,17 +169,20 @@ static uint32_t dataload2(uint32_t name)
 
     wd(N_DATALOAD2_KEY, name);
     pmax_policy(1);
+    pmax_name(0xB5D4, rw(N_TABLE_DS));       /* "TEMP DATALOAD 1" */
     s1 = pmax_load_ds(name, &n1);
     ww(N_DATALOAD2_TEMP1, s1);
     if (!s1)
         return 0;       /* policy 1 stays set, as in the original */
     while (rb(name++))
         ;
+    pmax_name(0xB635, rw(N_TABLE_DS));       /* "TEMP DATALOAD 2" */
     s2 = pmax_load_ds(name, &n2);
     ww(N_DATALOAD2_TEMP2, s2);
     if (!s2)
         return 0;
     pmax_policy(0);
+    pmax_name(0xB6A0, rw(N_TABLE_DS));       /* "DATALOAD 2" */
     at = pmax_alloc_linear_here(n1 + n2);
     if (!at)
         pi_stop("TABLE_MODULE: no room for DATALOAD 2 (its CF is not looked at)");
@@ -200,6 +206,7 @@ static int MODULE_LOAD(void)
     uint32_t n = 0, base, head, i;
     uint16_t sel, rel;
 
+    pmax_name(0xB3FC, rw(N_TABLE_DS));       /* "table bin file" */
     sel = pmax_load_ds(N_MODULE_NAME, &n);
     ww(N_MODULE_SEL, sel);
     wd(N_MODULE_SIZE, n);
@@ -212,6 +219,7 @@ static int MODULE_LOAD(void)
     wb(N_MODULE_EXT + 2, 'l');
     pmax_policy(1);
     n = 0;
+    pmax_name(0xB485, rw(N_TABLE_DS));       /* "table bin file relocation table" */
     rel = pmax_load_ds(N_MODULE_NAME, &n);
     if (!rel)
         return 1;       /* policy 1 stays set, as in the original */
