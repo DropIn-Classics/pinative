@@ -256,6 +256,32 @@ int FLIPDAT_LOAD(void)
     blocks_add(sel);
     /* CODE:150A5 */
     FLIPPER_BLOCKS();
-    pi_stop("FLIPPER_RENDER (CODE:1527F)");
-    return 1;
+    FLIPPER_RENDER();
+    return 0;       /* CODE:156C3 is a RET */
+}
+
+/* CODE:B0E3: the table's two multiball counts (MULTIBALL_COUNTS, two
+ * dwords a table) each lowered to OPT_MULTIBALL's maximum (MULTIBALL_MAX)
+ * and, where not 0, written to the word +2 of the records header slots
+ * 43 and 44 point to (the module's +ACh, +B0h); 1 (CF) when the option is
+ * not 0..3 */
+int MULTIBALL_CAP(void)
+{
+    uint32_t t = (uint32_t)(uint8_t)(rb(N_TABLE_NUM) - 1) * 8, max, esi, edi, m;
+
+    esi = rd(N_MULTIBALL_COUNTS + t);
+    edi = rd(N_MULTIBALL_COUNTS + 4 + t);
+    if (rb(N_OPT_MULTIBALL) >= 4)
+        return 1;
+    max = rd(N_MULTIBALL_MAX + 4 * (uint32_t)rb(N_OPT_MULTIBALL));
+    if (max < esi)
+        esi = max;
+    if (max < edi)
+        edi = max;
+    m = rd(N_MODULE_BASE);
+    if (esi)
+        ww(rd(m + 0xAC) + 2, (uint16_t)esi);
+    if (edi)
+        ww(rd(m + 0xB0) + 2, (uint16_t)edi);
+    return 0;
 }

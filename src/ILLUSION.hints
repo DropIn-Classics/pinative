@@ -829,6 +829,8 @@ code       CODE:93FB STAGE_TO_SPOOKY ; the same into SPOOKY_SEL's block from 0, 
 name       CODE:A119 SPOOKY_SEL    ; "Spooky", 32DC0h bytes
 ; TABLE_LOAD2's end (2026-09-30, the code; the port against a run at
 ; CODE:28C45, table 1)
+name       CODE:B14E MULTIBALL_COUNTS ; two dwords a table (see MULTIBALL_CAP)
+name       CODE:B13E MULTIBALL_MAX ; four dwords by OPT_MULTIBALL: 6, 3, 4, 5
 code       CODE:BA9B TOP_COLOURS_SET ; TOP_COLOURS's twelve bytes, shifted right 2, to the DAC from colour FCh
 name       CODE:BA83 TOP_COLOURS
 code       CODE:BAB6 TOP_COLOURS2_SET ; the same from TOP_COLOURS2 (display opcode 18h)
@@ -857,7 +859,24 @@ code       CODE:150A5 FLIPPERS_PREP ; FLIPPER_BLOCKS, FLIPPER_RENDER
 code       CODE:150B0 FLIPPER_BLOCKS ; for the four flipper records of header slot 22 (type 3 passed over): per angle from +6 to +8 (step 1, or -1 when +0Ah is not 0, around 0..77h) four words into +F2h up (or +1EAh down): x +2 less FLIP_SHAPES's x and 10h, y +4 less its y and 10h, +F0h, y less its y plus its height; then (the heights' sum + 32h) x 40h bytes twice by INT 92h AH=0Ah, cleared and added to BLOCKS: "flipper gfx data" (selector to +1F2h), "flipper mask data" (DS offset to +28h, size to +2Ch)
 name       CODE:14E4E FLIP_SHAPES  ; 78h entries of 4 bytes by angle: x, y, height, and a fourth (not followed)
 name       CODE:15279 FLIP_BLOCK_SEL ; the last block's selector
-code       CODE:1527F FLIPPER_RENDER ; each flipper drawn at each angle through video memory into its blocks (not read yet)
+code       CODE:1527F FLIPPER_RENDER ; for the four flipper records (type 3 passed over), +1Ah kept and used as the angle's number, per angle from +6 to +8: +30h + 2 x number the angle's offset in the "flipper gfx data" block (FS), FLIP_BG_SAVE, FLIP_DRAW, FLIP_DIFF, FLIP_BG_RESTORE, FLIP_MASK
+name       CODE:1527B FLIP_NEXT_DI ; the next angle's offset in the gfx block
+code       CODE:1634F FLIP_ANGLE   ; CX: the record's +6 plus +1Ah (less when +0Ah is not 0), around 0..77h
+code       CODE:16482 FLIP_ROWS    ; EBX from FLIP_SHAPES to the entry of angle ECX, AX the rows of flipdat before it (each angle's height + 2)
+code       CODE:153B7 FLIP_BG_SAVE ; the flipper's box at its angle (x less the shape's x over 4, y less its y times 54h, height + 2 rows) read from video memory from 1500h, 16 bytes a row, plane by plane (read map 0..3), to FS:EDI (CODE:15404)
+code       CODE:15404 FLIP_BG_COPY
+code       CODE:3D394 READ_MAP     ; the graphics controller's read map from AH
+code       CODE:16399 FLIP_DRAW    ; the flipper at its angle from flipdat (FLIPDAT_SEL, the rows FLIP_ROWS gives, 20h bytes a row: four planes of 8 bytes, 64 pixels) into video memory over the box, height + 1 rows, colour 0 left out; map mask FLIP_DRAW_MASK (11h rotated by x AND 3, then a bit a pixel)
+name       CODE:16398 FLIP_DRAW_MASK
+code       CODE:16440 FLIP_PIXEL   ; AL the colour 0..15 of pixel bit 7 - DL of byte BP of the row at GS:ESI (four planes 8 bytes apart)
+code       CODE:1549E FLIP_DIFF    ; the box read back plane by plane against what FLIP_BG_SAVE kept at FS:EDI: equal pixels 0, changed ones kept; in the plane's first row a column still 0 gets the row number where it first changed (FLIP_DIFF_COL, FLIP_DIFF_ROW) (CODE:154EB)
+code       CODE:154EB FLIP_DIFF_COPY
+name       CODE:156BE FLIP_DIFF_COL
+name       CODE:156C2 FLIP_DIFF_ROW
+code       CODE:1536E FLIP_BG_RESTORE ; the box put back from SPOOKY_SEL's copy of the stage (CODE:167E4, planes C4E0h apart, map mask 1, 2, 4, 8)
+code       CODE:167E4 SPOOKY_COPY
+code       CODE:16494 FLIP_MASK    ; the collision mask at the angle into the "flipper mask data" block (+28h) from the word +B0h + 2 x +1Ah (16-byte units): 16 bytes a row of the collision map at +1Ch (2Ah bytes a line, rotated by FLIP_MASK_SHIFT), 20h rows above, height + 1 rows with the flipper's pixels ORed into the middle 8 bytes, 20h below; the next angle's start to +B2h + 2 x +1Ah
+name       CODE:167E3 FLIP_MASK_SHIFT ; (x - 20h) AND 7
 code       CODE:29A5A BALL_PLACE   ; the ball at [CODE:0010] to 11Ch, 1FEh (+12h, +14h, keeping their low three bits) and shifted by 0Ah into +1Eh, +22h (the second from EDI whose high word the first left: MOV DI), the high bytes of +0Eh, +10h 2, byte +1 0, BALL_BUNDLE2
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)

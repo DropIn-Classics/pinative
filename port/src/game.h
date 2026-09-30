@@ -72,6 +72,11 @@ void BALLS_INIT(void);
 /* CODE:28C45, CODE:15030: 1 (CF) when a file failed */
 int LIGHTS_LOAD(void);
 int FLIPDAT_LOAD(void);
+/* CODE:B0E3: 1 (CF) when OPT_MULTIBALL is not 0..3 */
+int MULTIBALL_CAP(void);
+
+/* flipper.c: CODE:1527F */
+void FLIPPER_RENDER(void);
 
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);

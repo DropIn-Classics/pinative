@@ -2937,6 +2937,26 @@ of all four tables at CODE:1527F (`-break 1161AF`): CODE only
 FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but the
 known leftovers.
 
+FLIPPER_RENDER (CODE:1527F; flipper.c) draws each flipper at each angle
+it can take: the box's background kept from video memory (read map
+plane by plane), the flipper drawn over it from flipdat1.m (four bit
+planes of 8 bytes a row, 64 pixels), read back, and only the changed
+pixels kept in the "flipper gfx data" block (unchanged ones 0; the
+first row of each plane's columns also gets the row where the column
+first changed, where it is still 0), the background put back from
+"Spooky", and the collision mask for the angle made in the "flipper
+mask data" block: the collision map at the record's +1Ch (2Ah bytes a
+line) around the box, the flipper's pixels ORed in. The offsets of
+each angle's pieces go into the record (+30h.., +B2h..). MULTIBALL_CAP
+then lowers the multiball counts to OPT_MULTIBALL's maximum.
+
+Against the runs at CODE:B0E3 and at the game, CODE:B928 (`-break
+10C858`), all four tables: CODE only FRAME_SPINS, TAIL and video memory
+equal, the heap blocks (the flippers' 12 or so blocks among them) equal
+but the known leftovers; with OPT_MULTIBALL 1 (THREE) on table 1 the
+counts 6 and 4 became 3 and 3 in both. So TABLE_LOAD2 is whole in the
+port.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3141,9 +3161,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30: TOP_COLOURS_SET and BALLS_INIT, up to CODE:28C45 (see
      "The balls' and flippers' start"). Done 2026-09-30: LIGHTS_LOAD
      and FLIPDAT_LOAD up to FLIPPER_RENDER (CODE:1527F; same section).
-     Next: FLIPPER_RENDER (each flipper drawn at each angle through
-     video memory, CODE:1527F and the routines it calls, about 550
-     lines), MULTIBALL_CAP, then the game at CODE:B928.
+     Done 2026-09-30: FLIPPER_RENDER and MULTIBALL_CAP: TABLE_LOAD2 is
+     whole, the port stops at the game (CODE:B928; same section). Next:
+     the game, CODE:B928: its start (CODE:2A30E .. CODE:9B92, the
+     driver's command at CODE:9B92, GAME_PHASE 1), then the main loop
+     from CODE:B976 with KBD_IRQ (CODE:A076) for the keys.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

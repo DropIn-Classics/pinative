@@ -44,9 +44,10 @@ module (src/module.c: SOURCE\T00n.BPC loaded and relocated, the
 resources its header names, the options applied) and the table's
 display (src/tblvga.c: VGA 360x350 or 320, unchained, FRAME_RATE, the
 stage drawn), the ball and flipper records, the lights' and drop
-targets' files and the flippers' blocks (src/tblinit.c) up to
-FLIPPER_RENDER (`Stopped before FLIPPER_RENDER (CODE:1527F)`); the
-Info page (a table's
+targets' files, the flippers' blocks (src/tblinit.c) and pictures
+(src/flipper.c: each flipper drawn at each angle, its changed pixels
+and collision masks kept) and the multiball cap: TABLE_LOAD2 whole, up
+to the game (`Stopped before the game (CODE:B928)`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -237,6 +238,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   `-break 1161AF -mem -vram`, the same keys): CODE differs only in
   FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but
   the leftovers named above.
+- 2026-09-30, Linux: each of the four tables up to MULTIBALL_CAP
+  (dosrun `-break 10C013`) and the game (`-break 10C858`), `-mem
+  -vram`, the same keys; table 1 also with OPT_MULTIBALL 1: CODE
+  differs only in FRAME_SPINS, TAIL and video memory equal, the heap
+  blocks equal but the leftovers named above.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

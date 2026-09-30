@@ -6,7 +6,7 @@
  * kept in memory differ).  It loads the table (TABLE_LOAD: the driver
  * started again with the table's music; TABLE_LOAD2: the module and the
  * rest), runs the game with IRQ 1 unmasked (CODE:B928) and frees it all.
- * Translated so far: TABLE_LOAD2 up to CODE:28C45 (docs/HANDOFF.md,
+ * Translated so far: TABLE_LOAD2, up to the game (docs/HANDOFF.md,
  * "The table's start" and the sections after it).
  */
 #include <string.h>
@@ -199,10 +199,7 @@ static int TABLE_LOAD2(void)
     }
     TOP_COLOURS_SET();
     BALLS_INIT();
-    if (LIGHTS_LOAD() || FLIPDAT_LOAD())
-        return 1;
-    pi_stop("MULTIBALL_CAP");
-    return 1;
+    return LIGHTS_LOAD() || FLIPDAT_LOAD() || MULTIBALL_CAP();
 }
 
 int TABLE(uint8_t al)
@@ -231,6 +228,8 @@ int TABLE(uint8_t al)
     if (TABLE_LOAD())
         pi_stop("TABLE: TABLE_LOAD failed");
     if (TABLE_LOAD2())
-        pi_stop("TABLE: TABLE_LOAD2 failed");
+        pi_stop("TABLE: TABLE_LOAD2 failed (CODE:A40A)");
+    /* IRQ 1 unmasked (not modelled: KBD_IRQ is set) */
+    pi_stop("the game (CODE:B928)");
     return 1;
 }
