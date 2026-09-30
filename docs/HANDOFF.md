@@ -3476,8 +3476,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30: display opcodes 1 and 7, the RET opcodes and
      ANIMS_STEP's animation path, up to opcode 2 (CODE:2F7A5; see "The
      attract mode's display"). Done 2026-09-30: FRAME_COUNT's one ahead
-     there is the runner's timing (same section). Next: display opcode
-     2 (CODE:2F7A5) and the ones after it.
+     there is the runner's timing (same section). Done 2026-09-30:
+     display opcodes 2, 0Ah, 0Dh, 0Fh, 13h, 14h, 18h and 19h (only 2
+     run), up to opcode 3 (CODE:2FB17). Next: opcode 3's text drawing,
+     CODE:27783 (the table module's host vector +14h too).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

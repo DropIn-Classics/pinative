@@ -63,8 +63,9 @@ sprite routines run from the image, src/codeint.c and src/ball.c, the
 drop targets that changed, the flippers, the attract scroll and the
 flippers' moves; the display's queue and streams, src/display.c, the
 attract mode's display record queued, its keys; display opcodes 1
-and 7, the animation played into the dot-matrix display's buffer) up
-to display opcode 2, CODE:2F7A5 (`Stopped before CODE:2F7A5`); the
+and 7, the animation played into the dot-matrix display's buffer, the
+opcodes that clear the display, wait, loop and set the top colours) up
+to display opcode 3, CODE:2FB17 (`Stopped before CODE:2FB17`); the
 Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
@@ -322,6 +323,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   equal, the heap blocks equal but the leftovers named above (the same
   blocks as at CODE:2F9CF). Whether ANIMS_STEP's paths for a list of
   more than one animation and for taking one off ran is not looked at.
+- 2026-09-30, Linux: each of the four tables up to display opcode 3,
+  CODE:2FB17 (dosrun `-break 130A47 -mem -vram`, the same keys), after
+  opcode 2: as at CODE:2F7A5 (FRAME_COUNT the port's 227h, the run's
+  226h). Of the opcodes added with it only 2 ran there (dosrun `-log`,
+  tables 1 and 4): 0Ah, 0Dh, 0Fh, 13h, 14h, 18h and 19h are not run yet.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

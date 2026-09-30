@@ -54,6 +54,32 @@ static void OP_WAIT(void)
     wb(st + 0x2A3C, 0xFF);
 }
 
+/* CODE:2F7B1, display opcode 0Ah (a word): a wait of that many frames,
+ * state+2A40h */
+static void OP_FRAMES(void)
+{
+    ww(rd(0x0014) + 0x2A40, rw(rd(0x0004) + 2));
+}
+
+/* CODE:2FAE9, display opcode 13h (a word): the loop count state+2A4Eh */
+static void OP_LOOP_SET(void)
+{
+    ww(rd(0x0014) + 0x2A4E, rw(rd(0x0004) + 2));
+}
+
+/* CODE:2FA56, display opcode 14h (a position): state+2A4Eh counted down;
+ * unless it is 0, the record's position +4 to the word, a jump back */
+static void OP_LOOP(void)
+{
+    uint32_t st = rd(0x0014);
+    uint16_t di = rw(rd(0x0004) + 2);
+
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | di);
+    ww(st + 0x2A4E, (uint16_t)(rw(st + 0x2A4E) - 1));
+    if (rw(st + 0x2A4E) != 0)
+        ww(rd(0x0000) + 4, di);
+}
+
 /* a display opcode's routine by its address */
 static void display_op(uint32_t a)
 {
@@ -65,6 +91,30 @@ static void display_op(uint32_t a)
         break;
     case 0x2FB6F:
         OP_WAIT();
+        break;
+    case 0x2F7A5:               /* opcode 2 */
+        DM_CLEAR();
+        break;
+    case 0x2F79F:               /* opcode 0Fh */
+        DM_ANIM_CLEAR();
+        break;
+    case 0x2F7AB:               /* opcode 0Dh */
+        DM_TEXT_CLEAR();
+        break;
+    case 0x2F7B1:
+        OP_FRAMES();
+        break;
+    case 0x2FAE9:
+        OP_LOOP_SET();
+        break;
+    case 0x2FA56:
+        OP_LOOP();
+        break;
+    case 0x2F80C:               /* opcode 18h */
+        TOP_COLOURS2_SET();
+        break;
+    case 0x2F9C9:               /* opcode 19h */
+        TOP_COLOURS_SET();
         break;
     case 0x2FA55:               /* opcode 11h, a RET */
     case 0x2FBA4:               /* opcodes 4, 15h, 16h, 17h, RETs */

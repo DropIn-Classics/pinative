@@ -21,7 +21,7 @@ static int load(uint32_t path, uint32_t sel, uint32_t size)
 }
 
 /* CODE:27259 */
-static void DM_TEXT_CLEAR(void)
+void DM_TEXT_CLEAR(void)
 {
     uint32_t base = pmax_base(rw(N_DM_TEXT)), i;
 
@@ -30,7 +30,7 @@ static void DM_TEXT_CLEAR(void)
 }
 
 /* CODE:27CEC */
-static void DM_ANIM_CLEAR(void)
+void DM_ANIM_CLEAR(void)
 {
     uint32_t base = pmax_base(rw(N_DM_ANIM)), i;
 

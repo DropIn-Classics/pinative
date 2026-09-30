@@ -62,6 +62,8 @@ void hcb_use_table(int table);
 /* dotmatrix.c: CODE:2833E, 1 (CF) when a block or file failed; CODE:2FBA8 */
 int DM_LOAD(void);
 void DM_CLEAR(void);
+void DM_TEXT_CLEAR(void);
+void DM_ANIM_CLEAR(void);
 
 /* module.c: CODE:B22D, 1 (CF) when a file failed; CODE:30368, host
  * vector +18h */
@@ -73,6 +75,7 @@ void TBL_VGA_INIT(void);
 
 /* tblinit.c: CODE:BA9B, CODE:B797 */
 void TOP_COLOURS_SET(void);
+void TOP_COLOURS2_SET(void);
 void BALLS_INIT(void);
 /* CODE:28C45, CODE:15030: 1 (CF) when a file failed */
 int LIGHTS_LOAD(void);

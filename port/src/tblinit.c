@@ -20,6 +20,16 @@ void TOP_COLOURS_SET(void)
         vga_outb(0x3C9, (uint8_t)(rb(N_TOP_COLOURS + (uint32_t)i) >> 2));
 }
 
+/* CODE:BAB6: the same from TOP_COLOURS2 */
+void TOP_COLOURS2_SET(void)
+{
+    int i;
+
+    vga_outb(0x3C8, 0xFC);
+    for (i = 0; i < 12; i++)
+        vga_outb(0x3C9, (uint8_t)(rb(N_TOP_COLOURS2 + (uint32_t)i) >> 2));
+}
+
 /* CODE:2C414 and CODE:2C467: the six pointers at state+`from` into the
  * ball at [0010]'s +50h..+64h, its byte +8 to `level` */
 static void ball_bundle(uint32_t from, uint8_t level)
