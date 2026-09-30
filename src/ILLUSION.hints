@@ -654,6 +654,47 @@ code       CODE:4C93 CRT_START_CB  ; while CRT_START_ON is 1: CRT_START to CRTC 
 name       CODE:1548 VSYNC_COUNT   ; a dword VSYNC_CB counts, once a retrace
 name       CODE:1323 CRT_START     ; the start address CRT_START_CB sets (E60h from SCROLL_INIT)
 name       CODE:191A CRT_START_ON  ; 1 from CHOOSER_MODE
+; CHOOSER_WAIT's loop (CODE:38FD), read 2026-09-30
+code       CODE:25BB FRAME_WAIT    ; waits for VSYNC_COUNT to change, counting FRAME_SPINS; with CODE:1534 1 (set at CODE:4FF1, the path that loads the chooser's files again) the driver's command 8 (BL 0, CL 0), and once command 0Dh gives 280Ah or more CODE:1534 0 and command 0Ch with EBX 100h (not followed)
+name       CODE:154C FRAME_SPINS   ; a dword FRAME_WAIT counts while it waits; read by no instruction
+code       CODE:2389 MUSIC_MIX     ; the sound driver's command 6
+code       CODE:237C MUSIC_STOP    ; the sound driver's command 3
+code       CODE:381C CRT_START_PICK ; CRT_START from SCROLL_TOP, or from SCROLL_SHOWN when ATTRACT_TIME is 1 and ATTRACT_STAGE 9 (the frame before a backdrop change)
+code       CODE:32A2 CAPTION_DRAW  ; CAPTION's routine called with DS video memory, SI and BX 0, DI SCROLL_SHOWN: CAPTION_FLIP toggled, 0 the record's +0 (+0Ch with SCROLL_PHASE 2), FFh its +6 (+12h)
+code       CODE:32EE CAPTION_DRAW2 ; the same with the record's +18h and +1Eh (the routines without latch reads), then MUSIC_MIX (CUBE_DRAW_WAIT)
+name       CODE:132A CAPTION_FLIP  ; toggled by CAPTION_DRAW: which of a caption's two bitmaps is drawn
+code       CODE:3325 PAL_FADE      ; while CH_FADE_LEVEL is not 0: CH_FADE_LEVEL less CH_FADE_STEP (not below 0), CHOOSER_PAL mixed from PAL_FROM (CH_FADE_LEVEL / 40h) and PAL_TO (the rest); at 0 with MENU_FADE MENU_DONE 1
+name       CODE:132B CH_FADE_LEVEL ; 40h at a new palette, counted down to 0 by CH_FADE_STEP; CHOOSER_DAC sends CHOOSER_PAL while it is not negative
+name       CODE:132C CH_FADE_STEP  ; PAL_FADE's step (2, 4, 1 on Esc)
+name       CODE:13A4 CHOOSER_PAL   ; DAC 0-16 (33h bytes), CHOOSER_DAC's
+name       CODE:1540 PAL_FROM      ; the palette faded from (an address)
+name       CODE:1544 PAL_TO        ; the palette faded to
+code       CODE:31DE LAG_SHIFT     ; each frame LAG_PIC's 8 words moved one on (LAG_PIC+0Eh's in at +0Ch, +0 dropped) and LAG_COL's too with LAG_STEP added (mod 80h): each 32-line band of a caption's routines reads the scroll of a frame later than the band above
+name       CODE:150C LAG_COL       ; 8 words: the column a caption routine's band reads the backdrop at (MOV SI,ES:[150Ch+2n])
+name       CODE:151C LAG_PIC       ; 8 words: added to it, the rotated copy's offset + 72A4h (ADD SI,ES:[151Ch+2n])
+name       CODE:152C LAG_STEP      ; 0, or 4 on SCROLL_STEP's third frame
+code       CODE:2C55 SCROLL_STEP   ; WAVE_POS on by 2 (mod 300h); SCROLL_PHASE counted 3, 2, 1: at 1 SCROLL_COL on, STRIP_DRAW at 2844h and SCROLL_NEXT4, else STRIP_DRAW at 2840h and SCROLL_NEXT
+code       CODE:2BE8 STRIP_DRAW    ; the backdrop's 2Eh bytes by 32 lines at SCROLL_TOP + AX from column SCROLL_COL * 4 + WAVE_TAB[WAVE_POS] / 8 (mod 80h) of the copy SHIFT_OFFS[WAVE_TAB[WAVE_POS] AND 7]; LAG_COL+0Eh and LAG_PIC+0Eh from the same
+code       CODE:29FF STRIP_COPY    ; CL columns of 32 latch copies: [SI+72A4h+B8h*k] to [DI+2Eh*k] and [DI+C9BCh+2Eh*k] (unrolled)
+name       CODE:5289 WAVE_TAB      ; 300h bytes, 80h to DFh and back: a sine presumably (not plotted)
+name       CODE:132E SHIFT_OFFS    ; 8 words: 0, 0, 1700h, 1700h, 2E00h, 2E00h, 4500h, 4500h, the rotated copies CUBE_DRAW made
+name       CODE:1325 SCROLL_COL    ; 0..1Fh, on by one every third frame (COL_NEXT)
+name       CODE:1327 WAVE_POS      ; WAVE_TAB's index, on by 2 a frame
+name       CODE:1329 SCROLL_PHASE  ; 3, 2, 1 (SCROLL_STEP)
+code       CODE:2980 COL_NEXT      ; SCROLL_COL on, 20h back to 0
+code       CODE:259F SCROLL_NEXT   ; SCROLL_SHOWN from SCROLL_TOP, SCROLL_TOP on by 5C0h (32 lines), then SCROLL_WRAP
+code       CODE:255A SCROLL_NEXT4  ; the same by 5C4h
+code       CODE:2575 SCROLL_WRAP   ; SCROLL_TOP at 44A4h or more: less 3644h, CODE:18FD 0 and MENU_BLINK flipped; else CODE:18FD counted
+name       CODE:131F SCROLL_TOP    ; the start address the backdrop is drawn at (E60h from SCROLL_INIT)
+name       CODE:1321 SCROLL_SHOWN  ; SCROLL_TOP of the frame before, where the caption is drawn
+name       CODE:1917 ATTRACT_TIME  ; ATTRACT_STEP's frames to the next stage (12Ch)
+name       CODE:1919 ATTRACT_STAGE ; 1..9, 0 after a backdrop change
+name       CODE:132D BACKDROP      ; 0..2: CUBE_SEL, TUBE_SEL, TORUS_SEL
+code       CODE:263B CUBE_DRAW_WAIT ; CUBE_DRAW for a backdrop change, every 16 lines (map mask 0Fh) FRAME_WAIT, CRT_START from SCROLL_SHOWN and CAPTION_DRAW2
+name       CODE:1902 KEY_READ      ; MENU_KEYS' index into the ring at CODE:1906 (low 4 bits); CODE:1903 the handler's
+name       CODE:1900 CAPTION_OUT   ; counted by CAPTION_STEP after WAIT_END; 4 ends CHOOSER_WAIT
+name       CODE:1901 CAPTION_TIME  ; CAPTION_STEP's count: a new caption at 0 (mod 20h), the empty one at 1Eh
+name       CODE:1905 MENU_ENTER    ; 1 by Enter, Space, F1..F4 (MENU_KEYS)
 ds         CODE:9CDC-9CE3 CODE     ; DS from CODE:A10B, as KBD_IRQ
 comment    CODE:9CD4 the completion routine handed with command 11h at CODE:9B31: sets CODE:9CE5 to FFh; the driver calls it from its command 6 once a jingle has ended (a jump to the order it plays, SB16.SDR +1EAF; run 2026-09-29: 1.69 s after the command 0Ah of order 0Eh)
 name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: counts CODE:BAD4 (the blinking of display opcode 1Ah, the random awards of handler 1Ah); run 2026-09-29, table 1: 838 writes by CODE:B9AA from t=130.11 to 142, 70.5 a second, so once a frame at 70 Hz

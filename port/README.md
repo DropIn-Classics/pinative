@@ -30,8 +30,11 @@ chooser's start (src/chooser.c: its video mode, keyboard handler and
 the captions compiled into code as the original makes them) and
 CHOOSER's first calls (the backdrop's picture into video memory, the
 driver's retrace routines, commands 0Eh and 0Fh, and the music's start),
-up to CHOOSER_WAIT (CODE:38C6), where the port stops (`Stopped before
-CHOOSER_WAIT`). The driver's picture measurement (command 0Eh) is
+and CHOOSER_WAIT: the scrolling backdrop of turning shapes, its
+palettes and changes, the captions (their generated routines run by
+reading their bytes) and the keys, up to the table menu's start
+(CODE:505C), where the port stops (`Stopped before CODE:505C`) once
+Enter, Space or Esc ends the wait. The driver's picture measurement (command 0Eh) is
 computed from the CRTC's registers as dosrun times them.
 The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
@@ -143,6 +146,14 @@ SVGA_CHECK.
   equal. The DMA buffer differs, mixed up to the intro timer's
   SAMPLE_POS, which differed already (docs/HANDOFF.md, "The chooser's
   timer"). The window build not run for this.
+- 2026-09-30, Linux: in CHOOSER_WAIT, the port stopped by DK_FRAMES
+  5500 and 8433 against dosrun at the 100th and 3000th CODE:38FD
+  (`-break 10482D#100`, `#3000`, the second after a backdrop change):
+  CODE differs only in FRAME_SPINS (the original's count of its
+  polling), TAIL and video memory 0 bytes differ; at the 3000th 175 of
+  176 heap blocks equal, the driver's in the sample clock. At CODE:505C
+  after Enter and after Esc at t=112 (DK_KEYS at picture 5637): the
+  same. The window build not run for this.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

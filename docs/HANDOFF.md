@@ -53,7 +53,9 @@ stale sound read gives nothing in a run (see "The hole's sound in a
 run"); pMAX's own unpacker read in a run's memory, and the archive's
 decoder (tools/illfiles.py, port/src/archive.c) corrected after it: 10
 of the 125 entries had come out wrong (see "pMAX's decoder"); the
-chooser's retrace timer in the driver (see "The chooser's timer").
+chooser's retrace timer in the driver (see "The chooser's timer");
+the chooser's backdrop and captions in the port (see "CHOOSER_WAIT's
+loop").
 
 ## The earlier analysis
 
@@ -2526,6 +2528,69 @@ intro's end". The run's CPU time (CUBE_DRAW's writes: CHOOSER at
 t=107.847899, CHOOSER_WAIT at 108.021548) is not modelled; the port
 waits only FRAME_MEASURE's two pictures.
 
+### CHOOSER_WAIT's loop
+
+CHOOSER_WAIT (CODE:38C6; names in src/ILLUSION.hints, the block "CHOOSER_WAIT's
+loop") runs once a retrace: FRAME_WAIT (VSYNC_COUNT to change),
+CHOOSER_DAC, CRT_START_PICK, READ_MODE1, CAPTION_DRAW, ATTRACT_STEP,
+WRITE_MODE1, LAG_SHIFT, SCROLL_STEP, PAL_FADE, CODE:23A2 (only
+registers), MENU_KEYS, CAPTION_STEP, MUSIC_MIX, and KEY_HISTORY checked;
+until MENU_DONE or CAPTION_OUT 4. How the backdrop moves, as read:
+
+- The screen's start address moves on by 32 lines (5C0h) a frame, every
+  third frame by 5C4h (32 pixels right too), wrapping at 44A4h back by
+  3644h (SCROLL_NEXT, SCROLL_WRAP); CRT_START_CB shows SCROLL_TOP a
+  tenth of the display after the retrace.
+- Each frame STRIP_DRAW copies one band of 32 lines by 2Eh bytes by the
+  latches (write mode 1) from CUBE_DRAW's picture into the band at
+  SCROLL_TOP + 2840h and again C9BCh further (STRIP_COPY, unrolled):
+  the column from SCROLL_COL and WAVE_TAB (a sine of 300h bytes, 80h to
+  DFh), the rotated copy from its low 3 bits (SHIFT_OFFS).
+- The caption is drawn at SCROLL_SHOWN by its compiled routines (the
+  latches read from the backdrop, ORed with the caption's bits: READ_MODE1
+  sets function OR); each 32-line band takes its SI from LAG_COL and
+  LAG_PIC, which LAG_SHIFT moves one band on each frame, so the caption's
+  backdrop follows the scroll band by band.
+- ATTRACT_STEP: every 300 frames the next of nine palettes (CODE:191B,
+  33h bytes each) faded in by PAL_FADE; after stage 9 the next backdrop
+  (CUBE_SEL, TUBE_SEL, TORUS_SEL) drawn by CUBE_DRAW_WAIT over 32 frames
+  (a frame every 16 lines, with CAPTION_DRAW2, the caption routines
+  without latch reads) plus one.
+
+The port (port/src/chooser.c) runs the caption routines by reading
+their bytes (CAPTION_RUN: only the instructions GEN_CODE and GEN_CODE2
+write; any other stops the port). FRAME_SPINS (CODE:154C), FRAME_WAIT's
+count of its own polling, is read by no instruction and not kept by
+the port. The path with CODE:1534 1 (set at CODE:4FF1, when the files
+are loaded again) stops the port.
+
+Runs 2026-09-30, Linux (NOSOUND.SDR as in "The driver's timer"), the
+port stopped in FRAME_WAIT by DK_FRAMES (5401 pictures before the
+loop's first FRAME_WAIT returns: DK_FRAMES 5500 stops it after 99
+frames of the loop):
+
+- the 100th CODE:38FD (dosrun `-break 10482D#100`, t=109.700627, 5502
+  frames) against DK_FRAMES 5500: CODE differs only in FRAME_SPINS,
+  TAIL and video memory equal;
+- the 3000th (t=158.912646, 8435 frames: 2900 loops and the 33 frames
+  of the backdrop change to TUBE_SEL, at about t=149 by the frame
+  counts, not looked for in the run; BACKDROP 2 there) against DK_FRAMES
+  8433 (3032 frames of the port's): the same; 175 of 176 heap blocks
+  equal, the driver's block in the sample clock only (VSYNC_PHASE among
+  it);
+- Enter and Esc at t=112 (`-key 112 enter`, `esc`; CHOOSER_WAIT left,
+  `-break 105F8C`, CODE:505C at t=112.653698 and 113.106981) against
+  DK_KEYS "5637:1C 5646:9C" and "5637:01 5646:81": CODE only
+  FRAME_SPINS, video memory equal. The key at picture 5637 was found by
+  trying: Esc's fade (64 frames at CH_FADE_STEP 1) put it 7 pictures
+  after 5630, where Enter had already matched (Enter ends CHOOSER_WAIT
+  at a scroll wrap, so a window of pictures gives the same memory).
+
+The headless port's pictures at 5700 and 7300 looked at: the cubes in
+their wave with "Pinball Illusions", then the purple stage. Not
+checked: the arrows and F1..F4 in CHOOSER_WAIT (they only set bytes
+there), KEY_HISTORY's greetings path, the window build.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2714,9 +2779,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      CHOOSER (CODE:4FF9; see "The chooser's start"). Done 2026-09-30: CHOOSER's first calls
      (CUBE_DRAW, VSYNC_START with NOSOUND's commands 0Eh and 0Fh,
      MUSIC_PLAY), up to CHOOSER_WAIT (CODE:38C6; see "The chooser's
-     timer"). Next: CHOOSER_WAIT's loop (CODE:38FD: the turning shapes,
-     ATTRACT_STEP, the compiled captions called, MENU_KEYS,
-     CAPTION_STEP).
+     timer"). Done 2026-09-30: CHOOSER_WAIT's loop, up to CODE:505C (see
+     "CHOOSER_WAIT's loop"). Next: the table menu from CODE:505C
+     (MENU_LOOP with CODE:364F, GREETINGS_PAGE, INFO_PAGE), then the
+     way out at CODE:50A9.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
