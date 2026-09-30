@@ -60,6 +60,8 @@ void pmax_policy(uint8_t bl);
 /* INT 93h AH=8: a second selector for the block of `sel` (the driver's
  * code selector, DX 409Ah); 0 when there is none */
 uint16_t pmax_alias(uint16_t sel);
+/* INT 93h AH=0Dh: a selector freed (an alias's; its memory stays) */
+void pmax_free_sel(uint16_t sel);
 /* a selector's linear base (0 for one the port did not give) */
 uint32_t pmax_base(uint16_t sel);
 /* INT 92h AH=5: the block freed */

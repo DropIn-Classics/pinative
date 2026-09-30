@@ -270,3 +270,10 @@ void pmax_free(uint16_t sel)
             sels[sel / 8].used = 0;
         }
 }
+
+void pmax_free_sel(uint16_t sel)
+{
+    sels_init();
+    if ((sel & 7) == 4 && sel / 8 < MAX_SELS)
+        sels[sel / 8].used = 0;
+}

@@ -33,8 +33,12 @@ driver's retrace routines, commands 0Eh and 0Fh, and the music's start),
 and CHOOSER_WAIT: the scrolling backdrop of turning shapes, its
 palettes and changes, the captions (their generated routines run by
 reading their bytes) and the keys, up to the table menu's start
-(CODE:505C), where the port stops (`Stopped before CODE:505C`) once
-Enter, Space or Esc ends the wait. The driver's picture measurement (command 0Eh) is
+(CODE:505C), the table menu and the chooser's end (the driver's
+commands 5 and 0Bh, everything freed): Esc ends the program with the
+original's goodbye text, a table chosen stops the port before the table
+(`Stopped before the table (CODE:A323)`); the Info and greetings pages
+stop it too. With -mem the port writes its memory at the program's end
+as well. The driver's picture measurement (command 0Eh) is
 computed from the CRTC's registers as dosrun times them.
 The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
@@ -154,6 +158,12 @@ SVGA_CHECK.
   176 heap blocks equal, the driver's in the sample clock. At CODE:505C
   after Enter and after Esc at t=112 (DK_KEYS at picture 5637): the
   same. The window build not run for this.
+- 2026-09-30, Linux: tables 1 and 2 chosen (Enter, Down and Enter;
+  dosrun `-break 10B253`, CODE:A323) and Esc to the end (`-break
+  1012A1`, CODE:0371): CODE differs only in FRAME_SPINS, TAIL equal,
+  video memory equal at the table; after Esc equal before the original's
+  INT 10h mode 3, which the port does not model (docs/HANDOFF.md, "The
+  chooser's end").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

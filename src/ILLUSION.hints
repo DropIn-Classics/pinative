@@ -695,6 +695,12 @@ name       CODE:1902 KEY_READ      ; MENU_KEYS' index into the ring at CODE:1906
 name       CODE:1900 CAPTION_OUT   ; counted by CAPTION_STEP after WAIT_END; 4 ends CHOOSER_WAIT
 name       CODE:1901 CAPTION_TIME  ; CAPTION_STEP's count: a new caption at 0 (mod 20h), the empty one at 1Eh
 name       CODE:1905 MENU_ENTER    ; 1 by Enter, Space, F1..F4 (MENU_KEYS)
+; the chooser's end, CODE:505C to its RET (2026-09-30)
+code       CODE:364F MENU_CAPTION  ; in MENU_LOOP at CODE:18FD 1: CAPTION from MENU_PICS_NOBOX while MENU_BLINK is 1, else MENU_INFO_PICS with MENU_INFO, else MENU_PICS, by MENU_ROW
+code       CODE:28CF CAPTIONS_FREE ; every caption routine's block (the selectors at +4 of the 6-byte far pointers from CODE:1554 to CAPTION) freed, INT 92h AH=5
+code       CODE:28F5 CHOOSER_FREE  ; CAPTIONS_FREE, then MENUCHAR_SEL, CUBE_SEL, TUBE_SEL, TORUS_SEL, TINYFONT_SEL, INFODATA_SEL and DRIVER_SEL freed (computed at CODE:521C)
+code       CODE:33F5 KBD_RESTORE   ; IRQ 1 masked at the PIC, its vector back from KBD_OLD (INT 93h AH=4 BL=1) (computed at CODE:5256)
+name       CODE:2B0A2 KEY_CHARS    ; 256 bytes: the keyboard table of CODE:50A9 upper-cased, FFh for no character
 ds         CODE:9CDC-9CE3 CODE     ; DS from CODE:A10B, as KBD_IRQ
 comment    CODE:9CD4 the completion routine handed with command 11h at CODE:9B31: sets CODE:9CE5 to FFh; the driver calls it from its command 6 once a jingle has ended (a jump to the order it plays, SB16.SDR +1EAF; run 2026-09-29: 1.69 s after the command 0Ah of order 0Eh)
 name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: counts CODE:BAD4 (the blinking of display opcode 1Ah, the random awards of handler 1Ah); run 2026-09-29, table 1: 838 writes by CODE:B9AA from t=130.11 to 142, 70.5 a second, so once a frame at 70 Hz

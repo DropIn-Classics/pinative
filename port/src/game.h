@@ -10,6 +10,8 @@
  * original stopped at the same routine); then the program ends. */
 extern const char *pi_stop_mem, *pi_stop_vram;
 void pi_stop(const char *name);
+/* the program's end: the memory files written, the platform shut down */
+void pi_end(void);
 
 /* INT 21h AH=9: the '$'-ended text at the linear address `at` on the
  * console */
@@ -29,14 +31,15 @@ void VGA_INIT(void);
 void HISCORE_INIT(void);
 /* CODE:757D (intro.c) */
 void CHOOSER_LOAD(void);
-/* chooser.c: CODE:4CFB */
-void CHOOSER_START(void);
+/* chooser.c: CODE:4CFB, the table chosen (0..3) or FFh for Esc */
+uint8_t CHOOSER_START(void);
 /* CODE:7082 (sound.c): 1 (CF) when there is no CD or the driver fails */
 int SOUND_START(void);
 /* cd.c: CODE:35B52 and 35C58 return 1 for CF */
 int CD_INSTALLED(void);
 void CD_LOCK(uint8_t bl);
 int CD_READ_TOC(void);
+void CD_STOP(void);
 
 /* hostcb.c: the host callbacks; 1 for CF */
 int HCB_ALLOC(uint32_t size, uint16_t *bx);

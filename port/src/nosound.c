@@ -353,6 +353,7 @@ static int CMD_LOAD_MODULE(NsRegs *r)
 static uint32_t timer_ds;
 static double timer_due;
 static int vsync_wait;
+static uint16_t drv_cs;                 /* the code selector ns_call came through */
 
 static void far_call(uint32_t ptr)
 {
@@ -543,10 +544,64 @@ static int CMD_STOP(NsRegs *r)
     wb(D_IRQ_MASK1, 0xFD);
     wb(D_IRQ_MASK2, 0xFF);
     CHANNELS_RESET();
-    /* CODE:079A: command 0Eh's retrace callback taken back */
-    if (rb(D_VSYNC_ON) == 0xFF)
-        pi_stop("NOSOUND: command 3 with the retrace callback set");
+    /* CODE:079A, VSYNC_OFF: both callbacks to the driver's RETF */
+    if (rb(D_VSYNC_ON) == 0xFF) {
+        ww(D_VSYNC2_CB + 4, drv_cs);
+        wd(D_VSYNC2_CB, 0x0798);
+        ww(D_VSYNC_CB + 4, drv_cs);
+        wd(D_VSYNC_CB, 0x0798);
+        wb(D_VSYNC2_ON, 0);
+        wb(D_VSYNC_ON, 0);
+    }
+    vsync_wait = 0;
     /* CODE:10E1: ports 61h, 21h, A1h and the PIT again: nothing in memory */
+    return 0;
+}
+
+/* CODE:1B9F: the samples (longer than 2) and patterns of slot SLOT_OFF
+ * freed (host callback 2), the slot not loaded; the selectors stay in the
+ * records */
+static void MOD_FREE(void)
+{
+    uint32_t ebx = rd(D_SLOT_OFF), esi;
+
+    for (esi = 0; esi < 0x1F * 0x10; esi += 0x10)
+        if (rw(ebx + esi + D_SLOTS + 6) > 2 && rw(ebx + esi + D_SLOTS))
+            HCB_FREE(rw(ebx + esi + D_SLOTS));
+    if (rw(ebx + D_PATTERNS_SEL))
+        HCB_FREE(rw(ebx + D_PATTERNS_SEL));
+    wb(ebx + D_SLOT_LOADED, 0);
+}
+
+/* CODE:0D79: command 5, slot BL's module freed */
+static int CMD_FREE_MODULE(NsRegs *r)
+{
+    if (rb(D_PLAYING) != 0)
+        pi_stop("NOSOUND: command 5 refused (CODE:0A49)");
+    wd(D_SLOT_OFF, (r->ebx & 0xFF) * 0x275u);
+    MOD_FREE();
+    return 0;
+}
+
+/* CODE:0A7B: command 0Bh, the driver's end: PORTS_RESTORE (nothing in
+ * memory), the DMA buffer, the volume table and the channels' buffer
+ * freed (CODE:0AA3) */
+static int CMD_END(NsRegs *r)
+{
+    static const uint32_t sels[3] = { D_DMA_SEL, D_VOLTAB_SEL, D_CHAN_BUF_SEL };
+    int i;
+
+    (void)r;
+    if (rb(D_INITED) != 0xFF)
+        pi_stop("NOSOUND: command 0Bh refused (CODE:0A49)");
+    wb(D_INITED, 0);
+    if (rb(D_PLAYING) == 0xFF)
+        pi_stop("NOSOUND: command 0Bh refused (CODE:0A49)");
+    for (i = 0; i < 3; i++)
+        if (rw(sels[i])) {
+            HCB_FREE(rw(sels[i]));
+            ww(sels[i], 0);
+        }
     return 0;
 }
 
@@ -610,6 +665,7 @@ int ns_call(uint16_t cs, NsRegs *r)
     int cf;
 
     /* DISPATCH: DS as the caller has it for command 0, else DRV_DS */
+    drv_cs = cs;
     pm_ds = pmax_base(cs);
     if (r->eax != 0)
         r->ds = rw(D_DRV_DS);
@@ -627,11 +683,17 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 4:
         cf = CMD_LOAD_MODULE(r);
         break;
+    case 5:
+        cf = CMD_FREE_MODULE(r);
+        break;
     case 6:
         cf = CMD_MIX(r);
         break;
     case 8:
         cf = CMD_ORDER(r);
+        break;
+    case 0x0B:
+        cf = CMD_END(r);
         break;
     case 0x0D:
         cf = CMD_POSITION(r);

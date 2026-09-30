@@ -55,7 +55,7 @@ decoder (tools/illfiles.py, port/src/archive.c) corrected after it: 10
 of the 125 entries had come out wrong (see "pMAX's decoder"); the
 chooser's retrace timer in the driver (see "The chooser's timer");
 the chooser's backdrop and captions in the port (see "CHOOSER_WAIT's
-loop").
+loop"); the chooser's end in the port (see "The chooser's end").
 
 ## The earlier analysis
 
@@ -2591,6 +2591,50 @@ their wave with "Pinball Illusions", then the purple stage. Not
 checked: the arrows and F1..F4 in CHOOSER_WAIT (they only set bytes
 there), KEY_HISTORY's greetings path, the window build.
 
+### The chooser's end
+
+From CODE:505C (names in src/ILLUSION.hints, "the chooser's end"): with
+MENU_DONE (Esc in CHOOSER_WAIT) straight to CODE:50A9; else MENU_ROW 0,
+GREETINGS_PAGE when KEY_HISTORY asks, then MENU_LOOP (CHOOSER_WAIT's
+loop with MENU_CAPTION for CAPTION_STEP, until MENU_DONE) and INFO_PAGE
+while MENU_INFO is set and Esc was not pressed. CODE:50A9: without Esc
+the keyboard table (INT 93h AH=15h gave AX 0 in the run, 2026-09-30,
+Linux, the break at CODE:50FE: the QWERTY one at CODE:5E21) copied to
+KEY_CHARS; MUSIC_STOP (the driver's command 3, now with VSYNC_OFF: both
+retrace callbacks to the driver's RETF at CODE:0798 of its own code
+selector); with Esc video memory "cleared" (map mask 0Fh, GC 5 0; GC 3
+is still READ_MODE1's 10h, function OR, so each byte gets the latches)
+and INT 10h mode 3. Then the driver's commands 5 (slot 0's module freed:
+its samples longer than 2 and its patterns, host callback 2; MOD_FREE,
+CODE:1B9F) and 0Bh (the driver's end: the DMA buffer, the volume table
+and the channels' buffer freed), INT 93h AH=0Dh on DRIVER_ENTRY's
+selector (the driver's code alias), CD_STOP (MSCDEX 85h), CHOOSER_FREE
+(every caption routine's block, the chooser's six files and the
+driver), KBD_RESTORE; AL MENU_ROW, FFh after Esc. ENTRY (CODE:033F):
+AL below 4 is the table (AL + 1 into CODE:A323 after VGA_INIT), else
+CD_LOCK 0, IRQ 1 unmasked and "Thank you for playing Pinball Illusions
+CD." (CODE:07B4) before the RETF to pMAX.
+
+Runs 2026-09-30, Linux (NOSOUND.SDR as in "The driver's timer"),
+against the port with the keys at the pictures that matched in
+"CHOOSER_WAIT's loop" (Enter at t=112 is picture 5637; t=114 was put at
+5696, t=115 at 5815: 5816 left the state one frame behind):
+
+- Enter at 112 and 115 (table 1), `-break 10B253` (CODE:A323,
+  t=115.773853, AX 0401h): CODE only FRAME_SPINS, TAIL and video memory
+  equal; the run's heap chain is one free block (EA8C30h bytes from
+  1473B0h) and the port's allocator has no block left either (a
+  temporary print), only the selectors 14h, 1Ch, 24h.
+- Enter at 112, Down at 114, Enter at 115 (table 2, AX 0402h): the same.
+- Esc at 112, the program's end (`-break 1012A1`, CODE:0371,
+  t=113.116099): the same text on the console; CODE only FRAME_SPINS,
+  TAIL equal. Video memory differs (198608 bytes): the run's BIOS set
+  text mode 3, which the port does not; against the run before that INT
+  10h (CODE:51D4) the port's video memory is equal.
+
+Not checked: the pages (INFO_PAGE, GREETINGS_PAGE stop the port), F1..F4
+and Up in the menu, a country other than 0.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2780,9 +2824,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (CUBE_DRAW, VSYNC_START with NOSOUND's commands 0Eh and 0Fh,
      MUSIC_PLAY), up to CHOOSER_WAIT (CODE:38C6; see "The chooser's
      timer"). Done 2026-09-30: CHOOSER_WAIT's loop, up to CODE:505C (see
-     "CHOOSER_WAIT's loop"). Next: the table menu from CODE:505C
-     (MENU_LOOP with CODE:364F, GREETINGS_PAGE, INFO_PAGE), then the
-     way out at CODE:50A9.
+     "CHOOSER_WAIT's loop"). Done 2026-09-30: the table menu and the
+     chooser's end, ENTRY's end after Esc, up to the table (CODE:A323;
+     see "The chooser's end"). Next: INFO_PAGE and GREETINGS_PAGE, or
+     the table (CODE:A323, then CODE:7182 and the chooser again), which
+     wants stage 1 of `SOURCE\T001.BPC` first (item 5 below).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

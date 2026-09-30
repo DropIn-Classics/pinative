@@ -1037,9 +1037,58 @@ static void CHOOSER_WAIT(void)
     } while (rb(N_MENU_DONE) != 1 && rb(N_CAPTION_OUT) < 4);
 }
 
-/* CODE:4FF9, up to CHOOSER_WAIT */
-static void CHOOSER(void)
+/* CODE:364F */
+static void MENU_CAPTION(void)
 {
+    uint32_t row = rb(N_MENU_ROW);
+
+    if (rb(N_MENU_ON) != 1 || rb(0x18FD) != 1)
+        return;
+    if (rb(N_MENU_BLINK) == 1)
+        wd(N_CAPTION, rd(N_MENU_PICS_NOBOX + 4 * row));
+    else if (rb(N_MENU_INFO) == 1)
+        wd(N_CAPTION, rd(N_MENU_INFO_PICS + 4 * row));
+    else
+        wd(N_CAPTION, rd(N_MENU_PICS + 4 * row));
+}
+
+/* CODE:3969 */
+static void MENU_LOOP(void)
+{
+    wb(N_MENU_ON, 1);
+    wb(N_MENU_DONE, 0);
+    do {
+        FRAME_WAIT();
+        CHOOSER_DAC();
+        CRT_START_PICK();
+        READ_MODE1();
+        CAPTION_DRAW(0);
+        ATTRACT_STEP();
+        WRITE_MODE1();
+        LAG_SHIFT();
+        SCROLL_STEP();
+        PAL_FADE();
+        MENU_KEYS();
+        MENU_CAPTION();
+        MUSIC_MIX();
+    } while (rb(N_MENU_DONE) != 1);
+}
+
+/* CODE:237C */
+static void MUSIC_STOP(void)
+{
+    NsRegs r = { 0 };
+
+    r.eax = 3;
+    driver(&r);
+}
+
+/* CODE:4FF9, CHOOSER, to the chooser's end */
+static uint8_t CHOOSER(void)
+{
+    uint8_t al;
+    int i;
+
     /* the checksummed calls in their order (targets from the run's
      * memory, docs/HANDOFF.md "The chooser's timer") */
     CUBE_DRAW(rw(N_CUBE_SEL), 0);
@@ -1047,11 +1096,86 @@ static void CHOOSER(void)
     MUSIC_PLAY();
     wb(N_CHOOSER_LOADED, 0);
     CHOOSER_WAIT();
-    pi_stop("CODE:505C (the table menu's start)");
+    /* CODE:505C, the table menu */
+    if (rb(N_MENU_DONE) != 1) {
+        wb(N_MENU_ROW, 0);
+        if (rd(N_KEY_HISTORY) == 0x0F3A2A1Du)
+            pi_stop("GREETINGS_PAGE");
+        for (;;) {
+            MENU_LOOP();
+            if (rb(N_MENU_INFO) == 0 || rb(N_ESC_KEY) == 1)
+                break;
+            pi_stop("INFO_PAGE");
+        }
+    }
+    /* CODE:50A9 */
+    if (rb(N_ESC_KEY) != 1) {
+        static const char azerty[] = "BEFR", qwertz[] = "UHUYFSGSZCLSLPRG";
+        uint16_t ax = pmax_country();
+        uint32_t ebx = 0x5E21, esi;
+
+        for (i = 0; i < 4; i += 2)
+            if (ax == (uint16_t)(azerty[i] << 8 | azerty[i + 1]))
+                ebx = 0x6023;
+        if (ebx == 0x5E21)
+            for (i = 0; i < 16; i += 2)
+                if (ax == (uint16_t)(qwertz[i + 1] << 8 | qwertz[i]))
+                    ebx = 0x5F22;
+        wd(0x5E1D, ebx);
+        for (esi = 0; esi < 0x100; esi++) {
+            al = rb(ebx + esi);
+            if (al < 0x20 || al > 0x7A)
+                al = 0xFF;
+            else if (al > 0x40)
+                al &= 0xDF;
+            wb(N_KEY_CHARS + esi, al);
+        }
+    }
+    /* CODE:5198 */
+    MUSIC_STOP();
+    if (rb(N_ESC_KEY) == 1) {
+        vga_outw(0x3C4, 0x0F02);
+        vga_outw(0x3CE, 0x0005);
+        for (i = 0; i < 0x10000; i++)
+            vga_write((uint16_t)i, 0);
+        /* INT 10h mode 3: the port's window keeps its picture; the
+         * text follows on the console (ENTRY) */
+    }
+    /* CODE:51D6 */
+    {
+        NsRegs r = { 0 };
+
+        r.eax = 5;
+        driver(&r);
+        memset(&r, 0, sizeof r);
+        r.eax = 0x0B;
+        driver(&r);
+    }
+    pmax_free_sel(rw(N_DRIVER_ENTRY + 4));
+    CD_STOP();
+    /* CHOOSER_FREE (CODE:28F5), CAPTIONS_FREE first */
+    for (i = 0x1554; i < N_CAPTION; i += 6)
+        if (rw(i + 4))
+            pmax_free(rw(i + 4));
+    pmax_free(rw(N_MENUCHAR_SEL));
+    pmax_free(rw(N_CUBE_SEL));
+    pmax_free(rw(N_TUBE_SEL));
+    pmax_free(rw(N_TORUS_SEL));
+    pmax_free(rw(N_TINYFONT_SEL));
+    pmax_free(rw(N_INFODATA_SEL));
+    pmax_free(rw(N_DRIVER_SEL));
+    if (rb(0x037C) == 1)
+        pi_stop("CODE:523B (the self-patched call written)");
+    /* KBD_RESTORE (CODE:33F5): IRQ 1 masked, its vector back */
+    frame_set_keyboard(NULL);
+    al = rb(N_ESC_KEY) == 1 ? 0xFF : rb(N_MENU_ROW);
+    if (rb(0x5E1C) == 1)
+        pi_stop("CODE:5277 (INT 94h AH=6)");
+    return al;
 }
 
-/* CODE:4CFB, up to CHOOSER (CODE:4FF9) */
-void CHOOSER_START(void)
+/* CODE:4CFB, the chooser: the table chosen, or FFh */
+uint8_t CHOOSER_START(void)
 {
     uint32_t i;
 
@@ -1095,5 +1219,5 @@ void CHOOSER_START(void)
     wb(0x1534, 0);
     if (rw(N_CHOOSER_LOADED) != 1)
         pi_stop("CODE:4E98 (the chooser's files loaded again)");
-    CHOOSER();
+    return CHOOSER();
 }

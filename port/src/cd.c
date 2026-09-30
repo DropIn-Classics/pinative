@@ -1,5 +1,5 @@
 /* cd.c - the CD through MSCDEX: CD_INSTALLED (CODE:35B52), CD_LOCK
- * (CODE:35B7D), CD_READ_TOC (CODE:35C58), CD_REQUEST (CODE:35B0D), and in
+ * (CODE:35B7D), CD_READ_TOC (CODE:35C58), CD_STOP, CD_REQUEST (CODE:35B0D), and in
  * place of MSCDEX a drive D: with one data track, as dosrun has it without
  * a cue sheet (the GOG release's audio tracks come with the sound).
  */
@@ -38,6 +38,7 @@ static void mscdex(uint32_t rm)
         if (lrb(xfer) != 1)
             pi_stop("MSCDEX: an IOCTL output the port does not answer");
         /* 1: lock or unlock the door: nothing to do */
+    } else if (cmd == 0x85) {  /* stop audio: nothing plays */
     } else {
         pi_stop("MSCDEX: a request the port does not answer");
     }
@@ -102,4 +103,10 @@ int CD_READ_TOC(void)
         dl++;
     } while (dl <= dh);
     return 0;
+}
+
+/* CODE:35E4F (the request at CODE:35E94, command 85h) */
+void CD_STOP(void)
+{
+    CD_REQUEST(0x35E94);
 }

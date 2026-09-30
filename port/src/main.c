@@ -135,5 +135,6 @@ int main(int argc, char **argv)
     }
     pmax_cfg_open(cfg);
     ENTRY();
+    pi_end();
     return 0;
 }

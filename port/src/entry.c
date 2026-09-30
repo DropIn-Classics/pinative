@@ -31,6 +31,17 @@ void pi_stop(const char *name)
     exit(r);
 }
 
+/* the program's end (ENTRY returned, the original's RETF to pMAX): the
+ * memory files written as at a stop */
+void pi_end(void)
+{
+    if (pi_stop_mem && pm_write(pi_stop_mem) != 0)
+        fprintf(stderr, "pinative: %s cannot be written\n", pi_stop_mem);
+    if (pi_stop_vram && vga_write_planes(pi_stop_vram) != 0)
+        fprintf(stderr, "pinative: %s cannot be written\n", pi_stop_vram);
+    plat_shutdown();
+}
+
 void pi_print_dos(uint32_t at)
 {
     for (; lrb(at) != '$'; at++)
@@ -73,5 +84,12 @@ void ENTRY(void)
     VGA_INIT();
     HISCORE_INIT();
     CHOOSER_LOAD();
-    CHOOSER_START();
+    /* CODE:033F: a table chosen, or the end */
+    if (CHOOSER_START() < 4) {
+        VGA_INIT();
+        pi_stop("the table (CODE:A323)");
+    }
+    CD_LOCK(0);
+    /* IRQ 1 unmasked: nothing in the port's memory */
+    pi_print_dos(PI_IMAGE_BASE + 0x07B4);
 }
