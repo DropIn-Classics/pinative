@@ -1,6 +1,8 @@
 /* intro.c - CHOOSER_LOAD (CODE:757D): the sound started, the chooser's and
  * the intro's files loaded, then the intro.
  */
+#include <string.h>
+
 #include "game.h"
 #include "image.h"
 #include "frame.h"
@@ -419,6 +421,125 @@ static void key_byte(unsigned char b)
     port60 = b;
 }
 
+/* Esc and space (the MOV AL,1Ch before the third JE sets no flags: Enter
+ * is not a key here) */
+static int intro_key(void)
+{
+    return port60 == 0x01 || port60 == 0x39;
+}
+
+/* CODE:72BB: BKGR.FLD and PCSKY.FLD (from +300h) to 3CF0h, plane by
+ * plane, 12C0h dwords each: PCSKY's dword ORed with BKGR's shifted left 4 */
+static void INTRO_BKGR(void)
+{
+    uint32_t bk = pmax_base(rw(N_BKGR_SEL)), sky = pmax_base(rw(N_PCSKY_SEL));
+    uint32_t si = 0x300, bx = 0, di, i;
+    int plane;
+
+    for (plane = 0; plane < 4; plane++) {
+        vga_outw(0x3C4, (uint16_t)(0x0100 << plane | 2));
+        for (di = 0x3CF0, i = 0; i < 0x12C0; i++, si += 4, bx += 4) {
+            uint32_t d = lrd(sky + si) | lrd(bk + bx) << 4;
+            int k;
+
+            for (k = 0; k < 4; k++)
+                vga_write((uint16_t)di++, (uint8_t)(d >> 8 * k));
+        }
+    }
+}
+
+/* CODE:7230: SCROLL.DLT's next frame at 3CF0h, pixel bit 7 XORed (write
+ * mode 2, function XOR, bit mask 80h): pairs of an offset and the plane
+ * bits, FFh a line's end, 240 lines; SCROLL_POS moved on one line */
+static void SCROLL_FRAME(void)
+{
+    uint32_t base = pmax_base(rw(N_SCROLL_SEL)), si = base + rd(N_SCROLL_POS);
+    uint32_t di = 0x3CF0, next = 0;
+    int line;
+
+    vga_outw(0x3C4, 0x0F02);
+    vga_outw(0x3CE, 0x4205);
+    vga_outw(0x3CE, 0x8008);
+    vga_outw(0x3CE, 0x1803);
+    for (line = 0; line < 0xF0; line++) {
+        uint8_t bl;
+
+        while ((bl = lrb(si)) != 0xFF) {
+            vga_read((uint16_t)(di + bl));
+            vga_write((uint16_t)(di + bl), lrb(si + 1));
+            si += 2;
+        }
+        si++;
+        di += 0x50;
+        if (line == 0)
+            next = si;
+    }
+    wd(N_SCROLL_POS, next - base);
+    wd(N_SCROLL_LEFT, rd(N_SCROLL_LEFT) - 1);
+}
+
+/* CODE:79C3: the intro played to its end: a fade to INTRO_PALS, the
+ * background, the scroller until SCROLL_LEFT is 21h (or a key), a fade to
+ * INTRO_BLACK */
+static void INTRO_SCROLL(void)
+{
+    wd(N_FADE_FROM, 0x8A3C);
+    wb(N_FADE_STEP, 2);
+    FADE_TO_SET(pm_ds + N_INTRO_PALS);
+    wb(N_FADE_LEVEL, 0x40);
+    INTRO_FRAME();
+    wd(N_SCROLL_LEFT, 0x780);
+    VIEW_2D50();
+    /* CODE:7A0F: through CODE:4CF2's checksummed jump ([CODE:907F]: 72BBh) */
+    INTRO_BKGR();
+    /* the sequencer's and graphics controller's index left at 2 and 4 */
+    vga_outb(0x3C4, 2);
+    vga_outb(0x3CE, 4);
+    wd(N_SCROLL_POS, 0);
+    do {
+        SCROLL_FRAME();
+        INTRO_FRAME();
+        if (intro_key())
+            break;
+    } while (rd(N_SCROLL_LEFT) > 0x21);
+    /* CODE:7A4D */
+    wb(N_FADE_LEVEL, 0x40);
+    wb(N_FADE_STEP, 2);
+    wd(N_FADE_FROM, rd(N_FADE_TO));
+    wd(N_FADE_TO, N_INTRO_BLACK);
+    do {
+        SCROLL_FRAME();
+        INTRO_FRAME();
+    } while ((int8_t)rb(N_FADE_LEVEL) > 0);
+}
+
+/* CODE:7A82: IRQ 1 unmasked, the driver's commands 3 (the stop) and 8
+ * (slot 0 from order 12h), then through CODE:7438's checksummed jump
+ * ([CODE:235E]: 73D8h) INTRO_FREE: the intro's five blocks freed */
+static void INTRO_LEAVE(void)
+{
+    NsRegs r = { 0 };
+
+    /* the keyboard is the game's again (which handler takes it is not
+     * followed) */
+    frame_set_keyboard(NULL);
+    r.eax = 3;
+    r.ds = pi_image.desc[ILLUSION_CODE].sel;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+    memset(&r, 0, sizeof r);
+    r.eax = 8;
+    r.ebx = 0x12;
+    r.ecx = 0;
+    r.ds = pi_image.desc[ILLUSION_CODE].sel;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+    /* CODE:73D8 */
+    pmax_free(rw(N_INTROANI_SEL));
+    pmax_free(rw(N_INTROPIX_SEL));
+    pmax_free(rw(N_SCROLL_SEL));
+    pmax_free(rw(N_BKGR_SEL));
+    pmax_free(rw(N_PCSKY_SEL));
+}
+
 void CHOOSER_LOAD(void)
 {
     uint32_t size, i;
@@ -489,12 +610,12 @@ void CHOOSER_LOAD(void)
     for (;;) {
         INTRO_FRAME();
         INTRO_TICK();
-        /* Esc and space (the MOV AL,1Ch before the third JE sets no
-         * flags: Enter is not a key here) */
-        if (port60 == 0x01 || port60 == 0x39)
-            pi_stop("CODE:7A82 (the intro left by a key)");
-        if (rb(N_INTRO_END) == 1)
+        if (intro_key())
             break;
+        if (rb(N_INTRO_END) == 1) {
+            INTRO_SCROLL();
+            break;
+        }
     }
-    pi_stop("CODE:79C3 (the intro's end)");
+    INTRO_LEAVE();
 }

@@ -432,7 +432,28 @@ static int CMD_PLAY(NsRegs *r)
     if (rb(0x0799) == 0xFF)
         ww(D_TIMER_COUNT, rw(0x072D));
     TIMER_START();
-    r->eax = rd(D_RESULT);
+    return 0;                   /* CODE:0975: EAX as the caller had it */
+}
+
+/* CODE:0C86: command 3, the stop */
+static int CMD_STOP(NsRegs *r)
+{
+    (void)r;
+    if (rb(D_PLAYING) != 0xFF)
+        pi_stop("NOSOUND: command 3 refused (CODE:0A49)");
+    wb(D_PLAYING, 0);
+    /* CODE:0618: the PIT's channel 0 back to 18.2 Hz (CODE:1367), IRQ 0's
+     * vector back (callback 5), CODE:114A: the PIC's masks as command 0
+     * found them, IRQ_MASK1 FDh, IRQ_MASK2 FFh */
+    HCB_SETVEC(0, rw(D_OLD_IRQ0 + 4), rd(D_OLD_IRQ0));
+    frame_set_tick(NULL);
+    wb(D_IRQ_MASK1, 0xFD);
+    wb(D_IRQ_MASK2, 0xFF);
+    CHANNELS_RESET();
+    /* CODE:079A: command 0Eh's retrace callback taken back */
+    if (rb(0x0799) == 0xFF)
+        pi_stop("NOSOUND: command 3 with the retrace callback set");
+    /* CODE:10E1: ports 61h, 21h, A1h and the PIT again: nothing in memory */
     return 0;
 }
 
@@ -456,7 +477,37 @@ static int CMD_MIX(NsRegs *r)
         if (rd(D_CMD11_PTR) != 0xFFFFFFFFu)
             pi_stop("NOSOUND: command 11h's pointer called (CMD_MIX)");
     }
-    r->eax = rd(D_RESULT);
+    (void)r;
+    return 0;                   /* CODE:0975 */
+}
+
+/* CODE:0F17: command 8, the module of slot CL from its order BL; with
+ * C2D64 FFh (command 0Ah's, a jingle playing presumably) only kept for
+ * the music's return */
+static int CMD_ORDER(NsRegs *r)
+{
+    uint32_t ebx = (uint8_t)r->ebx, ecx = (uint8_t)r->ecx * 0x275u;
+    uint8_t ah;
+
+    wb(D_STOPPED, 0);
+    wd(D_NEXT_SLOT, ecx);
+    ah = rb(ecx + ebx + D_ORDERS);
+    if (rb(D_PLAYING) != 0 && rb(0x2D64) == 0xFF) {
+        wd(D_SAVED_SLOT, ecx);
+        wd(0x21BD, ebx);
+        ww(0x21BB, (uint16_t)(ah << 10));
+        wb(D_SAVED_SPEED, rb(D_SPEED));
+        return 0;
+    }
+    wb(0x2D64, 0);
+    /* CODE:0F79 */
+    wd(D_ORDER_POS, ebx);
+    wb(D_CUR_PATTERN, ah);
+    wd(D_SLOT_OFF, rd(D_NEXT_SLOT));
+    ww(D_PAT_OFFSET, (uint16_t)(ah << 10));
+    wb(D_BREAK_ROW, 0);
+    wb(D_SPEED, 6);
+    wb(D_TICK_COUNT, 1);
     return 0;
 }
 
@@ -477,11 +528,17 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 1:
         cf = CMD_PLAY(r);
         break;
+    case 3:
+        cf = CMD_STOP(r);
+        break;
     case 4:
         cf = CMD_LOAD_MODULE(r);
         break;
     case 6:
         cf = CMD_MIX(r);
+        break;
+    case 8:
+        cf = CMD_ORDER(r);
         break;
     case 0x0D:
         cf = CMD_POSITION(r);

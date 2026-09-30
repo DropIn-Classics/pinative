@@ -122,6 +122,11 @@ code       CODE:6AF9 INTRO_FADE_21 ; INTRO_SCRIPT: a fade from INTRO_PAL2 to INT
 code       CODE:6B3F INTRO_FADE_12 ; INTRO_SCRIPT: a fade from INTRO_PAL1 to INTRO_PAL2, step 2
 code       CODE:6B62 INTRO_FADE_TOP ; INTRO_SCRIPT: a fade from CODE:8A3C to INTRO_PAL1, step 4; VIEW_TOP
 code       CODE:6C4B INTRO_PIC_LAST ; INTRO_SCRIPT: a fade from CODE:8A3C to itself, INTRO_FRAME, DRIVER_MIX, PIC_SHOW_400 of intropix.mgl's dword +1Ch
+code       CODE:72BB INTRO_BKGR    ; reached from CODE:7A0F through CODE:4CF2's checksummed jump ([CODE:907F] less the byte sum of CODE:6A20..8115: 72BBh in the run's memory; run 2026-09-30: reached at t=72.13); BKGR.FLD and PCSKY.FLD (from +300h) to 3CF0h, plane by plane, 12C0h dwords each: a PCSKY dword ORed with the BKGR dword shifted left 4
+code       CODE:7230 SCROLL_FRAME  ; SCROLL.DLT's next frame from SCROLL_POS at 3CF0h, in write mode 2 with function XOR and bit mask 80h (pixel bit 7): pairs of an offset and the plane bits, FFh a line's end, 240 lines; SCROLL_LEFT counted down
+name       CODE:634E SCROLL_POS    ; SCROLL_FRAME's position in SCROLL.DLT; 0 at CODE:7A22
+name       CODE:8130 SCROLL_LEFT   ; SCROLL_FRAME's count: 780h at CODE:79EA, the scroller ends at 21h (CODE:7A44)
+code       CODE:73D8 INTRO_FREE    ; reached from CODE:7AB6 through CODE:7438's checksummed jump ([CODE:235E] less the byte sum of CODE:4CE8..55E2: 73D8h; run 2026-09-30: reached at t=104.36); INT 92h AH=5 (freed) for INTROANI_SEL, INTROPIX_SEL, SCROLL_SEL, BKGR_SEL, PCSKY_SEL; its RET to CODE:7ABB, CHOOSER_LOAD's RET
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0

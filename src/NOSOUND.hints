@@ -151,3 +151,8 @@ code       CODE:06D2 PIT_SET       ; PIT channel 0 mode 3 with 1234DCh / MIX_RAT
 name       CODE:327A PIT_DIV       ; run 2026-09-29: 1Bh (27: IRQ 0 at 44192 Hz)
 name       CODE:06AC TIMER_COUNT   ; a word TIMER_IRQ counts down; at 0 command 0Eh's retrace callback (CODE:08A4) when CODE:0799 is FFh
 name       CODE:2D44 OLD_IRQ0      ; IRQ 0's vector before TIMER_START (offset, selector at +4; run: 0030:0000414B)
+code       CODE:0C86 CMD_STOP      ; command 3 (refused when not PLAYING): PLAYING 0, TIMER_STOP, CHANNELS_RESET, command 0Eh's callbacks taken back (CODE:079A), ports 61h, 21h, A1h and the PIT as command 0 found them (PORTS_RESTORE)
+code       CODE:0618 TIMER_STOP    ; the PIT's channel 0 to divisor 0 (PIT_RESET, 18.2 Hz), IRQ 0's vector back from OLD_IRQ0 (callback 5), the PIC's masks back (CODE:114A: IRQ_MASK1 FDh, IRQ_MASK2 FFh)
+code       CODE:1367 PIT_RESET     ; PIT channel 0 mode 3 with divisor 0
+code       CODE:10E1 PORTS_RESTORE ; SAVED_61, SAVED_IMR1, SAVED_IMR2 to ports 61h, 21h, A1h; PIT_RESET
+code       CODE:0F17 CMD_ORDER     ; command 8: slot CL's module from its order BL (ORDER_POS, CUR_PATTERN, PAT_OFFSET, SPEED 6); with C2D64 FFh (set by command 0Ah, a jingle playing presumably) only kept for the music's return (SAVED_SLOT, C21BB, C21BD, SAVED_SPEED)

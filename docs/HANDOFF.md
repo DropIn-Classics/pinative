@@ -2348,6 +2348,53 @@ checked: the keys that leave the intro (Esc, space: port 60h read with
 IRQ 1 masked; Enter is not one, the MOV AL,1Ch before the third JE sets
 no flags), the DAC, the SDL build's pictures by eye.
 
+### The intro's end
+
+After INTRO_END (CODE:79C3; names in src/ILLUSION.hints): a fade from
+CODE:8A3C to INTRO_PALS, VIEW_2D50, then through CODE:4CF2's checksummed
+jump ([CODE:907F] less the byte sum of CODE:6A20..8115) INTRO_BKGR at
+CODE:72BB: BKGR.FLD and PCSKY.FLD combined to 3CF0h (a PCSKY dword ORed
+with the BKGR dword shifted left 4, so BKGR gives pixel bits 4-7 and
+PCSKY 0-3, presumably; not looked at as pictures). Then SCROLL_FRAME
+(CODE:7230) once a frame: SCROLL.DLT's next 240 lines XORed into pixel
+bit 7 (write mode 2, function XOR, bit mask 80h), SCROLL_POS moved on by
+one line each frame, while SCROLL_LEFT counts 780h down to 21h (1887
+frames), then a fade to INTRO_BLACK (32 frames, the scroller going on).
+Esc or space in the script go straight to CODE:7A82, in the scroller to
+the fade. CODE:7A82: IRQ 1 unmasked, the driver's command 3 (CMD_STOP:
+TIMER_STOP, CHANNELS_RESET, the ports back) and command 8 (CMD_ORDER,
+slot 0 from order 12h, the music for the chooser presumably; not played
+until another command 1), then through CODE:7438's checksummed jump
+([CODE:235E] less the byte sum of CODE:4CE8..55E2) INTRO_FREE at
+CODE:73D8, code the hints had as bytes: INT 92h AH=5 for the five intro
+blocks. Its RET goes to CHOOSER_LOAD's, and ENTRY calls the chooser,
+CODE:4CFB. The two jump targets were computed from the run's memory and
+seen reached in runs (CODE:72BB at t=72.13, CODE:73D8 at t=104.36).
+
+CMD_PLAY and CMD_MIX end at CODE:0975, whose POPAD gives the caller its
+own EAX back; the port had set EAX from RESULT there (no caller reads
+it), now left as it came.
+
+Runs 2026-09-30, Linux (NOSOUND.SDR in the header as in "The driver's
+timer"; `-break 105C2B`, CODE:4CFB), against the port stopped there:
+
+- no key (t=104.362785, 5401 frames; build/pm/ns_4cfb.*): CODE, TAIL
+  and video memory 0 bytes differ; 37 of the 38 used heap blocks equal,
+  the five freed ones merged with the free top of the chain in the
+  original (the port's allocator looks only at used blocks: the same
+  gap); the driver's block differs in the sample clock only (SAMPLE_POS,
+  TIMER_COUNT, MIX_POS, MIX_LEN, the channels' positions, TICKS by 1);
+- `-key 40 space` (in the script; CODE:4CFB at t=40.016607) against the
+  port with DK_KEYS 1540 (space at picture 1540): CODE differs only in
+  INTRO_TIME (5 09h against 4 F3h ticks: the key at another moment),
+  heap as above;
+- `-key 90 space` (in the scroller; t=90.554041) against DK_KEYS 4550:
+  CODE differs only in SCROLL_POS and SCROLL_LEFT (38h against 30h),
+  heap as above.
+
+The keyboard after CODE:7A82 (IRQ 1 unmasked: which INT 9 handler takes
+the keys then) is not followed; the port hands the keys to nobody.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2530,8 +2577,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      INTROPIX_SHOW, up to CODE:795F. Done 2026-09-30: commands 1 and
      0Dh (the timer by pictures; see "The driver's timer") and the
      intro's loop with INTRO_SCRIPT's routines, up to the intro's end
-     (CODE:79C3). Next: from CODE:79C3 on (and the keys' way out,
-     CODE:7A82).
+     (CODE:79C3). Done 2026-09-30: the intro's end, the scroller, the
+     keys' way out and commands 3 and 8, up to the chooser (CODE:4CFB;
+     see "The intro's end"). Next: the chooser, CODE:4CFB.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

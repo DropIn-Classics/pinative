@@ -24,9 +24,10 @@ CD check in src/cd.c) and the sound driver's commands 0 and 4
 CHOOSER_LOAD's eleven files, the intro's palettes, its video mode and
 picture (src/intro.c) and the driver's command 6, the module player
 (src/nsplay.c), its commands 1 and 0Dh (the timer, counted by
-pictures: the port has no interrupts) and the intro's script, up to
-the intro's end (CODE:79C3), where the port stops (`Stopped before
-CODE:79C3`; Esc or space in the intro stop it at CODE:7A82). The port loads
+pictures: the port has no interrupts), 3 and 8, and the whole intro:
+its script, the scroller after it, Esc and space to leave it, up to the
+chooser (CODE:4CFB), where the port stops (`Stopped before CODE:4CFB`).
+The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
@@ -116,6 +117,14 @@ SVGA_CHECK.
   stands in the sample clock (SAMPLE_POS, TIMER_COUNT, MIX_POS,
   MIX_LEN, the channels' positions). The keys and the window's
   pictures not checked.
+- 2026-09-30, Linux: at the chooser, CODE:4CFB (dosrun `-break
+  105C2B -mem -vram`, NOSOUND.SDR), no key: CODE, TAIL and video memory
+  0 bytes differ, 37 of 38 used heap blocks equal (the driver's in the
+  sample clock only). With space in the script (dosrun `-key 40
+  space`, the port DK_KEYS 1540) and in the scroller (`-key 90 space`,
+  DK_KEYS 4550): CODE differs only in INTRO_TIME, or SCROLL_POS and
+  SCROLL_LEFT, the key having come at another moment; the heap as
+  without a key. The window build not run for this.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
