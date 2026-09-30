@@ -409,7 +409,9 @@ flippers steer past rocks, picking up bonuses.
   The blits: `0xAFD5` (a whole 160 x 16 picture, from Enter's and the
   crash's scripts), `0xB024` (the water band), `0xB076` and `0xB0FA`
   (sprites of 16 lines, clipped at x 0 and 160; `0xB1EB`, set to 8 or
-  16, is read by neither), `0xB17E` (the display cleared to `0xFC`,
+  16, is read by neither; `0xB076` starts the picture `[0xB1F3]` bytes
+  in, `0xB0FA`, used for the boat only, adds `[0xB1F3]` to the display
+  offset instead, checked 2026-09-30 in src/T004.hints), `0xB17E` (the display cleared to `0xFC`,
   every frame before the rest) and `0xB1B1` (at the start, `0x1400`
   bytes at ES = EAX cleared). Which file the picture numbers come from
   is not checked (presumably `DATA\S004\SPECIAL\VM_DATA.MGL`, loaded by
@@ -738,8 +740,10 @@ records through `+0x10` and `+0x14`, and advances the sequence with `+0x0C`.
 This ties the callback meanings to both the main targets and four independent
 module implementations rather than to names inferred from one table.
 
-Table 1's row checked 2026-09-30 in the rebuilt source of src/T001.hints
-(docs/HANDOFF.md, "Stage 1: T001.BPC"); the other rows not yet.
+All four rows checked 2026-09-30 in the rebuilt sources of
+src/T001.hints .. T004.hints (docs/HANDOFF.md, "Stage 1: T001.BPC"),
+each exactly. Table 4's sea game makes 11 of its 29 calls through its
+own copy of the vector at `0x9874` (`+0x04` 3, `+0x1C` 2, `+0x28` 6).
 
 This was found with an earlier scanner (`bpc_abi.py`) that is no longer in the
 repository (it is in build/earlier/ on the machine it was removed on);

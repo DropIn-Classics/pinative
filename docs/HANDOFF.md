@@ -477,6 +477,11 @@ code yet. The hints: the header's four code slots (32, 39, 40, 41) as
   4's CODE:3859, and table 4's `LEA EBX,[0152h]` with a 16-bit address
   (CODE:A989, a constant 152h). The routines named from
   docs/bpc-module.md, which had them all.
+  The host-vector calls of tables 2, 3 and 4 counted as table 1's: 22,
+  18 and 29, each the earlier scanner's row exactly; 11 of table 4's go
+  through the sea game's copy of the vector (SEA_VECTOR, 9874h). The
+  sea game's two sprite routines differ in where the offset SPRITE_SKIP
+  goes: into the picture (the columns) or the display (the boat).
 
 ## The loader in the runner
 

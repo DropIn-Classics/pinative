@@ -58,8 +58,13 @@ code       CODE:9F1D SEA_EXTRA_BALL ; kind 6: stream 90AEh (the extra ball) and 
 raw        CODE:A989
 name       CODE:AFD5 SEA_PIC       ; a whole 160 x 16 picture (the scripts)
 name       CODE:B024 SEA_WATER     ; the water band
-name       CODE:B076 SEA_SPRITE    ; a sprite of 16 lines, clipped at x 0 and 160
-name       CODE:B0FA SEA_SPRITE2   ; as SEA_SPRITE (the difference not read)
+name       CODE:B076 SEA_SPRITE    ; picture ECX+1 from its byte SPRITE_SKIP on, 16 lines of SPRITE_WIDTH to the display at x SPRITE_X, line 0; 0 bytes and x not below 160 (unsigned, so a negative x too) left out; the five columns
+name       CODE:B0FA SEA_SPRITE2   ; as SEA_SPRITE, but SPRITE_SKIP added to the display offset instead: the boat (500h, line 8)
+name       CODE:B1E7 SPRITE_WIDTH
+name       CODE:B1EB SPRITE_B1EB   ; set to 8 or 16, read by neither sprite routine
+name       CODE:B1EF SPRITE_X
+name       CODE:B1F3 SPRITE_SKIP
+name       CODE:9874 SEA_VECTOR    ; the host vector as SEA_START found it; every call to the host from the update goes through it (DS:[10h] is a work cell meanwhile)
 name       CODE:B17E SEA_CLEAR     ; the display cleared to 0FCh, every frame
 name       CODE:B1B1 SEA_CLEAR_BUF ; at the start, 1400h bytes at ES = EAX cleared
 name       CODE:ACB6 SEA_STATE     ; the game's bytes from here (docs/bpc-module.md, "Table 4's sea game")
