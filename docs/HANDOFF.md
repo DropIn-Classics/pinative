@@ -410,6 +410,42 @@ and handler tables, the four display modes, ...); build.py IDENTICAL.
 Most routines have no name yet (METHOD.md: a name when what it does is
 known).
 
+## Stage 1: T001.BPC
+
+Begun 2026-09-30 on Linux. A table module is relocated by its `.REL`
+list (docs/bpc-module.md), so doskit got a way to read that list
+(doskit d4b7ccd, acedd78: `bin ... noentry` and `offrel FILE
+flags=MASK`): exactly the listed dwords are offsets, an instruction's
+immediate or displacement or a DD in data, every other number stays a
+number, and build.py checks that the rebuilt source's offsets are
+exactly the list's. No guessing of offsets (ptrscan.py) is needed for
+the modules.
+
+`python3 doskit/tools/build.py src/T001.hints`: IDENTICAL, "offsets:
+the 1707 of the offrel list, no other", 435 instructions, 693 labels,
+134 lines as DB, 1.8 s. gaps.py: 72,124 of 73,728 bytes not reached as
+code yet. The hints: the header's four code slots (32, 39, 40, 41) as
+`words` and entry points, named after docs/bpc-module.md; the 134 `raw`
+lines.
+
+- 133 of the `raw` lines are instructions with a 16-bit address and no
+  register (67h, `mov esi,[0x14]`): the module reads and writes the main
+  program's cells at DS:0..3Fh (CODE:0010 the host vector, see "Stage
+  1: ILLUSION.386", CODE:2CD10; [14h] the state pointer,
+  docs/bpc-module.md), so its DS is the main program's CODE (not checked
+  in a run). The whole module will have many more; a source form for
+  them would want tasm.py to take one (not decided; the kit's METHOD.md
+  says they stay DB).
+- CODE:394C: a DS prefix where DS is the default, EBP the index, as the
+  three in ILLUSION.386. Its displacement is an offset of the list; the
+  line is written DB, DD label, DB (doskit acedd78).
+- Slot 42 holds 0 and is in the `.REL` list in all four modules, so
+  once loaded it points at the module's base; docs/bpc-module.md said
+  null slots are not in the list. The one header slot not in a list is
+  table 4's slot 30, which holds 0 (table 4 has no second music module,
+  docs/bpc-module.md). Checked with a scratch script, 2026-09-30.
+- The `.REL` lists are not sorted; the order is not looked at.
+
 ## The loader in the runner
 
 Since doskit f6876cf (2026-09-29) the runner emulates the 386's protected
@@ -2903,7 +2939,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      the chooser CODE:4CFB and the table CODE:A323 (ENTRY's loop), down to
      the main loop (GAME_PHASE's dispatch at CODE:BAD6); then the parts
      already read, each compared with memcmp.py;
-   - stage 1 for `SOURCE\T001.BPC` before table 1's code is needed;
+   - stage 1 for `SOURCE\T001.BPC` before table 1's code is needed:
+     begun 2026-09-30 (see "Stage 1: T001.BPC"; the header's code slots
+     reached). Next there: the code the main program reaches through
+     the other slots' records (the event streams' handlers, the
+     opcode-14h objects, docs/bpc-module.md) as entry points, then the
+     gaps;
    - not read yet and wanted: the ball's physics and collisions
      (CODE:1352D, the map DROP_MASK writes, header slot 18), the
      flippers' movement, the drawing and scrolling; whether any of it

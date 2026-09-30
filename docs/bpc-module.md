@@ -40,8 +40,11 @@ itself. Relative `call` and `jump` displacements do not appear in the list.
 ## 45-slot header
 
 The first 180 bytes are a fixed table of 45 relocatable pointer slots. The
-loader copies the relocated table into main-image state at `0xF3E4`. Null slots
-are not present in the relocation list.
+loader copies the relocated table into main-image state at `0xF3E4`. Slot 42
+holds 0 but is in the relocation list in all four modules, so once loaded it
+points at the module's base; the one slot not in a list is table 4's slot 30,
+which holds 0 (checked 2026-09-30; an earlier version of this note said null
+slots are never listed).
 
 Most slots are module-relative data or function pointers. Ten slots have flags
 in the top two bits before relocation:
@@ -90,7 +93,7 @@ word, and no direct relative BPC call targets it.
 
 Slot 40 is a no-op in tables 1, 3, and 4, while table 2 calls a table-local
 routine. Slot 41 contains a substantial routine in tables 1 and 2 and is a
-no-op in tables 3 and 4. Slot 42 is null in every module. `bpc_inspect.py`
+no-op in tables 3 and 4. Slot 42 holds 0 in every module (relocated: the module's base, see above). `bpc_inspect.py`
 reports the number of other relocated aliases for every header target; slots
 39 through 41 all report zero for every module.
 
