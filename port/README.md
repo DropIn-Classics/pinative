@@ -37,8 +37,10 @@ reading their bytes) and the keys, up to the table menu's start
 commands 5 and 0Bh, everything freed): Esc ends the program with the
 original's goodbye text; a table chosen is started (src/table.c: the
 selector aliases, the keyboard handler set, the driver started again
-with the table's two modules, command 11h) up to TABLE_LOAD2
-(`Stopped before TABLE_LOAD2 (CODE:B048)`); the Info page (a table's
+with the table's two modules, command 11h) and TABLE_LOAD2's first
+blocks (the hide-lights mask, vm_data.mgl, the dot-matrix display's
+areas, fonts and animations: src/dotmatrix.c) up to the module
+(`Stopped before CODE:B22D`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -198,6 +200,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   memory equal, 55 of 55 heap blocks equal but the driver's SAVED_61
   (port 61h, which dosrun makes from the emulated clock; docs/HANDOFF.md,
   "The table's start").
+- 2026-09-30, Linux: table 1 up to CODE:B22D (dosrun `-break 10C15D
+  -mem -vram`, t=123.79, the same keys): CODE differs only in
+  FRAME_SPINS, TAIL and video memory equal; of the 67 used heap blocks
+  64 equal, the driver's in SAVED_61 as before, and two the original
+  does not clear ("Hidelights mask" 217 bytes, "Temp Text area" 14):
+  free memory that already differed at CODE:A3F0, written by neither
+  since (docs/HANDOFF.md, "The dot-matrix display's blocks").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

@@ -55,6 +55,9 @@ void HCB_SEEK(uint32_t edx);
 /* 1: callbacks 6 to 9 keep the file in the table's cells */
 void hcb_use_table(int table);
 
+/* dotmatrix.c: CODE:2833E; 1 (CF) when a block or file failed */
+int DM_LOAD(void);
+
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 

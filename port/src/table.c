@@ -6,8 +6,9 @@
  * kept in memory differ).  It loads the table (TABLE_LOAD: the driver
  * started again with the table's music; TABLE_LOAD2: the module and the
  * rest), runs the game with IRQ 1 unmasked (CODE:B928) and frees it all.
- * Translated so far: up to TABLE_LOAD2 (docs/HANDOFF.md, "The table's
- * start").
+ * Translated so far: TABLE_LOAD2 up to the module (CODE:B22D;
+ * docs/HANDOFF.md, "The table's start", "The dot-matrix display's
+ * blocks").
  */
 #include <string.h>
 
@@ -163,6 +164,33 @@ static int TABLE_LOAD(void)
     return TABLE_SOUND();
 }
 
+/* CODE:B1D0 */
+static int VM_DATA_LOAD(void)
+{
+    uint32_t n = 0;
+    uint16_t sel = pmax_load_ds(N_VM_DATA_NAME, &n);
+
+    ww(N_VM_DATA_SEL, sel);
+    wd(N_VM_DATA_SIZE, n);
+    return !sel;
+}
+
+/* CODE:B048 */
+static int TABLE_LOAD2(void)
+{
+    uint16_t sel = pmax_alloc(0x33450);
+
+    ww(N_HIDELIGHTS_SEL, sel);
+    if (!sel)
+        return 1;
+    if (rb(N_TABLE_NUM) != 3 && VM_DATA_LOAD())
+        return 1;
+    if (DM_LOAD())
+        return 1;
+    pi_stop("CODE:B22D");
+    return 1;
+}
+
 int TABLE(uint8_t al)
 {
     uint16_t ds;
@@ -188,6 +216,7 @@ int TABLE(uint8_t al)
         pi_stop("TABLE: a table not 1..4 (CODE:BA7D)");
     if (TABLE_LOAD())
         pi_stop("TABLE: TABLE_LOAD failed");
-    pi_stop("TABLE_LOAD2 (CODE:B048)");
+    if (TABLE_LOAD2())
+        pi_stop("TABLE: TABLE_LOAD2 failed");
     return 1;
 }

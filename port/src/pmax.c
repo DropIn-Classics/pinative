@@ -212,6 +212,17 @@ uint16_t pmax_load(const char *name, uint32_t *size)
     return at ? sel : 0;
 }
 
+uint16_t pmax_load_ds(uint32_t off, uint32_t *size)
+{
+    char name[128];
+    size_t i;
+
+    for (i = 0; i < sizeof name - 1 && rb(off + (uint32_t)i); i++)
+        name[i] = (char)rb(off + (uint32_t)i);
+    name[i] = 0;
+    return pmax_load(name, size);
+}
+
 uint16_t pmax_alloc(uint32_t size)
 {
     uint16_t sel = 0;

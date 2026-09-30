@@ -771,7 +771,41 @@ name       CODE:98FE TBL_CALLBACKS ; HOST_CALLBACKS again (CODE:995E ...), the f
 name       CODE:9944 TBL_HCB_CURSOR
 name       CODE:9948 TBL_HCB_FILE_SEL
 name       CODE:9CD4 JINGLE_END_CB
-code       CODE:B048 TABLE_LOAD2   ; "Hidelights mask" (INT 92h AH=0Ah, 33450h bytes), then the module and the rest (not read yet)
+code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, CODE:B22D (the module), CODE:911F, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), CODE:BA9B, CODE:B797, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
+name       CODE:A11B HIDELIGHTS_SEL ; "Hidelights mask": 33450h bytes by INT 92h AH=0Ah, the selector stored whether or not it failed
+code       CODE:B1D0 VM_DATA_LOAD  ; VM_DATA_NAME ("VideoMode data") by INT 94h AH=1 into VM_DATA_SEL and VM_DATA_SIZE; its CF
+name       CODE:B195 VM_DATA_SEL
+name       CODE:B197 VM_DATA_SIZE
+name       CODE:B19B VM_DATA_NAME  ; "data\s00n\special\vm_data.mgl"
+code       CODE:B219 VM_DATA_FREE  ; INT 92h AH=5 on VM_DATA_SEL (who calls it not followed)
+; the dot-matrix display's blocks (2026-09-30, the code; the port against
+; a run at CODE:B22D, table 1)
+code       CODE:2833E DM_LOAD      ; DM_VIDEO_SEL (INT 93h AH=5), DM_TEXT_ALLOC, DM_ANIM_ALLOC, DM_FONTS_LOAD, DM_ANIMS_LOAD (CF if one failed), then DM_CLEAR, DM_TEXT_CLEAR, DM_ANIM_CLEAR
+name       CODE:27D08 DM_VIDEO_SEL
+code       CODE:271BC DM_TEXT_ALLOC ; "dot matrix text area" (INT 92h AH=4) and "Temp Text area" (AH=0Ah), 1400h bytes each, DM_TEXT_CLEAR
+name       CODE:27D00 DM_TEXT
+name       CODE:27D04 DM_TEXT_TEMP
+code       CODE:27976 DM_ANIM_ALLOC ; "Animarea" and "Temp Animarea" (INT 92h AH=0Ah), 1400h bytes each, DM_ANIM_CLEAR
+name       CODE:27D02 DM_ANIM
+name       CODE:27D06 DM_ANIM_TEMP
+code       CODE:27259 DM_TEXT_CLEAR ; DM_TEXT's 1400h bytes 0
+code       CODE:27CEC DM_ANIM_CLEAR ; DM_ANIM's 1400h bytes FCh
+code       CODE:2FBA8 DM_CLEAR     ; DM_TEXT_CLEAR, DM_ANIM_CLEAR
+code       CODE:26ED3 DM_FONTS_LOAD ; DM_FONTS_READ, DM_FONTS_EXPAND
+code       CODE:26EE0 DM_FONTS_READ ; data\misc\font1a.m, font1b, font2a, font2b, font3.m by INT 94h AH=1 with policy 1 (INT 92h AH=8 BL=1, 0 again after): selectors to DM_FONT_FILES, sizes to DM_FONT_SIZES
+name       CODE:26EA3 DM_FONT_FILES ; five words
+name       CODE:26EB7 DM_FONT_SIZES ; five dwords
+code       CODE:27491 DM_FONTS_EXPAND ; DM_FONT_EXPAND on each, the selectors to DM_FONTS (the fifth's stored even when it failed); CF
+name       CODE:26EAD DM_FONTS     ; five words
+code       CODE:270AD DM_FONT_EXPAND ; AX's block of EBX bytes into a new one of 4 x EBX ("dot matrix font", INT 92h AH=0Ah): each byte's bits 7, 5, 3, 1 as FFh or 0 (bits 6, 4, 2, 0 passed over); the source freed, the new selector in AX; CF
+name       CODE:2712E DM_EXPAND_COUNT
+name       CODE:27132 DM_EXPAND_SEL
+name       CODE:27134 DM_EXPAND_SRC
+code       CODE:278D8 DM_ANIMS_LOAD ; DM_ANIMS_NAME ("Manglade Anims") by INT 94h AH=1 into DM_ANIMS_SEL, DM_ANIMS_SIZE; its CF
+name       CODE:278D2 DM_ANIMS_SEL
+name       CODE:278D4 DM_ANIMS_SIZE
+name       CODE:2791F DM_ANIMS_NAME ; "data\s00n\anims\allanims.mgl"
+code       CODE:2837D DM_FREE      ; CODE:27136 (the five fonts, DM_TEXT, DM_TEXT_TEMP freed) and CODE:2793C (DM_ANIMS_SEL, DM_ANIM, DM_ANIM_TEMP freed)
 
 dptr       CODE:02D1 CODE	; MOV 86Ch: a pointer (read after a jump)
 dptr       CODE:02F8 CODE	; MOV 86Ch: passed to the INT

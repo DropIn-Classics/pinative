@@ -2811,6 +2811,34 @@ from the emulated clock (the refresh toggle, timer 2's output), so the
 value hangs on the CPU time, which the port does not model; the driver
 only writes it back at its end.
 
+### The dot-matrix display's blocks
+
+TABLE_LOAD2 (CODE:B048; names in src/ILLUSION.hints, from TABLE_LOAD2
+on) first takes "Hidelights mask" (33450h bytes, INT 92h AH=0Ah, not
+cleared), loads `data\s00n\special\vm_data.mgl` (not on table 3) and
+runs DM_LOAD (CODE:2833E): the dot-matrix display's text and animation
+areas (1400h bytes each, and a "Temp" copy of each), the five fonts of
+`data\misc` read from the top of the heap (policy 1) and each expanded
+into a block four times its size (DM_FONT_EXPAND: a byte's bits 7, 5, 3
+and 1 as FFh or 0; bits 6, 4, 2 and 0 are passed over, so each font
+byte holds four dots and four unused bits, presumably; the fonts
+themselves not looked at), then `data\s00n\anims\allanims.mgl`. What
+the 33450h bytes and vm_data.mgl are for is not followed.
+
+The port (src/dotmatrix.c) against the run at CODE:B22D (`-break
+10C15D`, t=123.79, frames still 5866): equal but for FRAME_SPINS,
+SAVED_61, and 231 bytes in the two blocks taken with AH=0Ah and not
+cleared ("Hidelights mask", "Temp Text area"). Those bytes already
+differed at CODE:A3F0, when the memory was free, and neither program
+writes them before CODE:B22D: leftovers of blocks freed earlier whose
+contents differ between the port and the run (which ones not followed).
+Whether the game reads them before writing them is not checked; if a
+later comparison differs there, that is the place to look.
+
+Found on the way: `port/build/game` moves into the data folder on the
+port's first start since the doskit update (see "Start here"); the runs
+now take `-game game`.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3007,8 +3035,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      is whole in the port. Next: the table (CODE:A323, then CODE:7182
      and the chooser again), which wants stage 1 of `SOURCE\T001.BPC`
      first (item 5 below). Done 2026-09-30: TABLE up to TABLE_LOAD2
-     (CODE:B048; see "The table's start"). Next: TABLE_LOAD2, then the
-     game at CODE:B928.
+     (CODE:B048; see "The table's start"). Done 2026-09-30: TABLE_LOAD2
+     up to the module, CODE:B22D (see "The dot-matrix display's
+     blocks"). Next: CODE:B22D (the module, OPTIONS_APPLY), the rest of
+     TABLE_LOAD2, then the game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

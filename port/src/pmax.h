@@ -43,6 +43,9 @@ int pmax_cfg_header(uint32_t off);
  * file's size to *size unless `size` is NULL (EDX, as the run had it for
  * intro\INTROANI.ROY; docs/HANDOFF.md, "The chooser's files in a run") */
 uint16_t pmax_load(const char *name, uint32_t *size);
+/* the same with the name read from the program's memory at DS:`off` (the
+ * table's file names, whose digit TABLE_DIGITS writes) */
+uint16_t pmax_load_ds(uint32_t off, uint32_t *size);
 /* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
  * or 0 when there is no room */
 uint16_t pmax_alloc(uint32_t size);
