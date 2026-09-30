@@ -1752,6 +1752,277 @@ static void BALL_END(void)
     wb(rd(0x0014) + 0x2A7F, 0xFF);
 }
 
+/* CODE:2BB3E: GAME_PHASE 8, an extra ball: the skill shot armed
+ * (state+0D2Fh), header slot 34's music record; then frames of the
+ * physics, the zones, the serve and "EXTRA BALL" (CODE:2BBB2) until the
+ * ball leaves (state+0D3Ch 0: GAME_PHASE 4). No ball save is set here */
+static void EXTRA_BALL(void)
+{
+    uint32_t st = rd(0x0014);
+
+    wb(st + 0x0D2F, 0xFF);
+    wd(0x0000, rd(st + 0x292E));
+    MUSIC_REQUEST();
+    do {
+        FRAME_STEP();
+        PLAY_STEP();
+        BALLS_PHYSICS();
+        ZONES_CHECK();
+        SERVE();
+        FLASH_STEP();
+        LIT_LIST_STEP();
+        PLAYERS_KEYS();
+        DM_CLEAR();
+        wd(0x0000, 0x2BBB2);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+    } while (rb(st + 0x0D3C) != 0);
+    ww(st + 0x8E, 4);
+}
+
+/* CODE:2B012: [0020]'s low word frames (CODE:2B03E counts) of the
+ * scroll and the flippers */
+static void OVER_FRAMES(void)
+{
+    uint16_t n;
+
+    ww(0x2B03E, rw(0x0020));
+    do {
+        FRAME_STEP();
+        PLAY_SCROLL();
+        /* CODE:156C3, a RET */
+        FLIPPERS_STEP();
+        n = (uint16_t)(rw(0x2B03E) - 1);
+        ww(0x2B03E, n);
+    } while (n != 0);
+}
+
+/* CODE:2AFF5: [0020]'s low word seconds of OVER_FRAMES (x FRAME_RATE) */
+static void OVER_WAIT(void)
+{
+    wd(0x0020, (uint32_t)rw(0x0020) * rw(rd(0x0014) + 0x50));
+    OVER_FRAMES();
+}
+
+/* CODE:2ABA4: the player's score ([0020]'s low word, [0024]) goes into
+ * the high-score entry [0004], [0038] the entries below it (moved down
+ * one, the last one lost); header slot 37's music record the first time
+ * in a game over (CODE:2ADF0); "PLAYER n GOT A HIGHSCORE" and three
+ * letters typed (KEY_CHARS by LAST_KEY; Backspace, state+0E54h, takes
+ * one back; Enter, state+0E62h, ends with those typed) into CODE:2B09D;
+ * [0038], [003C], [0000] and [0004] kept across it */
+static void HISCORE_ENTER(void)
+{
+    uint32_t st = rd(0x0014), s0, s24, s20, a, v, c;
+    uint32_t k38, k3c, k0, k4;
+    uint16_t si, n;
+
+    wb(st + 0x93, 0xFF);
+    if (rb(0x2ADF0) == 0) {
+        s0 = rd(0x0000);
+        s24 = rd(0x0024);
+        s20 = rd(0x0020);
+        wd(0x0000, rd(st + 0x293A));
+        MUSIC_REQUEST();
+        wd(0x0020, s20);
+        wd(0x0024, s24);
+        wd(0x0000, s0);
+    }
+    /* CODE:2ABF5 */
+    wb(0x2ADF0, 0xFF);
+    si = rw(0x0038);
+    ww(0x0034, si);
+    if (si != 0) {
+        v = (uint32_t)si * 10;
+        wd(0x0034, v);
+        wd(0x0008, rd(0x0004) + sx16((uint16_t)v));
+        ww(0x0038, (uint16_t)(si - 1));
+        do {
+            /* CODE:2AC3E */
+            a = rd(0x0008);
+            wd(a, rd(a - 10));
+            ww(a + 4, rw(a - 6));
+            wd(a + 6, rd(a - 4));
+            wd(0x0008, a - 10);
+            n = rw(0x0038);
+            ww(0x0038, (uint16_t)(n - 1));
+        } while (n != 0);
+    }
+    /* CODE:2AC72 */
+    a = rd(0x0004);
+    ww(a + 4, rw(0x0020));
+    wd(a + 6, rd(0x0024));
+    st = rd(0x0014);
+    v = (rd(0x0020) & 0xFFFF0000u) | rw(st + 0x0D72);
+    v = (v & 0xFFFFFF00u) | (uint8_t)(v + 0x30);
+    wd(0x0020, v);
+    wb(0x2B04F, (uint8_t)v);
+    wb(0x2B079, (uint8_t)v);
+    k4 = a;
+    k0 = rd(0x0000);
+    k3c = rd(0x003C);
+    k38 = rd(0x0038);
+    wd(0x0020, 3);
+    OVER_WAIT();
+    DM_CLEAR();
+    wd(0x0000, 0x2B040);
+    DM_TEXT_DRAW();
+    wd(0x0000, 0x2B058);
+    DM_TEXT_DRAW();
+    wd(0x0020, 3);
+    OVER_WAIT();
+    ww(0x2AFE0, 0);
+    wb(0x2B09D, 0x20);
+    wb(0x2B09E, 0x20);
+    wb(0x2B09F, 0x20);
+    DM_CLEAR();
+    wd(0x0000, 0x2B06A);
+    DM_TEXT_DRAW();
+    wd(0x0000, 0x2B07C);
+    DM_TEXT_DRAW();
+    wb(N_LAST_KEY, 0);
+    for (;;) {
+        /* CODE:2AD59 */
+        wd(0x0000, 0x2B094);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+        if (rb(st + 0x0E54) != 0) {
+            wb(st + 0x0E54, 0);
+            n = rw(0x2AFE0);
+            ww(0x0020, n);
+            if (n != 0) {
+                ww(0x2AFE0, (uint16_t)(n - 1));
+                wd(0x0010, 0x2B09D);
+                wb(0x2B09D + sx16(n) - 1, 0x20);
+            }
+        }
+        /* CODE:2ADB9 */
+        st = rd(0x0014);
+        if (rb(st + 0x0E62) != 0) {
+            wb(st + 0x0E62, 0);
+            break;
+        }
+        /* CODE:2AE19 */
+        wd(0x0020, 0);
+        c = rb(N_LAST_KEY);
+        wd(0x0020, c);
+        if (c != 0) {
+            c = rb(N_KEY_CHARS + c);
+            wd(0x0020, c);
+            if (!(c & 0x80)) {
+                wd(0x0010, 0x2B09D);
+                n = rw(0x2AFE0);
+                ww(0x0028, n);
+                wb(0x2B09D + sx16(n), (uint8_t)c);
+                ww(0x2AFE0, (uint16_t)(n + 1));
+            }
+        }
+        /* CODE:2AE79 */
+        wb(N_LAST_KEY, 0);
+        wd(0x0020, 1);
+        OVER_FRAMES();
+        DM_CLEAR();
+        wd(0x0000, 0x2B06A);
+        DM_TEXT_DRAW();
+        wd(0x0000, 0x2B07C);
+        DM_TEXT_DRAW();
+        if (rw(0x2AFE0) >= 3) {
+            wd(0x0000, 0x2B094);
+            DM_TEXT_DRAW();
+            wd(0x0020, 3);
+            OVER_WAIT();
+            break;
+        }
+    }
+    wd(0x0038, k38);
+    wd(0x003C, k3c);
+    wd(0x0000, k0);
+    wd(0x0004, k4);
+}
+
+/* CODE:2AA90: GAME_PHASE 3, game over: header slot 36's music record,
+ * the current player's score; each player's score (the player record's
+ * dwords +0 and +4, as its word +0 and dword +4) against the table's
+ * five high scores (TABLE_HISCORES, state+0CFCh, 10 bytes: the initials,
+ * a 0, the score's word, its dword), at or above one HISCORE_ENTER. The
+ * initials of CODE:2B09D go into the entry [0004] also when no entry was
+ * passed: [0004] is then state+0D2Eh (MULTIBALL_ON and the next two
+ * bytes). Then the players' scores in the attract mode (state+0E34h
+ * FFh, the count state+0E2Ah and CODE:2A928, twice: CODE:2A92A) and
+ * GAME_PHASE 1 */
+static void GAME_OVER(void)
+{
+    uint32_t st = rd(0x0014), e, p, ent;
+    uint16_t n;
+
+    e = rd(st + 0x2936);
+    wd(0x0020, e);
+    if (e != 0) {
+        wd(0x0000, e);
+        MUSIC_REQUEST();
+    }
+    DM_CLEAR();
+    st = rd(0x0014);
+    e = rd(st + 0x0D76);
+    wd(0x0000, e);
+    wd(0x0000, e + 8);
+    ww(0x002C, 0xA0);
+    wd(0x0030, 0);
+    wd(0x0034, 0);
+    wd(0x0038, 2);
+    DM_SCORE_DRAW();
+    st = rd(0x0014);
+    ww(st + 0x0D72, 1);
+    ww(0x003C, rw(st + 0x0D70));
+    ww(0x003C, (uint16_t)(rw(0x003C) - 1));
+    wd(0x0000, st + 0x0D7A);
+    wb(0x2ADF0, 0);
+    do {
+        /* CODE:2AB48 */
+        p = rd(0x0000);
+        wd(0x0020, rd(p));
+        wd(0x0024, rd(p + 4));
+        wd(0x0004, rd(0x0014) + 0x0CFC);
+        wd(0x0038, 4);
+        for (;;) {
+            /* CODE:2AB7D */
+            ent = rd(0x0004);
+            if (rw(0x0020) > rw(ent + 4)
+                || (rw(0x0020) == rw(ent + 4) && rd(0x0024) >= rd(ent + 6))) {
+                HISCORE_ENTER();
+                break;
+            }
+            /* CODE:2AF01 */
+            wd(0x0004, ent + 10);
+            n = rw(0x0038);
+            ww(0x0038, (uint16_t)(n - 1));
+            if (n == 0)
+                break;
+        }
+        /* CODE:2AF26 */
+        ent = rd(0x0004);
+        wb(ent, rb(0x2B09D));
+        wb(ent + 1, rb(0x2B09E));
+        wb(ent + 2, rb(0x2B09F));
+        st = rd(0x0014);
+        ww(st + 0x0D72, (uint16_t)(rw(st + 0x0D72) + 1));
+        wd(0x0000, rd(0x0000) + 0x16);
+        n = rw(0x003C);
+        ww(0x003C, (uint16_t)(n - 1));
+    } while (n != 0);
+    st = rd(0x0014);
+    ww(st + 0x0E2A, rw(st + 0x0D70));
+    ww(0x2A928, rw(st + 0x0D70));
+    ww(0x2A92A, 2);
+    ww(st + 0x0D70, 0);
+    ww(st + 0x0D72, 0);
+    wb(st + 0x0E34, 0xFF);
+    ww(st + 0x0E36, 0x64);
+    wb(st + 0x0E35, 1);
+    ww(st + 0x8E, 1);
+    wb(st + 0x92, 0);
+}
+
 /* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
  * +15h, and LAST_KEY cleared): frames with "REALLY QUIT TABLE?"
  * (CODE:2A93E) on the display and no display stream, until Y (QUIT_TABLE,
@@ -1868,6 +2139,72 @@ static void HISCORE_PAGES(void)
     ww(0x2A6E6, (uint16_t)esi);
 }
 
+/* CODE:2A557: after a game over (state+0E34h not 0) the attract mode
+ * shows, in place of its display stream, "GAME OVER" (CODE:2A92C) while
+ * state+0E34h is negative and player n's score ("PLAYER n", state+0D72h)
+ * while positive, each for 100 frames (state+0E36h); the sign flips at
+ * each change, the player advanced at each "GAME OVER"; after the
+ * players (state+0E2Ah) the round again from player 1, twice
+ * (CODE:2A92A; CODE:2A928 the count), then state+0E34h 0 */
+static void ATTRACT_SCORES(void)
+{
+    uint32_t st = rd(0x0014), v;
+    uint16_t n;
+    uint8_t b;
+
+    DM_CLEAR();
+    if (rb(st + 0x0E34) & 0x80) {
+        wd(0x0000, 0x2A92C);
+        DM_TEXT_DRAW();
+    } else {
+        /* CODE:2A573 */
+        st = rd(0x0014);
+        v = (rd(0x0020) & 0xFFFF0000u) | rw(st + 0x0D72);
+        v = (v & 0xFFFFFF00u) | (uint8_t)(v + 0x31);
+        wd(0x0020, v);
+        wb(0x2A965, (uint8_t)v);
+        wd(0x0000, 0x2A95A);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+        v = (uint32_t)rw(st + 0x0D72) * 0x16;
+        wd(0x0020, v);
+        wd(0x0000, st + 0x0D7A + sx16((uint16_t)v) + 8);
+        ww(0x002C, 0x140);
+        ww(0x0030, 2);
+        ww(0x0034, 1);
+        ww(0x0038, 1);
+        DM_SCORE_DRAW();
+    }
+    /* CODE:2A607 */
+    st = rd(0x0014);
+    n = (uint16_t)(rw(st + 0x0E36) - 1);
+    ww(st + 0x0E36, n);
+    if (n != 0)
+        return;
+    b = (uint8_t)-rb(st + 0x0E34);
+    wb(st + 0x0E34, b);
+    if (b & 0x80) {
+        ww(st + 0x0D72, (uint16_t)(rw(st + 0x0D72) + 1));
+        n = (uint16_t)(rw(st + 0x0E2A) - 1);
+        ww(st + 0x0E2A, n);
+        if (n == 0) {
+            /* CODE:2A649 */
+            n = (uint16_t)(rw(0x2A92A) - 1);
+            ww(0x2A92A, n);
+            if (n == 0) {
+                wb(st + 0x0E34, 0);
+                return;
+            }
+            ww(st + 0x0E36, 0x64);
+            ww(st + 0x0E2A, rw(0x2A928));
+            ww(st + 0x0D72, 0);
+            return;
+        }
+    }
+    /* CODE:2A635 */
+    ww(st + 0x0E36, 0x64);
+}
+
 /* CODE:2A4F8: GAME_PHASE 1, the attract mode, a frame */
 static void ATTRACT(void)
 {
@@ -1885,8 +2222,11 @@ static void ATTRACT(void)
     /* CODE:156C3, a RET */
     FLIPPERS_STEP();
     st = rd(0x0014);
-    if (rb(st + 0x0E34) != 0)
-        pi_stop("CODE:2A557");
+    if (rb(st + 0x0E34) != 0) {
+        ATTRACT_SCORES();
+        ATTRACT_KEYS();
+        return;
+    }
     /* CODE:2A690 */
     DISPLAY_RUN();
     ANIMS_STEP();
@@ -1952,6 +2292,14 @@ void TABLE_GAME(void)
         }
         if (ph == 5) {
             BALL_END();
+            continue;
+        }
+        if (ph == 3) {
+            GAME_OVER();
+            continue;
+        }
+        if (ph == 8) {
+            EXTRA_BALL();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));

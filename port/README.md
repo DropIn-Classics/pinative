@@ -87,8 +87,11 @@ served again under the ball save (GAME_PHASE 7, "DON'T MOVE"), a lost
 ball without it (GAME_PHASE 5, CODE:2BBC6: the bonus with its
 multiplier, the table module's bonus display, slot 32, and table 1's
 slot 41 in C in src/modcode.c, the score paid, the next player or ball
-and its resets) up to `Stopped before CODE:2AA90` at game over
-(GAME_PHASE 3); the driver's command 2 (the pause toggle) with the
+and its resets), an extra ball (GAME_PHASE 8, CODE:2BB3E, "EXTRA
+BALL"), game over (GAME_PHASE 3, CODE:2AA90: the scores against the
+table's high scores, "PLAYER n GOT A HIGHSCORE" and three letters
+typed, Backspace and Enter) and the players' scores and "GAME OVER"
+in the attract mode after it (CODE:2A557); the driver's command 2 (the pause toggle) with the
 PIC's mask the port now keeps for it;
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
@@ -469,6 +472,33 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   stops in GAME_START). A whole game on table 1 with Enter every 500
   pictures now plays its three balls to `Stopped before CODE:2AA90`
   (not compared).
+- 2026-09-30, Linux: GAME_PHASE 3 and 8 on table 1 (dosrun with the
+  argument `C:\ILLUSION.CFG`, keys as for GAME_PHASE 4, the balls left,
+  state+0D36h, poked to 1 at the first lost ball, `-poke 12CAF6 10E7A4
+  0100`, so game over follows it; in the port the same pokes by a
+  scratch hook, since removed), at the players' scores after it
+  (`-break 12B4A3`, CODE:2A573, the first "PLAYER 1" page): no high
+  score (t=176.79); the player's word +0 poked to 3 (`-poke 12CAF6
+  10E7E8 0300`, 300,000,000, the third place) with A, B, Backspace, C,
+  D typed (dosrun `-key 181 1E` .. `-key 185 20`, the port's at
+  pictures 8812, 8847, 8882, 8917 and 8952, found by counting the name
+  loop's passes: 66, 101, 136, 171, 206; t=190.48); and at the scores'
+  end (`-break 12B5AE`, CODE:2A67E, t=204.74) with that score, the
+  player count poked to 2 at CODE:2AA90 (`-poke 12B9C0 10E7DE 0200`)
+  and A then Enter typed: CODE differs only in FRAME_SPINS (and
+  FRAME_COUNT by one, the runner's timing, in the first two), TAIL and
+  video memory equal, the heap blocks equal but the known leftovers
+  and the driver's block (its sample clock, the module's position, and
+  VSYNC_PHASE at CODE:0797 in the first). The extra ball (the player's
+  byte +10h poked to 1 at the first lost ball, `-poke 12CAF6 10E7F8
+  01`, Enter `-key 176 1C`, the port's at picture 8454): equal at
+  GAME_PHASE 8's end (`-break 12CAD8`, CODE:2BBA8, t=178.34) and up to
+  play's 840th frame (`-break 12C69E#840`); in the 841st the lost
+  ball's BALLS_MOVE reads the slope map one line past its end, which
+  in the original is pMAX's header of the next heap block (see
+  docs/HANDOFF.md, "GAME_PHASE 3 and 8 in the port"), so the ball's
+  record differs from there. All of GAME_OVER, OVER_WAIT, EXTRA_BALL
+  and CODE:2A557's branch ran in these runs (dosrun `-cover`).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

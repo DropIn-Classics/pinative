@@ -3646,6 +3646,73 @@ three balls and stops at game over: `Stopped before CODE:2AA90`
 scores, then GAME_PHASE 1) and GAME_PHASE 8 (CODE:2BB3E, the extra
 ball).
 
+### GAME_PHASE 3 and 8 in the port
+
+GAME_OVER (CODE:2AA90, GAME_PHASE 3) with HISCORE_ENTER, OVER_WAIT and
+OVER_FRAMES, EXTRA_BALL (CODE:2BB3E, GAME_PHASE 8) and ATTRACT's branch
+for the players' scores after a game (CODE:2A557) are in the port
+(src/play.c; names in src/ILLUSION.hints, 2026-09-30). With Enter every
+500 pictures a whole game on table 1 goes through game over back to the
+attract mode ("GAME OVER" and "PLAYER 1" with the score in turn, 100
+frames each, the round twice, then the display stream again); F1 and
+Enter for a second game after it met a slingshot's kick
+(`Stopped before BALL_BOUNCE: a slingshot's kick (CODE:1301A)`).
+
+What was learned (from the listing; the runs agree where they reached):
+
+- The high-score entries (TABLE_HISCORES, state+0CFCh) hold the score
+  as a word and a dword (+4, +6), compared with the player record's
+  word +0 and dword +4 (so the score is a 48-bit number, those two
+  parts, which is how DM_SCORE_DRAW reads it too); a score equal to an
+  entry goes above it. The defaults of table 1: ICE 1,000,000,000, ANY
+  500,000,000, AJL 250,000,000, SN 100,000,000, KHN 50,000,000 (read
+  as packed BCD from the port's memory at game over; not checked
+  against the high-score file).
+- GAME_OVER writes the initials of CODE:2B09D into the entry its search
+  ended at also when no entry was passed; that pointer is then one past
+  the fifth entry, state+0D2Eh: MULTIBALL_ON, the skill shot's flag
+  state+0D2Fh and state+0D30h get the letters. The letters are spaces
+  (20h, the image's) until a name has been typed, so after an ordinary
+  game over MULTIBALL_ON is 20h; in the two-player run with the first
+  player typing "A" the second player's pass wrote 41h, 20h, 20h. D2Fh
+  and D30h are set again before they are read (BALL_WAIT, GAME_START);
+  MULTIBALL_ON is not reset by GAME_START, so MODE_RUN's first frame
+  of the next game sees it (item 4 of "Next").
+- HISCORE_ENTER waits 3 s, shows "PLAYER n GOT A HIGHSCORE" 3 s, then
+  takes letters from LAST_KEY through KEY_CHARS a frame at a time until
+  three are typed (then 3 s more) or Enter; the name loop's frames took
+  two pictures each in the run (28.4 ms).
+- EXTRA_BALL sets no ball save (BALL_END cleared it): the extra ball of
+  the run, lost 1.7 s after its launch, went to GAME_PHASE 5 at once.
+- The players' scores' page count (state+0E2Ah) and CODE:2A928 are the
+  player count at game over; CODE:2A92A counts the two rounds.
+
+The heap headers: the extra-ball run is equal to the port up to play's
+840th frame (dosrun `-break 12C69E#840`) and differs in the next, in
+the ball's record. Bisected by the physics routines' calls (BALL_COLLIDE
+#5490.. and BALLS_MOVE #10993.. against scratch counters in the port):
+BALLS_MOVE #10995 reads the slope map (the ball's +5Ch, C50h bytes at
+linear 2FFCB0h here, 42 bytes a line) at line 75, one past its end, as
+the lost ball is below the table's last line (CODE:134D4). There the
+original has pMAX's 10h-byte header of the next block ("DATALOAD 2"),
+whose byte +0Ch (the name's selector, 04h) is taken as slope vector 4;
+the port keeps no headers and read a leftover 2Ch. Earlier lost balls
+(the GAME_PHASE 5 comparisons) did not show it, presumably because they
+had not reached that line or read an equal byte (not looked at). The
+headers seen in the runs: 01, FFh used (00 free), the selector word,
+the size (rounded to 16) as a dword, the name's offset dword and
+selector word, and a last word that looks like whatever was there
+before (not written by pMAX, presumably). The port's pmax.c would need
+them written at each allocation (the name's address from each caller;
+the driver's own allocations have selector 2Ch as the name's) and at a
+free, and the free rest of the chain (the run had one free block from
+3E8DA0h up to the top blocks). Next: that, then the slingshot's kick.
+
+Compared: see port/README.md, "Checked" (2026-09-30, GAME_PHASE 3 and
+8). Not run: a key KEY_CHARS gives FFh for in the name (read: it is
+passed over), a table other than 1,
+more than two players, a score equal to an entry.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3768,6 +3835,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      hint at CODE:30996; see "The hole's sound in a run": the original
      plays nothing there and skips that frame's draw, the fix plays the
      hole's own record 7 times an eject).
+   - MULTIBALL_ON (state+0D2Eh) left 20h after a game over (found
+     2026-09-30, see "GAME_PHASE 3 and 8 in the port"): GAME_OVER writes
+     the last initials typed (spaces until then) there for each player
+     whose score passes no high score; what that does in the next game
+     is not followed (MODE_RUN clears it in the first frame and sets
+     state+0D51h, read only).
 5. The port (stage 3), in steps (planned 2026-09-29):
    - done 2026-09-29: the port's memory in doskit (`pmem.h`: 16 MB of
      linear memory, the pMAX image loaded at a linear address with a
@@ -3897,11 +3970,13 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      port"; GAME_PHASE 4 begun 2026-09-30, see "GAME_PHASE 4 in the port":
      up to the first GAME_PHASE 5 on tables 1, 3 and 4, with the
      flippers' masks and surfaces and GAME_PHASE 7; GAME_PHASE 5 done
-     2026-09-30, see "GAME_PHASE 5 in the port"; next GAME_PHASE 3, game
-     over, and 8, the extra ball, same section); later table 2's slot
-     40, and the other phases as a game reaches them; the table's end after
-     Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
-     players' scores of ATTRACT (state+0E34h set, CODE:2A557).
+     2026-09-30, see "GAME_PHASE 5 in the port"; GAME_PHASE 3, game
+     over, and 8, the extra ball, with the players' scores of ATTRACT
+     (CODE:2A557) done 2026-09-30, see "GAME_PHASE 3 and 8 in the
+     port"; next the headers of pMAX's heap in the port and the
+     slingshot's kick, same section); later table 2's slot 40, and the
+     other phases as a game reaches them; the table's end after Y (TABLE
+     from CODE:A3FF, then the chooser again, CODE:7182).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
