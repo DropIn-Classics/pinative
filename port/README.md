@@ -316,8 +316,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
 - 2026-09-30, Linux: each of the four tables up to display opcode 2,
   CODE:2F7A5 (dosrun `-break 1306D5 -mem -vram`, the same keys), after
   opcodes 1 and 7 and the animation's frames: CODE differs in
-  FRAME_SPINS and FRAME_COUNT (the port's 26h, the run's 25h: see
-  docs/HANDOFF.md, "The attract mode's display"), TAIL and video memory
+  FRAME_SPINS and FRAME_COUNT (the port's 226h, the run's 225h: the
+  retrace's place in the frame, the runner's timing; see docs/HANDOFF.md,
+  "The attract mode's display"), TAIL and video memory
   equal, the heap blocks equal but the leftovers named above (the same
   blocks as at CODE:2F9CF). Whether ANIMS_STEP's paths for a list of
   more than one animation and for taking one off ran is not looked at.

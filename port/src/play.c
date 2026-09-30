@@ -209,7 +209,10 @@ static void FRAME_STEP(void)
     BALLS_SHOW();
     FLIPPERS_DRAW();
     /* the next retrace (DRV_TICK): in the runs 1.3 ms after DRV_FRAME,
-     * while FLIPPERS_DRAW runs (docs/HANDOFF.md, "The balls' sprites") */
+     * while FLIPPERS_DRAW runs in the first frame; in a frame with less
+     * work after the wait only in the next FRAME_STEP, so FRAME_COUNT
+     * is one behind the port's there (docs/HANDOFF.md, "The attract
+     * mode's display") */
     ns_retrace();
 }
 

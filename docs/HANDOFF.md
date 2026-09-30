@@ -3220,9 +3220,29 @@ ANIM_FRAME (CODE:27C2A) into DM_ANIM's block, 160 bytes a line, its
 frames one after the other in DM_ANIMS_SEL. Against the runs at opcode
 2 (CODE:2F7A5, `-break 1306D5`), all four tables: TAIL and video
 memory equal, the same heap blocks equal as at CODE:2F9CF, CODE but
-FRAME_SPINS and FRAME_COUNT: the port's 26h, the run's 25h. The port's
-lead is presumably the start-up's longer gaps between retraces (see
-"The balls' sprites"); not looked into yet.
+FRAME_SPINS and FRAME_COUNT: the port's 226h, the run's 225h.
+
+FRAME_COUNT at a given point of a frame depends on the machine's speed,
+not on the game: in a run of table 1 (`-log` at DRV_TICK, DRV_FRAME,
+FRAME_STEP, its wait's end CODE:298C5 and DISPLAY_RUN, t=133 to 150),
+DRV_TICK came 1.32 ms or more after DRV_FRAME, the median of 1185
+1.335 ms, the longest 15.6 ms (which ones were long not looked at), and
+DRV_TICK and DRV_FRAME each came 549 times in the 549 frames up to
+opcode 2; in the port (a scratch build printing the four) DRV_FRAME 549
+times and DRV_TICK 550, the last at the 549th frame's end. Where the
+tick lands in the code is how long the work after the wait takes: in frames 1 to 7 (the display's first opcodes and
+animation frames) 1.9 to 16.8 ms from the wait's end to DISPLAY_RUN,
+so the tick came before DISPLAY_RUN; from frame 8 on 0.71 ms, so
+DISPLAY_RUN saw the count before the tick (1178 of 1185 frames) and
+the tick came in the next FRAME_STEP's routines. The break at opcode 2
+was in such a frame. The port gives the tick at FRAME_STEP's end, the
+place of the heavy frames (and of the game's, presumably, with the
+ball's physics after the wait; not checked); so FRAME_COUNT is taken
+as timing, like FRAME_SPINS, in the comparisons: one apart where a
+frame's work after the wait is shorter than 1.33 ms of the runner's.
+What reads it: display opcode 1Ah (a text's blinking) and TAKE_HANDLERS'
+handler 1Ah (a random award by its low byte); a frame's difference in
+either is not a difference of the game's.
 
 ## Next
 
@@ -3455,7 +3475,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      on (FRAME_COUNT against the run's start-up gaps). Done
      2026-09-30: display opcodes 1 and 7, the RET opcodes and
      ANIMS_STEP's animation path, up to opcode 2 (CODE:2F7A5; see "The
-     attract mode's display"). Next: FRAME_COUNT, one ahead there.
+     attract mode's display"). Done 2026-09-30: FRAME_COUNT's one ahead
+     there is the runner's timing (same section). Next: display opcode
+     2 (CODE:2F7A5) and the ones after it.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
