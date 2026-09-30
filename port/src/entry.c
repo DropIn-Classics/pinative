@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "game.h"
+#include "nosound.h"
 #include "image.h"
 #include "names.h"
 #include "platform.h"
@@ -80,7 +81,8 @@ void ENTRY(void)
         return;
     SVGA_CHECK();
     /* IRQ 1 masked at the PIC (the keyboard is read otherwise; not
-     * followed): nothing in the port's memory */
+     * followed) */
+    pic_out21((uint8_t)(pic_in21() | 2));
     VGA_INIT();
     HISCORE_INIT();
     CHOOSER_LOAD();
@@ -95,6 +97,7 @@ void ENTRY(void)
         }
     }
     CD_LOCK(0);
-    /* IRQ 1 unmasked: nothing in the port's memory */
+    /* IRQ 1 unmasked */
+    pic_out21((uint8_t)(pic_in21() & 0xFD));
     pi_print_dos(PI_IMAGE_BASE + 0x07B4);
 }

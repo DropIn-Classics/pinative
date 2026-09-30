@@ -523,6 +523,7 @@ static void INTRO_LEAVE(void)
     /* the keyboard is the game's again (which handler takes it is not
      * followed) */
     frame_set_keyboard(NULL);
+    pic_out21((uint8_t)(pic_in21() & 0xFD));
     r.eax = 3;
     r.ds = pi_image.desc[ILLUSION_CODE].sel;
     ns_call(rw(N_DRIVER_ENTRY + 4), &r);
@@ -605,6 +606,7 @@ void CHOOSER_LOAD(void)
             pi_stop("CODE:7972 (the driver's command 1 failed)");
     }
     /* CODE:798B: IRQ 1 masked, port 60h read in the loop */
+    pic_out21((uint8_t)(pic_in21() | 2));
     frame_set_keyboard(key_byte);
     DRIVER_MIX();
     for (;;) {

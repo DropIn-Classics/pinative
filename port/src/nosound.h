@@ -26,6 +26,11 @@ void ns_far_call(uint16_t sel, uint32_t off);
  * the frame waited for (docs/HANDOFF.md, "The balls' sprites") */
 void ns_retrace(void);
 
+/* the master PIC's mask (port 21h), which the port keeps for the driver
+ * to read back */
+uint8_t pic_in21(void);
+void pic_out21(uint8_t al);
+
 /* nsplay.c, with DS the driver's: CODE:1A98 and CODE:1057 */
 void MIX_UPDATE(void);
 void CHANNELS_RESET(void);

@@ -5,6 +5,7 @@
  * src/NOSOUND.hints ... --base of the block).  The commands one by one as
  * the game reaches them.
  */
+#include <stdio.h>
 #include "frame.h"
 #include "game.h"
 #include "gen/nosound.h"
@@ -18,13 +19,29 @@ enum {
 #undef X
 };
 
-/* IN from the ports the driver saves, as dosrun answered in the run
- * (docs/HANDOFF.md, "The driver's command 0 in a run"); the port has no
- * PIC or speaker to ask */
+/* The master PIC's mask (port 21h) as the game and the driver write it:
+ * BAh as dosrun answered at command 0 (docs/HANDOFF.md, "The driver's
+ * command 0 in a run"), with IRQ 1 masked by ENTRY; what it held before
+ * ENTRY's OR is not known (not read by anyone). Only what reads it back
+ * (PORTS_SAVE, command 2) makes it matter. */
+static uint8_t pic_imr1 = 0xBA;
+
+uint8_t pic_in21(void)
+{
+    return pic_imr1;
+}
+
+void pic_out21(uint8_t al)
+{
+    pic_imr1 = al;
+}
+
+/* IN from the ports the driver saves, as dosrun answered in the run; the
+ * port has no slave PIC or speaker to ask */
 static uint8_t port_in(uint16_t port)
 {
     switch (port) {
-    case 0x21: return 0xBA;
+    case 0x21: return pic_imr1;
     case 0xA1: return 0xFF;
     case 0x61: return 0x30;
     }
@@ -492,6 +509,7 @@ static void TIMER_START(void)
     HCB_SETVEC(0, 0 /* CS */, D_TIMER_IRQ);
     ww(D_PIT_DIV, (uint16_t)(0x1234DCu / rw(D_MIX_RATE)));
     wb(D_IRQ_MASK1, rb(D_IRQ_MASK1) & 0xFE);
+    pic_out21((uint8_t)((pic_in21() | 0xFD) & rb(D_IRQ_MASK1)));
     timer_ds = pm_ds;
     timer_due = 0;
     frame_set_tick(TIMER_IRQ);
@@ -557,6 +575,7 @@ static int CMD_STOP(NsRegs *r)
      * found them, IRQ_MASK1 FDh, IRQ_MASK2 FFh */
     HCB_SETVEC(0, rw(D_OLD_IRQ0 + 4), rd(D_OLD_IRQ0));
     frame_set_tick(NULL);
+    pic_out21(rb(D_SAVED_IMR1));
     wb(D_IRQ_MASK1, 0xFD);
     wb(D_IRQ_MASK2, 0xFF);
     CHANNELS_RESET();
@@ -570,7 +589,33 @@ static int CMD_STOP(NsRegs *r)
         wb(D_VSYNC_ON, 0);
     }
     vsync_wait = 0;
-    /* CODE:10E1: ports 61h, 21h, A1h and the PIT again: nothing in memory */
+    /* CODE:10E1: ports 61h, 21h, A1h and the PIT again: only the mask
+     * kept */
+    pic_out21(rb(D_SAVED_IMR1));
+    return 0;
+}
+
+/* CODE:0C5B: command 2, a toggle (CODE:0C85): pause (CODE:1167: the
+ * PIC's masks kept at CODE:1193, 1194 and command 0's put back; then IRQ
+ * 0 masked, CODE:0604) and resume (CODE:1184: the kept masks back).  The
+ * port's timer ticks while IRQ 0 is unmasked only */
+static int CMD_PAUSE(NsRegs *r)
+{
+    (void)r;
+    if (rb(D_PLAYING) != 0xFF)
+        pi_stop("NOSOUND: command 2 refused (CODE:0A49)");
+    wb(D_PAUSED, (uint8_t)(rb(D_PAUSED) ^ 1));
+    if (rb(D_PAUSED) != 0) {
+        wb(D_PAUSE_IMR1, pic_in21());
+        wb(D_PAUSE_IMR2, port_in(0xA1));
+        pic_out21(rb(D_SAVED_IMR1));
+        pic_out21((uint8_t)(pic_in21() | 1));
+        frame_set_tick(NULL);
+    } else {
+        pic_out21(rb(D_PAUSE_IMR1));
+        if (!(pic_in21() & 1))
+            frame_set_tick(TIMER_IRQ);
+    }
     return 0;
 }
 
@@ -722,6 +767,9 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 1:
         cf = CMD_PLAY(r);
         break;
+    case 2:
+        cf = CMD_PAUSE(r);
+        break;
     case 3:
         cf = CMD_STOP(r);
         break;
@@ -761,8 +809,12 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 0x12:
         cf = CMD_SFX_BUSY(r);
         break;
-    default:
-        pi_stop("NOSOUND: a command not translated yet");
+    default: {
+        static char why[48];
+
+        snprintf(why, sizeof why, "NOSOUND: command %Xh, not translated yet", (unsigned)r->eax);
+        pi_stop(why);
+    }
         cf = 1;
     }
     if (cf)

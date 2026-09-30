@@ -545,8 +545,10 @@ int TABLE(uint8_t al)
         pi_stop("TABLE: TABLE_LOAD failed");
     if (TABLE_LOAD2())
         pi_stop("TABLE: TABLE_LOAD2 failed (CODE:A40A)");
-    /* IRQ 1 unmasked (not modelled: KBD_IRQ is set) */
+    /* IRQ 1 unmasked around the game */
+    pic_out21((uint8_t)(pic_in21() & 0xFD));
     TABLE_GAME();
+    pic_out21((uint8_t)(pic_in21() | 2));
     pi_stop("TABLE: after the game (CODE:A3FF)");
     return 1;
 }

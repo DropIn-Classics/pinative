@@ -144,6 +144,10 @@ code       CODE:156A NOTE_SAMPLE   ; the sample's selector, volume, finetune, lo
 code       CODE:15E5 NOTE_FX       ; the step again after a vibrato row; the tick routine RET (CODE:1B9E); the effect through ROW_FX or ROW_FX_SFX
 name       CODE:2D6F NEXT_SLOT     ; the slot times 275h commands 8 and 0Ah (CODE:0F17, 0FBE) start at; effects 0Bh and 0Dh set it to SLOT_OFF
 code       CODE:0B31 CMD_PLAY      ; command 1: PLAYING, TICKS 0, NBUF from CX (NBUF_SET), MIX_UPDATE NBUF times (nothing mixed: SAMPLE_POS 0), TIMER_START
+code       CODE:0C5B CMD_PAUSE     ; command 2, a toggle (PAUSED): pause (CODE:1167: the PIC's masks kept in PAUSE_IMR1, PAUSE_IMR2, command 0's SAVED_IMR1/2 put back; CODE:0604: IRQ 0 masked) or resume (CODE:1184: the kept masks back); refused unless PLAYING. Run 2026-09-30 (table 1, GAME_PHASE 6's MUSIC_REQUEST, t=150.0168): called twice in a row, PAUSED 0 after, PAUSE_IMR1 FCh, PAUSE_IMR2 FFh
+name       CODE:0C85 PAUSED
+name       CODE:1193 PAUSE_IMR1
+name       CODE:1194 PAUSE_IMR2
 code       CODE:0B96 NBUF_SET      ; NBUF from CX (2..0Fh); for another NBUF MIX_SIZE, DMA_SIZE and the DMA buffer made again (host callback 2, DMA_ALLOC)
 code       CODE:0CB9 CMD_LEVEL     ; command 0Ch: MASTER_VOL = BX, at most 100h
 code       CODE:0CD0 CMD_POSITION  ; command 0Dh: EAX = TICKS - (NBUF - MIX_ROOM / FRAME_BYTES), the ticks played

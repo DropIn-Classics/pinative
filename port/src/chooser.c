@@ -46,6 +46,7 @@ static void KBD_INSTALL(void)
     wd(N_KBD_OLD, 0x4152);
     ww(N_KBD_OLD + 4, 0x30);
     frame_set_keyboard(KBD_IRQ);
+    pic_out21((uint8_t)(pic_in21() & 0xFD));
 }
 
 /* CODE:23CA */
@@ -1691,6 +1692,7 @@ static uint8_t CHOOSER(void)
     if (rb(0x037C) == 1)
         pi_stop("CODE:523B (the self-patched call written)");
     /* KBD_RESTORE (CODE:33F5): IRQ 1 masked, its vector back */
+    pic_out21((uint8_t)(pic_in21() | 2));
     frame_set_keyboard(NULL);
     al = rb(N_ESC_KEY) == 1 ? 0xFF : rb(N_MENU_ROW);
     if (rb(0x5E1C) == 1)
