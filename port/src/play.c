@@ -1,8 +1,10 @@
 /* play.c - the game (CODE:B928): its start and main loop, as far as they
  * are translated.
  */
+#include "frame.h"
 #include "game.h"
 #include "names.h"
+#include "pmax.h"
 #include "pmem.h"
 #include "vga.h"
 
@@ -85,6 +87,64 @@ static void ATTRACT_SCROLL(void)
     CRT_NEXT_SET();
 }
 
+/* CODE:27D0A: the dot-matrix display into video memory from TBL_B922:
+ * 16 rows of A0h dots, each dot the animation area's ORed with the text
+ * area's; the even dots into plane 0, the odd ones into plane 2, a row
+ * every second line (A8h bytes) */
+static void DM_SHOW(void)
+{
+    uint32_t anim = pmax_base(rw(N_DM_ANIM)), text = pmax_base(rw(N_DM_TEXT));
+    uint32_t di, si, r, k;
+    int plane;
+
+    for (plane = 0; plane < 2; plane++) {
+        vga_outw(0x3C4, (uint16_t)(2 | (plane ? 4 : 1) << 8));
+        di = rd(N_TBL_B922);
+        si = (uint32_t)plane;
+        for (r = 0; r < 16; r++, di += 0x58, si += 0xA0)
+            for (k = 0; k < 0x50; k++, di++)
+                vga_write((uint16_t)di, (uint8_t)(lrb(anim + si + 2 * k) | lrb(text + si + 2 * k)));
+    }
+}
+
+/* CODE:A704: TBL_FADE_PAL mixed from the palette at `src` and the one at
+ * `dst`: (src x (20h - cl) + dst x cl) / 20h, a byte at a time */
+static void FADE_MIX(uint32_t src, uint32_t dst, uint8_t cl)
+{
+    uint32_t b;
+
+    for (b = N_TBL_FADE_PAL; b < N_TBL_PALETTE; b++)
+        wb(b, (uint8_t)((rb(src++) * (0x20 - cl) + rb(dst++) * cl) / 0x20));
+}
+
+/* CODE:B02B: TBL_FADE_PAL to the DAC from colour 0, shifted right 2 */
+static void FADE_PAL_SET(void)
+{
+    uint32_t i;
+
+    vga_outb(0x3C8, 0);
+    for (i = 0; i < 0x300; i++)
+        vga_outb(0x3C9, (uint8_t)(rb(N_TBL_FADE_PAL + i) >> 2));
+}
+
+/* CODE:A654: the dot-matrix display shown, TOP_COLOURS into the stage's
+ * palette (MODULE_HEADER+50h) at colour FCh, then 32 pictures from
+ * TBL_PALETTE toward the stage's palette (the last one 31/32 of the way) */
+static void TABLE_FADE_IN(void)
+{
+    uint32_t pal = rd(N_MODULE_HEADER + 0x50), i;
+    uint8_t cl;
+
+    DM_SHOW();
+    for (i = 0; i < 12; i++)
+        wb(pal + 3 * 0xFC + i, rb(N_TOP_COLOURS + i));
+    for (cl = 0x20; cl != 0; cl--) {
+        FADE_MIX(rd(N_MODULE_HEADER + 0x50), N_TBL_PALETTE, cl);
+        frame_wait();                               /* CODE:3D372 */
+        FADE_PAL_SET();
+    }
+}
+
 void TABLE_GAME(void)
 {
     DISPLAY_RESET();
@@ -94,5 +154,11 @@ void TABLE_GAME(void)
     ATTRACT_SCROLL();
     FLIPPERS_DRAW();
     FLIPPERS_STEP();
-    pi_stop("LIGHTS_STEP (CODE:2EF7A)");
+    LIGHTS_STEP();
+    FLASH_STEP();
+    TABLE_FADE_IN();
+    wb(0xD973, 1);             /* CODE:D973, not followed */
+    ww(N_GAME_PHASE, 1);
+    wb(N_QUIT_TABLE, 0);
+    pi_stop("CODE:9B92");
 }

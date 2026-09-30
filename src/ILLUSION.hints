@@ -780,6 +780,7 @@ name       CODE:B19B VM_DATA_NAME  ; "data\s00n\special\vm_data.mgl"
 code       CODE:B219 VM_DATA_FREE  ; INT 92h AH=5 on VM_DATA_SEL (who calls it not followed)
 ; the dot-matrix display's blocks (2026-09-30, the code; the port against
 ; a run at CODE:B22D, table 1)
+code       CODE:27D0A DM_SHOW      ; the display (DM_TEXT ORed with DM_ANIM) into video memory (DM_VIDEO_SEL) from TBL_B922: 16 rows of A0h dots, the even ones to plane 0 (map mask 1), the odd ones to plane 2 (4), a row every second line (A8h bytes)
 code       CODE:2833E DM_LOAD      ; DM_VIDEO_SEL (INT 93h AH=5), DM_TEXT_ALLOC, DM_ANIM_ALLOC, DM_FONTS_LOAD, DM_ANIMS_LOAD (CF if one failed), then DM_CLEAR, DM_TEXT_CLEAR, DM_ANIM_CLEAR
 name       CODE:27D08 DM_VIDEO_SEL
 code       CODE:271BC DM_TEXT_ALLOC ; "dot matrix text area" (INT 92h AH=4) and "Temp Text area" (AH=0Ah), 1400h bytes each, DM_TEXT_CLEAR
@@ -810,6 +811,10 @@ name       CODE:2791F DM_ANIMS_NAME ; "data\s00n\anims\allanims.mgl"
 code       CODE:911F TBL_VGA_INIT  ; a retrace waited, DAC_LOAD TBL_PALETTE, unchained (CR 11h 0, sequencer 4 AND F6h, CR 14h bit 6 off, CR 17h E3h), video memory 0 (map mask 0Fh), the mode routine of MODE_ROUTINES by OPT_RESOLUTION, MEASURE_RATE, video memory 0 again, DAC_LOAD TBL_PALETTE again (MODULE_HEADER+50h, the stage's palette pointer, read and not used), STAGE_TO_VRAM, policy 0, SPOOKY_SEL (32DC0h bytes, INT 92h AH=0Ah), STAGE_TO_SPOOKY. Run 2026-09-30: three retrace edges counted in it (frames 5866 to 5869)
 name       CODE:910E MODE_ROUTINES
 name       CODE:AA2B TBL_PALETTE   ; 300h bytes, shifted right 2 to the DAC
+name       CODE:A72B TBL_FADE_PAL  ; 300h bytes, TABLE_FADE_IN's mix
+code       CODE:A654 TABLE_FADE_IN ; DM_SHOW, TOP_COLOURS into the stage's palette (MODULE_HEADER+50h) from colour FCh, then 32 times (CL 20h down to 1): FADE_MIX of the stage's palette and TBL_PALETTE, a retrace waited, FADE_PAL_SET
+code       CODE:A704 FADE_MIX      ; TBL_FADE_PAL = (ESI x (20h - CL) + EDI x CL) / 20h, byte by byte
+code       CODE:B02B FADE_PAL_SET  ; TBL_FADE_PAL to the DAC from colour 0, shifted right 2
 code       CODE:92FA DAC_LOAD      ; 300h bytes at ES:ESI, each shifted right 2, to the DAC from colour 0
 code       CODE:3D389 MAP_MASK     ; the sequencer's map mask from AH
 code       CODE:3D39F VGA_UNCHAINED ; mode 13h (INT 10h), then unchained as TBL_VGA_INIT does it
@@ -841,6 +846,11 @@ code       CODE:9311 SCREEN_START  ; the CRTC's start address SCREEN_LINE x 54h 
 name       CODE:A2B9 SCREEN_LINE   ; the screen's first line of the stage (see CODE:BB0A)
 code       CODE:29AF9 LIGHTS_RESET ; along header slot 14's groups (state+28DEh, pointers ended by 0; a group's byte +4 AND 6, its +0 the first light, a light's +10h the next): each light without +2 bit 2 LIGHT_INIT; its byte in state+16B2h (by its running number in CODE:0038) 0; +3, +4, +0, +5 0, +1 FFh, +2 bits 0, 1 cleared; state+16AEh the first group, state+16ACh FFFFh; state+17B8h and state+1822h lists emptied
 code       CODE:28FF8 LIGHT_INIT   ; the light [CODE:0000]: without +2 bit 3 its LIGHTS_ONE1 byte (+1Ch) 0; with it the drop target's picture 2 x +1Ch at +14h, +18h (DROP_PIC)
+code       CODE:28FBA LIGHT_ON      ; the light [CODE:0000]: without +2 bit 3 its LIGHTS_ONE1 byte (+1Ch) FFh; with it the drop target's picture 2 x +1Ch - 1 at +14h, +18h (DROP_PIC)
+code       CODE:2EF17 GROUP_FLASH   ; the group [CODE:0008] onto the stack at state+1822h (a word 10h, the group; for GROUP_FLASH_STEP), bit 0 of each of its lights' +2 set
+code       CODE:2ED15 FLASH_STEP    ; LIGHT_FLASH_STEP, GROUP_FLASH_STEP
+code       CODE:2ED20 LIGHT_FLASH_STEP ; the flashing light state+17B2h, its count state+17B6h down by one a call: +1 0 while the count's bit 1 is set, else FFh; at 0 no longer flashing (+2 bit 0 cleared); with none the next from the stack of 6-byte entries (word count, light) below state+17B8h (empty at state+17BCh)
+code       CODE:2EDD8 GROUP_FLASH_STEP ; the same for the group state+181Ch (count state+1820h, stack below state+1822h, empty at state+1826h), all its lights' +1; at 0 the group's +4 bit 0 cleared and its lights' +0 and +5 lose the bits of state+0D74h (the current player's, presumably), +2 bit 0 cleared
 code       CODE:2912B DROP_PIC     ; DROPS_SEL's picture ESI (the dword table at the block's start; a picture: width, height, bytes) by SPRITE4_DRAW
 code       CODE:29265 SPRITE4_DRAW ; the picture at FS:[SPR_SRC] (SPR_W x SPR_H, a quarter of the width a row per plane, FFh transparent) at SPR_X, SPR_Y: into SPOOKY_SEL (the planes by SPR_PLANES, from x AND 3's, the next byte after the fourth), then into video memory from 1500h where HIDELIGHTS_SEL's byte of the same plane is 0
 name       CODE:28C31 SPR_X

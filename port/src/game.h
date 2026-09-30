@@ -82,8 +82,11 @@ void FLIPPERS_DRAW(void);
 /* CODE:1048B */
 void FLIPPERS_STEP(void);
 
-/* lights.c: CODE:29AF9 */
+/* lights.c: CODE:29AF9, CODE:2EF7A, CODE:2ED15, CODE:2FE8E */
 void LIGHTS_RESET(void);
+void LIGHTS_STEP(void);
+void FLASH_STEP(void);
+void EVENT_QUEUE(void);
 /* play.c: CODE:B928, the game */
 void TABLE_GAME(void);
 

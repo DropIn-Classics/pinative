@@ -178,6 +178,13 @@ doskit's stage 1 (disasm.py, tasm.py, build.py) and its runner were
 Decided 2026-09-29: doskit gets 32-bit support (it is wanted for later
 games too), in the kit with tests (rule 7).
 
+Found 2026-09-30: a name given twice in the hints (FADE_PAL at CODE:6380
+and again at CODE:A72B) passes disasm.py, symmap.py and check.py
+without a word; symmap.py kept the second address, so the intro's
+routines wrote to the table's palette. A check for it belongs in doskit
+with a test (rule 7); not done. Until then: `awk '$1=="name"||$1=="code"
+{print $3}' src/ILLUSION.hints | sort | uniq -d` before a new name.
+
 ## Stage 1: ILLUSION.386
 
 `python3 doskit/tools/build.py src/ILLUSION.hints`: IDENTICAL, 30,153
@@ -3009,6 +3016,33 @@ CODE:0000..0030 equal): the up path, the nudges' keys, the tilt count
 and the sounds (commands 9 and 12h) are not checked in a run yet; the
 port's KBD_IRQ still stops it.
 
+LIGHTS_STEP (CODE:2EF7A, as the comment in the hints has it) and
+FLASH_STEP (CODE:2ED15: LIGHT_FLASH_STEP and GROUP_FLASH_STEP, a light
+and a group flashing by a count, the next taken from a stack of 6-byte
+entries) are in lights.c, with LIGHT_ON (CODE:28FBA), EVENT_QUEUE and
+GROUP_FLASH (CODE:2EF17). At the game's start they draw nothing (the
+video memory as at LIGHTS_STEP) and no group is complete, so of them
+only the visiting and the lights-off path ran; EVENT_QUEUE, GROUP_FLASH,
+the flashing and the lane change are not checked in a run. Against the
+runs at CODE:A654 (`-break 10B584`), all four tables: CODE only
+FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but the
+known leftovers.
+
+TABLE_FADE_IN (CODE:A654) shows the dot-matrix display (DM_SHOW,
+CODE:27D0A: 16 rows of A0h dots, the text area's ORed with the
+animation area's, the even dots to plane 0 and the odd ones to plane 2,
+a row every second line, from TBL_B922), writes TOP_COLOURS into the
+stage's palette (header slot 20) at colour FCh and fades in 32 pictures
+from TBL_PALETTE toward the stage's palette (TBL_FADE_PAL, the last step
+31/32 of the way; the run counts 32 pictures, frames 5869 to 5901).
+Then TABLE_GAME sets CODE:D973 (not followed), GAME_PHASE 1 and
+QUIT_TABLE 0. Against the runs at CODE:9B92 (`-break 10AAC2`), all four
+tables: CODE only FRAME_SPINS, TAIL and video memory equal, the heap
+blocks equal but the known leftovers; table 1's screen at t=133.005
+(`-shot`) and the port's picture 5898 (DK_SHOTS) equal pixel for pixel,
+the DAC of the fade's second-last step with them. The last step's DAC
+is not compared (the port stops before its picture).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3221,9 +3255,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30: the start up to CODE:30114 (see "The game's start").
      Done 2026-09-30: ATTRACT_SCROLL and FLIPPERS_DRAW, up to
      CODE:1048B (same section). Done 2026-09-30: FLIPPERS_STEP, up to
-     LIGHTS_STEP (same section; its up path unchecked). Next:
-     LIGHTS_STEP, 2ED15, A654 (the palette's fade-in), 9B92 (the
-     driver's commands).
+     LIGHTS_STEP (same section; its up path unchecked). Done
+     2026-09-30: LIGHTS_STEP, FLASH_STEP and TABLE_FADE_IN, up to
+     CODE:9B92 (same section). Next: CODE:9B92 (the driver's commands
+     0Eh and 0Fh with DRV_TICK and DRV_FRAME, 0Ch, MUSIC_TRACK, 1),
+     then the loop from CODE:B976 (GAME_PHASE 1, the attract mode,
+     CODE:2A4F8) and KBD_IRQ (CODE:A076).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

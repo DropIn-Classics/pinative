@@ -1,6 +1,7 @@
-/* lights.c - the light states of header slot 14 at the game's start
- * (LIGHTS_RESET, CODE:29AF9) and the drop targets' pictures they draw
- * (DROP_PIC, CODE:2912B; SPRITE4_DRAW, CODE:29265).
+/* lights.c - the light states of header slot 14: at the game's start
+ * (LIGHTS_RESET, CODE:29AF9), a frame (LIGHTS_STEP, CODE:2EF7A) and their
+ * flashing (FLASH_STEP, CODE:2ED15), and the drop targets' pictures they
+ * draw (DROP_PIC, CODE:2912B; SPRITE4_DRAW, CODE:29265).
  */
 #include "game.h"
 #include "names.h"
@@ -151,4 +152,283 @@ void LIGHTS_RESET(void)
     st = rd(0x0014);
     wd(st + 0x17B8, st + 0x17BC);
     wd(st + 0x1822, st + 0x1826);
+}
+
+/* CODE:28FBA: the light [0000] on: without bit 3 of +2 its LIGHTS_ONE1
+ * byte FFh; with it the drop target's picture 2 x +1Ch - 1 (DROP_PIC) */
+static void LIGHT_ON(void)
+{
+    uint32_t b = rd(0x0000);
+
+    if (!(rb(b + 2) & 8)) {
+        wb(N_LIGHTS_ONE1 + rw(b + 0x1C), 0xFF);
+        return;
+    }
+    wd(N_SPR_X, rd(b + 0x14));
+    wd(N_SPR_Y, rd(b + 0x18));
+    DROP_PIC((uint32_t)rw(b + 0x1C) * 2 - 1);
+}
+
+/* CODE:2FE8E: [0000] into the ring of 64 dwords at [state+2A1Eh], the
+ * index state+2A1Ah, the next entry 0 */
+void EVENT_QUEUE(void)
+{
+    uint32_t st = rd(0x0014), ring = rd(st + 0x2A1E);
+    int16_t n = (int16_t)rw(st + 0x2A1A);
+
+    wd(0x0004, ring);
+    ww(0x0028, (uint16_t)n);
+    wd(ring + (uint32_t)(n * 4), rd(0x0000));
+    wd(ring + (uint32_t)(n * 4) + 4, 0);
+    ww(st + 0x2A1A, (uint16_t)((rw(st + 0x2A1A) + 1) & 0x3F));
+}
+
+/* CODE:2EF17: the group [0008] onto the list at state+1822h (a word 10h,
+ * the group), bit 0 of each light's +2 set */
+static void GROUP_FLASH(void)
+{
+    uint32_t save = rd(0x0004), st = rd(0x0014), p = rd(st + 0x1822), l;
+
+    ww(p, 0x10);
+    wd(p + 2, rd(0x0008));
+    wd(0x0004, p + 6);
+    wd(st + 0x1822, p + 6);
+    wd(0x0000, rd(rd(0x0008)));
+    for (;;) {
+        l = rd(0x0000);
+        wb(l + 2, (uint8_t)(rb(l + 2) | 1));
+        wd(0x0020, rd(l + 0x10));
+        if (!rd(0x0020))
+            break;
+        wd(0x0000, rd(0x0020));
+    }
+    wd(0x0004, save);
+}
+
+/* CODE:2EF7A: the lights of header slot 14's groups a frame, from where
+ * the last call stopped (state+16AEh, the light's number state+16ACh):
+ * up to 20h lights visited and 8 drawn; blinking counted; a group whose
+ * lights are all shown gets its stream queued and flashes, once (see the
+ * hints); then, at a new press of a flipper key, the lane change */
+void LIGHTS_STEP(void)
+{
+    uint32_t st = rd(0x0014), p, g, l, nx;
+    int16_t n;
+
+    wd(0x000C, rd(st + 0x16AE));
+    ww(0x0038, rw(st + 0x16AC));
+    wd(0x0030, 0x20);
+    ww(0x0034, rw(st + 0x0D72));
+    wd(0x003C, 8);
+    for (;;) {                                          /* CODE:2EFC6 */
+        ww(st + 0x16AC, rw(0x0038));
+        if ((int16_t)rw(0x0030) < 0)
+            goto stop;
+        wd(0x002C, 0);
+        p = rd(0x000C);
+        wd(0x0020, rd(p));
+        wd(0x000C, p + 4);
+        if (!rd(0x0020)) {
+            p = rd(st + 0x28DE);
+            wd(0x0038, 0xFFFFFFFFu);
+            ww(st + 0x16AC, 0xFFFF);
+            wd(0x0020, rd(p));
+            wd(0x000C, p + 4);
+            if (!rd(0x0020))
+                goto back;
+        }
+        /* CODE:2F044 */
+        wd(0x0010, rd(0x0020));
+        wd(0x0000, rd(rd(0x0020)));
+        for (;;) {                                      /* CODE:2F05A */
+            int shown = 0;
+
+            ww(0x0038, (uint16_t)(rw(0x0038) + 1));
+            l = rd(0x0000);
+            if (rb(l + 2) & 2) {
+                wd(0x002C, 0xFFFFFFFFu);
+                wb(l + 3, (uint8_t)(rb(l + 3) - 1));
+                if (rb(l + 3) & 0x80) {
+                    wb(l + 1, (uint8_t)~rb(l + 1));
+                    wb(l + 3, rb(l + 4));
+                }
+            }
+            if (rb(l + 1) != 0) {
+                wb(0x0020, (uint8_t)(rb(l) | rb(l + 5)));
+                shown = rd(0x0020) >> (rd(0x0034) & 0x1F) & 1;
+            }
+            n = (int16_t)rw(0x0038);
+            if (shown) {
+                if (rb(st + 0x16B2 + (uint32_t)(int32_t)n) != 0)
+                    goto next;
+                wb(st + 0x16B2 + (uint32_t)(int32_t)n, 0xFF);
+                if (!(rb(l + 2) & 4))
+                    LIGHT_ON();
+            } else {                                    /* CODE:2F0F6 */
+                wd(0x002C, 0xFFFFFFFFu);
+                if (rb(st + 0x16B2 + (uint32_t)(int32_t)n) == 0)
+                    goto next;
+                wb(st + 0x16B2 + (uint32_t)(int32_t)n, 0);
+                if (!(rb(rd(0x0000) + 2) & 4))
+                    LIGHT_INIT();
+            }
+            /* CODE:2F139 */
+            ww(0x003C, (uint16_t)(rw(0x003C) - 1));
+            if (rw(0x003C) == 0)
+                goto back;
+        next:                                           /* CODE:2F14F */
+            ww(0x0030, (uint16_t)(rw(0x0030) - 1));
+            nx = rd(rd(0x0000) + 0x10);
+            wd(0x0020, nx);
+            if (!nx)
+                break;
+            wd(0x0000, nx);
+        }
+        /* CODE:2F17D: every light shown, none blinking */
+        if (rb(0x002C) & 0x80)
+            continue;
+        g = rd(0x0010);
+        if (rb(g + 4) & 2)
+            continue;
+        if (rb(g + 4) & 1)
+            continue;
+        wb(g + 4, (uint8_t)(rb(g + 4) | 1));
+        wd(0x0020, rd(g + 6));
+        if (rd(0x0020)) {
+            wd(0x0000, rd(0x0020));
+            EVENT_QUEUE();
+        }
+        wd(0x0008, rd(0x0010));
+        GROUP_FLASH();
+    }
+back:                                                   /* CODE:2F1D6 */
+    wd(0x000C, rd(0x000C) - 4);
+stop:                                                   /* CODE:2F1E5 */
+    wd(st + 0x16AE, rd(0x000C));
+    wb(0x0020, (uint8_t)(rb(st + 0x2A7C) | rb(st + 0x2A7B)));
+    if (rb(0x0020) == 0) {
+        wb(st + 0x2A7A, 0);
+        return;
+    }
+    if (rb(st + 0x2A7A) != 0)
+        return;
+    wb(st + 0x2A7A, 0xFF);
+    /* the lane change: the groups listed backwards before slot 14's */
+    wd(0x0000, rd(st + 0x28DE));
+    for (;;) {                                          /* CODE:2F235 */
+        wd(0x0000, rd(0x0000) - 4);
+        g = rd(rd(0x0000));
+        wd(0x0020, g);
+        if (!g)
+            return;
+        wd(0x0004, rd(g));
+        wb(0x0020, rb(rd(g)));
+        for (;;) {                                      /* CODE:2F268 */
+            l = rd(0x0004);
+            nx = rd(l + 0x10);
+            wd(0x0024, nx);
+            if (!nx)
+                break;
+            wd(0x0008, nx);
+            wb(l, rb(nx));
+            wd(0x0004, nx);
+        }
+        wb(rd(0x0004), rb(0x0020));
+    }
+}
+
+/* CODE:2ED20: the flashing light state+17B2h (count state+17B6h: +1 0
+ * while bit 1 of the count is set, else FFh; at 0 done, bit 0 of +2
+ * cleared); with none, the next from the stack of 6-byte entries (a
+ * word count, the light) below state+17B8h */
+static void LIGHT_FLASH_STEP(void)
+{
+    uint32_t st = rd(0x0014), p;
+    uint16_t di;
+
+    wd(0x0020, rd(st + 0x17B2));
+    if (!rd(0x0020)) {                                  /* CODE:2ED7C */
+        p = rd(st + 0x17B8);
+        wd(0x0000, p);
+        if (p == 0xE2FA)                                /* state+17BCh */
+            return;
+        wd(st + 0x17B2, rd(p - 4));
+        wd(0x0000, p - 6);
+        ww(st + 0x17B6, rw(p - 6));
+        wd(st + 0x17B8, rd(st + 0x17B8) - 6);
+        return;
+    }
+    wd(0x0004, rd(0x0020));
+    ww(0x0020, rw(st + 0x17B6));
+    if (rw(0x0020) == 0) {                              /* CODE:2EDBC */
+        wd(st + 0x17B2, 0);
+        p = rd(0x0004);
+        wb(p + 2, (uint8_t)(rb(p + 2) & ~1));
+        return;
+    }
+    di = (uint16_t)(rw(0x0020) & 2);
+    ww(0x0020, di);
+    wb(rd(0x0004) + 1, di ? 0 : 0xFF);
+    ww(st + 0x17B6, (uint16_t)(rw(st + 0x17B6) - 1));
+}
+
+/* CODE:2EDD8: the same for the flashing group state+181Ch (count
+ * state+1820h, all its lights' +1; the stack below state+1822h); at the
+ * count's end the group's +4 bit 0 cleared and its lights' +0 and +5
+ * lose the player's bits (state+0D74h), +2 bit 0 cleared */
+static void GROUP_FLASH_STEP(void)
+{
+    uint32_t st = rd(0x0014), p, l;
+    uint8_t v;
+
+    wd(0x0020, rd(st + 0x181C));
+    if (!rd(0x0020)) {                                  /* CODE:2EE73 */
+        p = rd(st + 0x1822);
+        wd(0x0000, p);
+        if (p == 0xE364)                                /* state+1826h */
+            return;
+        wd(st + 0x181C, rd(p - 4));
+        wd(0x0000, p - 6);
+        ww(st + 0x1820, rw(p - 6));
+        wd(st + 0x1822, rd(st + 0x1822) - 6);
+        return;
+    }
+    wd(0x0004, rd(0x0020));
+    ww(0x0020, rw(st + 0x1820));
+    if (rw(0x0020) == 0) {                              /* CODE:2EEB3 */
+        wd(st + 0x181C, 0);
+        p = rd(0x0004);
+        wb(p + 4, (uint8_t)(rb(p + 4) & ~1));
+        wd(0x0008, rd(p));
+        ww(0x0024, (uint16_t)~rw(st + 0x0D74));
+        for (;;) {
+            l = rd(0x0008);
+            wb(l, (uint8_t)(rb(l) & rb(0x0024)));
+            wb(l + 5, (uint8_t)(rb(l + 5) & rb(0x0024)));
+            wb(l + 2, (uint8_t)(rb(l + 2) & ~1));
+            wd(0x0020, rd(l + 0x10));
+            if (!rd(0x0020))
+                return;
+            wd(0x0008, rd(0x0020));
+        }
+    }
+    wd(0x0008, rd(rd(0x0004)));
+    ww(0x0020, (uint16_t)(rw(0x0020) & 2));
+    v = rw(0x0020) ? 0 : 0xFF;
+    for (;;) {
+        l = rd(0x0008);
+        wb(l + 1, v);
+        wd(0x0020, rd(l + 0x10));
+        if (!rd(0x0020))
+            break;
+        wd(0x0008, rd(0x0020));
+    }
+    ww(st + 0x1820, (uint16_t)(rw(st + 0x1820) - 1));
+}
+
+/* CODE:2ED15 */
+void FLASH_STEP(void)
+{
+    LIGHT_FLASH_STEP();
+    GROUP_FLASH_STEP();
 }

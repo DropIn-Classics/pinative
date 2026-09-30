@@ -50,8 +50,10 @@ and collision masks kept) and the multiball cap: TABLE_LOAD2 whole;
 the game's first steps (src/play.c, src/lights.c: the display queue
 and the lights reset, the drop targets drawn, the attract scroll's
 first line, the flippers drawn, the nudges and the flippers' moves with
-their sounds, src/flipper.c and the driver's commands 9 and 12h) up to
-LIGHTS_STEP (`Stopped before LIGHTS_STEP (CODE:2EF7A)`); the Info page (a table's
+their sounds, src/flipper.c and the driver's commands 9 and 12h, the
+lights' states and flashing a frame, the dot-matrix display shown and
+the table's palette faded in) up to CODE:9B92 (`Stopped before
+CODE:9B92`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -261,6 +263,14 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   the leftovers named above. Only the flippers' rest path ran: their
   move up, the nudges, the tilt count and the driver's commands 9 and
   12h (the flippers' sounds) are not checked yet.
+- 2026-09-30, Linux: each of the four tables up to CODE:A654 (dosrun
+  `-break 10B584 -mem -vram`) and CODE:9B92 (`-break 10AAC2`), the same
+  keys: CODE differs only in FRAME_SPINS, TAIL and video memory equal,
+  the heap blocks equal but the leftovers named above; table 1's screen
+  at t=133.005 (`-shot`) and the headless port's picture 5898 equal
+  pixel for pixel (the fade's second-last step). No light drawn, no
+  group complete there: the lights' drawing, the event queue, the
+  flashing and the lane change are not checked yet.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
