@@ -149,6 +149,25 @@ static int SFX_CHECK(void)
     return cf;
 }
 
+/* CODE:9F88: the record at [CODE:0000] as a note of a module's sample on
+ * channel 4 (command 7: the slot +12h, the sample +14h, the note +6, the
+ * volume +4) unless SFX_CHECK refuses */
+void SFX_NOTE(void)
+{
+    uint32_t p;
+    NsRegs r;
+
+    if (SFX_CHECK())
+        return;
+    p = rd(0x0000);
+    memset(&r, 0, sizeof r);
+    r.eax = 7;
+    r.edx = 4;
+    r.ecx = (uint32_t)rb(p + 0x12) << 8 | rb(p + 0x14);
+    r.ebx = (uint32_t)rb(p + 4) << 8 | rb(p + 6);
+    tbl_driver(&r);
+}
+
 /* CODE:9F2C: the sound record at [CODE:0000] on channel 4 (command 9) */
 void SFX_PLAY(void)
 {

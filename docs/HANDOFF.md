@@ -3533,6 +3533,44 @@ the ball lost under the ball save, no flipper pressed) the ball went
 through the flippers' boxes (the flipper-mask sampling, CODE:12453, and
 the flipper surfaces, CODE:1187F on, ran), which is the next step.
 
+Then (same day) the flippers and the lost ball:
+
+- FLIP_SAMPLE (CODE:1241E): the ring against the flipper's mask, the
+  same sampling as MAP_SAMPLE with 16 bytes a line; the mask by the
+  angle +1Ah (a negative one mirrored to -n-1) through the words at
+  +0B0h, placed by FLIP_SHAPES' two bytes for (+6 + +1Ah) mod 78h.
+- The flippers' surfaces 1..4 (SURF_FLIPPER, CODE:1187F): the turn +10h
+  lessened by half a weight from the table CODE:21981 (by the contact
+  point's distance from the flipper's +2, +4); the eight kinds of
+  CODE:11AE9 are one routine repeated every DBh bytes with its own
+  8-byte table by the normal's octant (FLIP_KIND0 in the hints). With no
+  flipper pressed the turn is 0 at rest, so mostly nothing is pushed;
+  kinds 0's and 4's pushes ran all the same (the flippers falling back,
+  presumably).
+- GAME_PHASE 7 (CODE:2BAD5, SAVE_SERVE in the port): frames with "DON'T
+  MOVE" until the served ball leaves the lane.
+- For tables 3 and 4: event opcodes 4 (a drop target), 17h (a jump
+  unless lit) and, read and translated with them but not run, 1, 0Dh,
+  0Eh, 19h; a zone's light state (LIGHT_QUEUE, CODE:2ECCE, and SCORE_ADD,
+  CODE:2FD11); RECORD_DISPATCH (CODE:3007A) with type 5, SFX_NOTE
+  (CODE:9F88: the driver's command 7, a note of a module's sample; in the
+  port NOSOUND's CMD_NOTE, CODE:0DD5).
+
+Compared (port/README.md, "Checked"): table 1 at GAME_PHASE 7 (t=160.34)
+and tables 1, 3 and 4 at the first GAME_PHASE 5 (CODE:2BBC6; t=171.28,
+165.68, 165.21: two balls lost on table 1, the served ball's too): equal
+but the known leftovers. Not run in these games: flipper kinds 1, 2, 3,
+5, 6, a push of kind 0 with a negative turn, the weight at or above 2Eh
+(CODE:11AAC), opcodes 1, 0Dh, 0Eh, 19h.
+
+GAME_PHASE 5 (CODE:2BBC6) is next: BONUS_ADD (CODE:2BD8C) counts the
+bonus and calls the table module's slot 32 (MOD_BALL_BONUS in
+src/T001.hints, CODE:37AD there) through state+2926h with the host
+vector CODE:2CD10 in [CODE:0010]; after the next ball's resets the
+module's slot 41 (state+294Ah). That is the first of the modules' own
+code the port meets in play (slot 40 is a RET but on table 2): it has to
+be translated per table, T001..T004, from their hints.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3782,8 +3820,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      done 2026-09-30, see "The balls' physics"; done 2026-09-30 in the
      port up to GAME_PHASE 4, CODE:2B76E, see "GAME_PHASE 6 in the
      port"; GAME_PHASE 4 begun 2026-09-30, see "GAME_PHASE 4 in the port":
-     up to the first flipper-mask sample; next that sampling and the
-     flipper surfaces, then the ball lost, phases 7 and 5); later table 2's slot
+     up to the first GAME_PHASE 5 on tables 1, 3 and 4, with the
+     flippers' masks and surfaces and GAME_PHASE 7; next GAME_PHASE 5,
+     BONUS_ADD and the modules' slot 32, same section); later table 2's slot
      40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).

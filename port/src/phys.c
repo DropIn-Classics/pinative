@@ -2,9 +2,8 @@
  * sampled against the level's map, the normal and the surface found, the
  * bounce, the move and the slope (docs/HANDOFF.md, "The balls' physics").
  * The work cells CODE:0000..003C are kept as the original leaves them.
- * Not translated yet, the port stopping there by name: a ball in a
- * flipper's box on its level (its mask sampled), the flippers' surfaces,
- * a bumper's or slingshot's kick, two balls against each other.
+ * Not translated yet, the port stopping there by name: a bumper's or
+ * slingshot's kick, two balls against each other.
  */
 #include <stdio.h>
 #include "game.h"
@@ -68,16 +67,16 @@ static int idiv16(uint32_t eax, uint32_t edx, uint16_t d, uint16_t *q, uint16_t 
 
 /* ---- sampling ---- */
 
-/* CODE:12864: 17 lines of the ring (RING_MASKS) at x AX-7, line DX of the
- * map at ESI (2Ah bytes a line) into BALL_RING, byte-swapped; every hit
+/* 17 lines of the ring (RING_MASKS) at x AX-7, line DX of the bit map
+ * at ESI (`stride` bytes a line) into BALL_RING, byte-swapped; every hit
  * bit ORed into CODE:12819 */
-static void MAP_SAMPLE(uint16_t ax, uint16_t dx, uint32_t esi)
+static void ring_sample(uint16_t ax, uint16_t dx, uint32_t esi, uint32_t stride)
 {
     uint16_t cx = (uint16_t)(ax - 7), sdx;
     uint32_t eax, ebx, i;
     unsigned cl;
 
-    ax = (uint16_t)(dx * 0x2A);
+    ax = (uint16_t)(dx * stride);
     sdx = cx;
     cl = (unsigned)(8 - (cx & 7));
     ax = (uint16_t)(ax + (uint16_t)((int16_t)sdx >> 3));
@@ -85,11 +84,42 @@ static void MAP_SAMPLE(uint16_t ax, uint16_t dx, uint32_t esi)
     wd(0x12819, 0);
     for (i = 0; i < 17; i++) {
         eax = rd(N_RING_MASKS + 4 * i) << cl;
-        ebx = rbe(esi + 0x2A * i);
+        ebx = rbe(esi + stride * i);
         eax = (eax & ebx) >> cl;
         wd(0x12819, rd(0x12819) | eax);
         wd(N_BALL_RING + 4 * i, bswap(eax));
     }
+}
+
+/* CODE:12864: the ring against the level's map (2Ah bytes a line) */
+static void MAP_SAMPLE(uint16_t ax, uint16_t dx, uint32_t esi)
+{
+    ring_sample(ax, dx, esi, 0x2A);
+}
+
+/* CODE:1241E: the ring against the flipper `edi`'s mask at its angle:
+ * the mask (16 bytes a line, [+28h] plus the angle's word at +0B0h
+ * times 16) for the angle +1Ah (a negative one mirrored: -n-1), placed by
+ * FLIP_SHAPES' two bytes for (+6 + +1Ah) mod 78h, less the flipper's
+ * +2, +4, plus 20h */
+static void FLIP_SAMPLE(uint32_t edi, uint16_t ax, uint16_t dx)
+{
+    int32_t n = (int16_t)rw(edi + 0x1A);
+    uint16_t k = (uint16_t)((uint16_t)n + rw(edi + 6));
+    uint32_t esi;
+
+    ww(0x12815, ax);
+    ww(0x12817, dx);
+    if ((int16_t)k < 0)
+        k = (uint16_t)(k + 0x78);
+    if ((int16_t)k >= 0x78)
+        k = (uint16_t)(k - 0x78);
+    if (n < 0)
+        n = -n - 1;
+    esi = ((uint32_t)rw(edi + (uint32_t)n * 2 + 0xB0) << 4) + rd(edi + 0x28);
+    ax = (uint16_t)(ax - rw(edi + 2) + rb(N_FLIP_SHAPES + (uint32_t)k * 4) + 0x20);
+    dx = (uint16_t)(dx - rw(edi + 4) + rb(N_FLIP_SHAPES + (uint32_t)k * 4 + 1) + 0x20);
+    ring_sample(ax, dx, esi, 0x10);
 }
 
 /* CODE:1237C: 1 (ZF) when a sample of the ring hit; 0 with the ball lost
@@ -120,7 +150,9 @@ static int BALL_SAMPLE(void)
         wb(edi + 0x1F6, 0xFF);
         if (rd(ebx + 0x54) != rd(edi + 0x1C))
             continue;
-        pi_stop("BALL_SAMPLE: a flipper's mask (CODE:1241E)");
+        FLIP_SAMPLE(edi, ax, dx);
+        wd(0x0018, 0x12844);
+        return rd(0x12819) != 0;
     }
     /* CODE:1281D */
     MAP_SAMPLE(ax, dx, rd(rd(0x0010) + 0x54));
@@ -167,6 +199,119 @@ static void SURF_LEVEL(int bundle)
     SFX_PLAY();
 }
 
+/* CODE:11BE9 + k x DBh: flipper kind k (the flipper's +1), its table of
+ * eight bytes (CODE:11CBC + k x DBh) by the ball's octant [002C]: the
+ * flipper's turn [0028] doubled; turning one way (not negative) and the
+ * octant's byte set, or the other way and the byte 0, the ball gets the
+ * push [0020], [0024] times the turn (negated for the first) to +1Ch,
+ * +1Ah, the first also [0030] + 3BBh (run 2026-09-30: only the returns
+ * without a push, kinds 0, 4 and 7) */
+static void FLIP_KIND(uint32_t k)
+{
+    uint32_t tab = 0x11CBC + k * 0xDB, b = rd(0x0010), e;
+    uint16_t si = (uint16_t)(rw(0x0028) * 2), di;
+
+    cw(0x0028, si);
+    if (!(si & 0x8000)) {
+        if (rb(tab + sx16(rw(0x002C))) == 0)
+            return;
+        addw(0x0030, 0x3BB);
+        di = (uint16_t)-si;
+        cw(0x0028, di);
+        e = sx16(rw(0x0020)) * sx16(di);
+        wd(0x0020, e);
+        ww(b + 0x1C, (uint16_t)e);
+        e = sx16(rw(0x0024)) * sx16(di);
+        wd(0x0024, e);
+        ww(b + 0x1A, (uint16_t)e);
+        return;
+    }
+    if (rb(tab + sx16(rw(0x002C))) != 0)                /* CODE:11C62 */
+        return;
+    e = sx16(rw(0x0020)) * sx16(si);
+    wd(0x0020, e);
+    ww(b + 0x1C, (uint16_t)e);
+    di = (uint16_t)-si;
+    cw(0x0028, di);
+    e = sx16(rw(0x0024)) * sx16(di);
+    wd(0x0024, e);
+    ww(b + 0x1A, (uint16_t)e);
+}
+
+/* CODE:1187F (flipper 1), 11893, 118AD, 118C7: the flipper `f` of
+ * header slot 22 hit at the contact point [0020], [0024]: with its turn
+ * +10h not 0, the distance's weight from CODE:21981 (by |dx| x 40h +
+ * |dy| from the flipper's +2, +4) takes half of it off the turn (toward
+ * 0); near the pivot (weight below 2Eh) the weight raised by an eighth of
+ * the rest and [0030] from CODE:11AF9 by the flipper's angle; the
+ * ball's normal's octant to [002C], [0024] 8, then FLIP_KIND */
+static void SURF_FLIPPER(uint32_t f)
+{
+    uint16_t bp, cx, v, dx;
+
+    wd(0x0000, f);
+    wd(0x0004, 0x21981);
+    bp = rw(f + 0x10);
+    cw(0x0028, bp);
+    if (bp == 0)
+        return;
+    cx = rw(f + 2);
+    wd(0x002C, sx16(cx));
+    wd(0x0030, sx16(rw(f + 4)));
+    v = (uint16_t)(rw(0x0020) - cx);
+    cw(0x0020, v);
+    if (v & 0x8000)
+        cw(0x0020, (uint16_t)-v);
+    v = (uint16_t)(rw(0x0024) - (uint16_t)rd(0x0030));
+    cw(0x0024, v);
+    if (v & 0x8000)
+        cw(0x0024, (uint16_t)-v);
+    /* CODE:11953 */
+    v = rw(0x21981 + sx16((uint16_t)((rw(0x0020) << 6) + rw(0x0024))) * 2);
+    cw(0x0020, v);
+    cw(0x002C, (uint16_t)(v >> 1));
+    dx = rw(0x0028);
+    if (dx & 0x8000) {
+        uint32_t sum = (uint32_t)dx + rw(0x002C);      /* CODE:119AE */
+
+        cw(0x0028, (uint16_t)sum);
+        if (sum > 0xFFFF)
+            wd(0x0028, 0);
+    } else {
+        dx = (uint16_t)(dx - rw(0x002C));
+        cw(0x0028, dx);
+        if (dx & 0x8000)
+            wd(0x0028, 0);
+    }
+    /* CODE:119C7 */
+    ww(f + 0x10, rw(0x0028));
+    wd(0x0024, 8);
+    cw(0x002C, rw(rd(0x0010) + 0x28));
+    dx = rw(0x0020);
+    cw(0x0034, (uint16_t)(dx - 0x2E));
+    if ((int16_t)dx < 0x2E) {
+        uint16_t a = (uint16_t)(0x2E - dx);
+
+        cw(0x0020, (uint16_t)(dx + (a >> 3)));
+        a = (uint16_t)(rw(f + 6) + rw(f + 0x1A));
+        cw(0x0034, a);
+        if ((int16_t)a < 0) {
+            a = (uint16_t)(a + 0x78);
+            cw(0x0034, a);
+        }
+        if ((int16_t)a >= 0x78) {
+            a = (uint16_t)(a - 0x78);
+            cw(0x0034, a);
+        }
+        cw(0x0030, rw(0x11AF9 + sx16(a) * 2));          /* CODE:11A52 */
+    }
+    cw(0x002C, (uint16_t)(rw(0x002C) >> 8));
+    if (rb(f + 1) > 7)
+        pi_stop("SURF_FLIPPER: a kind above 7 (CODE:11A91)");
+    wd(0x0034, rw(0x11AE9 + (uint32_t)rb(f + 1) * 2));
+    FLIP_KIND(rb(f + 1));
+}
+
 static void surface_handler(uint16_t n)
 {
     static char why[64];
@@ -181,6 +326,8 @@ static void surface_handler(uint16_t n)
         SURF_BUMPER();
     else if (n >= 0x16 && n <= 0x1F)
         SURF_SLING((n & 1) ? 0xFE70 : 0x0190);
+    else if (n >= 1 && n <= 4)
+        SURF_FLIPPER(rd(rd(0x0014) + 0x28FE) + (uint32_t)(n - 1) * 0x1F7);
     else {
         snprintf(why, sizeof why, "BALL_COLLIDE: flipper surface %u (CODE:1187F)", (unsigned)n);
         pi_stop(why);

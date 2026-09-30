@@ -392,7 +392,7 @@ static void COUNTERS_RESET(void)
 
 /* CODE:28E5D: the state [0020] of the drop target [0000] into
  * DROP_STATES (by its word +44h) with the target */
-static void DROP_SET(void)
+void DROP_SET(void)
 {
     uint32_t b = rd(0x0000), n = rw(b + 0x44);
 
@@ -738,24 +738,42 @@ static void ZONE_LEAVE(void)
 }
 
 /* CODE:2C4DF (2C65E for type 0): the zone object's pay, [0004] the
- * object: a light record at +0Ah (not translated), else the points at
- * +1Eh (TAKE_PAY); the record +2 (RECORD_DISPATCH, not translated) and
- * the event stream +6 */
+ * object: with a light state at +0Ah the player's bit set in it; when it
+ * was set already the light flashed 8 times and the points at +26h to
+ * the score only (SCORE_ADD), else flashed 0Ch times and, as without a
+ * light, the points at +1Eh (TAKE_PAY); the record +2 (RECORD_DISPATCH)
+ * and the event stream +6 */
 static void zone_pay(void)
 {
     uint32_t r = rd(rd(0x0004) + 0x0A);
 
     wd(0x0020, r);
     wd(0x0008, r);
-    if (r != 0)
-        pi_stop("zone_pay: a light record at +0Ah (CODE:2C4DF)");
+    if (r != 0) {
+        uint16_t cx = rw(rd(0x0014) + 0x0D72);
+        unsigned b = cx & 7;
+        int was = rb(r) >> b & 1;
+
+        wd(0x0020, (r & 0xFFFF0000u) | cx);
+        wb(r, (uint8_t)(rb(r) | 1u << b));
+        if (was) {
+            wd(0x0020, (r & 0xFFFF0000u) | 8);
+            LIGHT_QUEUE();
+            wd(0x000C, rd(0x0004) + 0x26);
+            SCORE_ADD();
+            goto rest;
+        }
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | 0x0C);
+        LIGHT_QUEUE();
+    }
     wd(0x000C, rd(0x0004) + 0x1E);
     TAKE_PAY();
+rest:
     r = rd(rd(0x0004) + 2);
     wd(0x0020, r);
     if (r != 0) {
         wd(0x0000, r);
-        pi_stop("zone_pay: RECORD_DISPATCH (CODE:2C578)");
+        RECORD_DISPATCH();
     }
     r = rd(rd(0x0004) + 6);
     wd(0x0020, r);
@@ -1339,6 +1357,28 @@ lost:                                                   /* CODE:2B922 */
     ww(st + 0x8E, 7);
 }
 
+/* CODE:2BAD5: GAME_PHASE 7, a lost ball served again under the ball
+ * save: frames of play without the flippers' keys and the display's
+ * streams, "DON'T MOVE" (CODE:2BB2B), until the served ball has left the
+ * lane (state+0D32h not 0, state+0D3Ch 0: GAME_PHASE 4) */
+static void SAVE_SERVE(void)
+{
+    uint32_t st;
+
+    FRAME_STEP();
+    PLAY_STEP();
+    BALLS_PHYSICS();
+    PLAY_EVENTS();
+    PLAY_KEYS();
+    DM_CLEAR();
+    wd(0x0000, 0x2BB2B);
+    DM_TEXT_DRAW();
+    PLAYERS_KEYS();
+    st = rd(0x0014);
+    if (rw(st + 0x0D32) != 0 && rb(st + 0x0D3C) == 0)
+        ww(st + 0x8E, 4);
+}
+
 /* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
  * +15h, and LAST_KEY cleared): frames with "REALLY QUIT TABLE?"
  * (CODE:2A93E) on the display and no display stream, until Y (QUIT_TABLE,
@@ -1531,6 +1571,10 @@ void TABLE_GAME(void)
         }
         if (ph == 4) {
             PLAY();
+            continue;
+        }
+        if (ph == 7) {
+            SAVE_SERVE();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));

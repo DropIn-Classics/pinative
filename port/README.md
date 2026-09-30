@@ -81,8 +81,11 @@ bounce with its friction, the move and the slope; the zones of types
 n"), play (GAME_PHASE 4, CODE:2B76E, src/play.c and src/events.c:
 the event streams with the opcodes met so far, the lit records' timers
 and lamps, the counters' and objects' timers, the ball save's lamp, the
-M key) up to `Stopped before BALL_SAMPLE: a flipper's mask (CODE:1241E)`
-when the ball first comes near a flipper; the driver's command 2 (the pause toggle) with the
+M key, the flippers' masks and surfaces in src/phys.c, a zone's light
+flashed, a module's note through the driver's command 7), a lost ball
+served again under the ball save (GAME_PHASE 7, "DON'T MOVE") up to
+`Stopped before CODE:2BBC6` at the first lost ball without it (GAME_PHASE
+5, the bonus); the driver's command 2 (the pause toggle) with the
 PIC's mask the port now keeps for it;
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
@@ -433,6 +436,19 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   blinking, the ball save's lamp; not reached: a lost ball, a record
   leaving the lit list, LAMP_OFF, the other opcodes (the port stops by
   name at those not translated).
+- 2026-09-30, Linux: the same game on table 1 on to GAME_PHASE 7
+  (dosrun `-break 12CA05`, CODE:2BAD5, t=160.340478, the ball lost under
+  the ball save) and to GAME_PHASE 5 (`-break 12CAF6`, CODE:2BBC6,
+  t=171.278049, the served ball lost too); tables 3 and 4 likewise to
+  GAME_PHASE 5 (F1 and Enter as for GAME_PHASE 6; t=165.681288,
+  165.212519): CODE differs only in FRAME_SPINS, TAIL and video memory
+  equal, the heap blocks equal but the leftovers named above and the
+  driver's block, which differs in its sample clock and in the channels'
+  state (the module's position follows that clock; on tables 3 and 4 also
+  the music state kept at a sound's start, C2D26..). The flippers were
+  not pressed: flipper kinds 1, 2, 3, 5 and 6, the pushes of a turning
+  flipper and event opcodes 1, 0Dh, 0Eh and 19h did not run (dosrun
+  `-cover`), nor the pause, Esc in play or the tilt.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

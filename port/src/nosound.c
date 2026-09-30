@@ -782,6 +782,9 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 6:
         cf = CMD_MIX(r);
         break;
+    case 7:
+        cf = CMD_NOTE(r);
+        break;
     case 8:
         cf = CMD_ORDER(r);
         break;

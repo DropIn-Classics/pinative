@@ -152,6 +152,7 @@ code       CODE:0B96 NBUF_SET      ; NBUF from CX (2..0Fh); for another NBUF MIX
 code       CODE:0CB9 CMD_LEVEL     ; command 0Ch: MASTER_VOL = BX, at most 100h
 code       CODE:0CD0 CMD_POSITION  ; command 0Dh: EAX = TICKS - (NBUF - MIX_ROOM / FRAME_BYTES), the ticks played
 code       CODE:0E2A CMD_SFX       ; command 9: a sound on channel DL (1..): the channel's music state kept in C2D26.. unless +37h is set (CODE:0EB4), FS:ESI to ESI+ECX its sample, no loop, the step for note BL (PERIOD_TAB), NOTE_FX with effect 0Ch (volume BH), +37h 1
+code       CODE:0DD5 CMD_NOTE      ; command 7: a note of a module's sample on channel DL: the slot CH (SLOT_OFF kept round it), the channel's music state kept as for command 9 (CODE:0EB4), NOTE_PLAY with the sample CL, the note BL and, when BH is not 0, effect 0Ch (volume BH); +37h 1 (run 2026-09-30, table 3, from the main program's SFX_NOTE)
 code       CODE:0D13 CMD_SFX_BUSY  ; command 12h: EAX the byte +37h of channel DL (1 while a sound of command 9 plays)
 code       CODE:059A TIMER_START   ; SAMPLE_POS 0; IRQ 0's vector (host callback 4, kept at OLD_IRQ0) set to TIMER_IRQ (callback 5); the PIT (CODE:06D2); IRQ 0 unmasked (CODE:10FC)
 code       CODE:06D2 PIT_SET       ; PIT channel 0 mode 3 with 1234DCh / MIX_RATE (PIT_DIV)

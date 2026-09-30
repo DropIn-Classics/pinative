@@ -454,6 +454,33 @@ static void NOTE_PLAY(uint32_t ch, uint8_t cl, uint8_t csample, uint8_t dl, uint
     NOTE_FX(ch, cl, csample, dl, dh);
 }
 
+/* CODE:0DD5: command 7, a note of a module's sample on channel DL: CH
+ * the module's slot, CL the sample, BL the note, BH the volume (0: the
+ * sample's own); the channel's music kept first (CODE:0EB4) unless a
+ * sound plays there already */
+int CMD_NOTE(NsRegs *r)
+{
+    uint32_t keep = rd(D_SLOT_OFF);
+    uint32_t ch = D_CHANNELS + (uint16_t)(0x3B * (uint8_t)((uint8_t)r->edx - 1));
+    uint8_t bh = (uint8_t)(r->ebx >> 8);
+
+    wd(D_SLOT_OFF, (uint32_t)(uint8_t)(r->ecx >> 8) * 0x275);
+    if (rb(ch + C_SFX) == 0) {
+        wd(0x2D26, rd(ch + C_POS));
+        ww(0x2D2A, rw(ch + C_SEL));
+        wd(0x2D2C, rd(ch + C_END));
+        ww(0x2D30, rw(ch + C_LOOP_START));
+        ww(0x2D32, rw(ch + C_LOOP_END));
+        ww(0x2D34, rw(ch + C_STEP));
+        ww(0x2D36, rw(ch + C_STEP_FRAC));
+    }
+    wb(ch + C_SFX, 0);
+    NOTE_PLAY(ch, (uint8_t)r->ebx, (uint8_t)r->ecx, bh ? 0x0C : 0, bh);
+    wb(ch + C_SFX, 1);
+    wd(D_SLOT_OFF, keep);
+    return 0;                   /* CODE:0975 */
+}
+
 /* CODE:13DA */
 static void ROW_PLAY(void)
 {

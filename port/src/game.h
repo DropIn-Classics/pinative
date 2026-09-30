@@ -127,8 +127,15 @@ void ANIMS_STEP(void);
 void TABLE_GAME(void);
 void MUSIC_REQUEST(void);
 void TAKE_PAY(void);
+/* play.c: CODE:28E5D */
+void DROP_SET(void);
 /* events.c: CODE:2E82F, 2D080, 2CD3C, 2E8CD, 2EAC9, 2CB69, 2CBCF, 2C7FC */
 void LAMP_OFF(void);
+/* events.c: CODE:2ECCE, CODE:2FD11 */
+void LIGHT_QUEUE(void);
+void SCORE_ADD(void);
+/* events.c: CODE:3007A */
+void RECORD_DISPATCH(void);
 void EVENT_RUN(void);
 void MODE_RUN(void);
 void LIT_LIST_STEP(void);
@@ -139,6 +146,8 @@ void OBJECT_HITS(void);
 
 /* table.c: CODE:9F2C, the sound record at [CODE:0000] */
 void SFX_PLAY(void);
+/* table.c: CODE:9F88, the record at [CODE:0000] as a module's note */
+void SFX_NOTE(void);
 /* table.c: CODE:9B92, the driver's retrace routines and the table's
  * music started; CODE:B99C and CODE:B9B9, those routines */
 void GAME_SOUND(void);

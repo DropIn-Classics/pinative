@@ -36,6 +36,7 @@ void MIX_UPDATE(void);
 void CHANNELS_RESET(void);
 /* CODE:0E2A, command 9 */
 int CMD_SFX(NsRegs *r);
+int CMD_NOTE(NsRegs *r);
 /* CODE:1A7B */
 uint16_t MIX_ROOM(void);
 

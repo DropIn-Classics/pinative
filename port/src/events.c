@@ -53,6 +53,70 @@ void LAMP_OFF(void)
     wd(0x0004, keep4);
 }
 
+/* CODE:3007A: the record at [0000] by its type (byte +0 AND 7): 2 a
+ * sound record (SFX_PLAY), 4 an audio record (MUSIC_REQUEST), 5
+ * CODE:9F88 (not translated), the others nothing; [0020] and [0024]
+ * kept */
+void RECORD_DISPATCH(void)
+{
+    uint32_t keep24 = rd(0x0024), keep20 = rd(0x0020);
+    unsigned t = rb(rd(0x0000)) & 7;
+
+    wd(0x0020, rw(0x300B9 + t * 2));
+    if (t == 2)
+        SFX_PLAY();
+    else if (t == 4)
+        MUSIC_REQUEST();
+    else if (t == 5)
+        SFX_NOTE();
+    wd(0x0020, keep20);
+    wd(0x0024, keep24);
+}
+
+/* CODE:2ECCE: the light state at [0008] flashed [0020]'s low word times
+ * (LIGHT_FLASH_STEP), unless it is already (bit 0 of its byte +2): a
+ * 6-byte entry (the count, the light) onto the stack at state+17B8h;
+ * [0004] kept */
+void LIGHT_QUEUE(void)
+{
+    uint32_t keep4 = rd(0x0004), l = rd(0x0008), st, p;
+
+    if (!(rb(l + 2) & 1)) {
+        wb(l + 2, (uint8_t)(rb(l + 2) | 1));
+        st = rd(0x0014);
+        p = rd(st + 0x17B8);
+        ww(p, (uint16_t)rd(0x0020));
+        wd(p + 2, l);
+        wd(0x0004, p + 6);
+        wd(st + 0x17B8, p + 6);
+    }
+    wd(0x0004, keep4);
+}
+
+/* CODE:2FD11: the 12-digit packed-BCD number [000C] points past added to
+ * the player's +8 (as TAKE_PAY's second half); [000C] 6 back after,
+ * [0000] and [0010] kept */
+void SCORE_ADD(void)
+{
+    uint32_t keep10 = rd(0x0010), keep0 = rd(0x0000), pl, src, dst;
+    int cf = 0, i;
+
+    wb(N_DISPLAY_BUSY, 0xFF);
+    pl = rd(rd(0x0014) + 0x0D76);
+    wd(0x0010, pl);
+    wd(0x0000, pl + 8);
+    src = rd(0x000C);
+    dst = rd(0x0000);
+    for (i = 0; i < 4; i++)
+        adc_daa(dst - 4 + (uint32_t)i, src - 4 + (uint32_t)i, &cf);
+    for (i = 0; i < 2; i++)
+        adc_daa(dst - 8 + (uint32_t)i, src - 8 + (uint32_t)i, &cf);
+    wd(0x000C, rd(0x000C) - 6);
+    wd(0x0000, rd(0x0000) - 6);
+    wd(0x0000, keep0);
+    wd(0x0010, keep10);
+}
+
 /* the lamp at `l` put on blinking for the player (byte +3 left) */
 static void lamp_blink(uint32_t l)
 {
@@ -253,7 +317,7 @@ static void take_handler(uint32_t a)
  * for him and not blocked: unlit, its points (TAKE_PAY from +2Ch), lit
  * again (flag bits 1, 3) or its lamp off, its display stream +18h, the
  * player's bit in byte +5 of the light state +8, the record +10h
- * (RECORD_DISPATCH, not translated), its handler +2Ch */
+ * (RECORD_DISPATCH), its handler +2Ch */
 static void RECORD_TAKE(void)
 {
     uint32_t r = rd(0x0008), x;
@@ -290,7 +354,7 @@ static void RECORD_TAKE(void)
     wd(0x0020, x);
     if (x != 0) {
         wd(0x0000, x);
-        pi_stop("RECORD_TAKE: RECORD_DISPATCH (CODE:2D9D9)");
+        RECORD_DISPATCH();
     }
     h = rw(rd(0x0008) + 0x2C);                          /* CODE:2D9DE */
     cw(0x0020, h);
@@ -299,10 +363,33 @@ static void RECORD_TAKE(void)
     take_handler(rd(N_TAKE_HANDLERS + sx16(h) * 4));
 }
 
+/* the slot-15 record at [0008] onto the lit list (flag bit 2, once; the
+ * last state+2A36h, linked by +30h) */
+static void lit_list_add(void)
+{
+    uint32_t r = rd(0x0008), st, x;
+
+    if (rb(r) & 4)
+        return;
+    wb(r, (uint8_t)(rb(r) | 4));
+    wd(r + 0x30, 0);
+    st = rd(0x0014);
+    x = rd(st + 0x2A36);
+    wd(0x0020, x);
+    if (x == 0) {
+        wd(st + 0x2A32, r);
+        wd(st + 0x2A36, r);
+        return;
+    }
+    wd(0x0000, x);
+    wd(x + 0x30, r);
+    wd(rd(0x0014) + 0x2A36, r);
+}
+
 /* CODE:2D491, event opcode 2 (a slot-15 record, a word): lit for the
  * player for the word's seconds unless blocked: its lamp blinking (not
  * while a mode runs and flag bit 4 is set), its record +0Ch
- * (RECORD_DISPATCH, not translated) and display stream +14h, the timer
+ * (RECORD_DISPATCH) and display stream +14h, the timer
  * +2Eh, and onto the lit list (flag bit 2) */
 static void OP_LIGHT_TIMED(void)
 {
@@ -329,7 +416,7 @@ static void OP_LIGHT_TIMED(void)
     wd(0x0020, x);
     if (x != 0) {
         wd(0x0000, x);
-        pi_stop("OP_LIGHT_TIMED: RECORD_DISPATCH (CODE:2D524)");
+        RECORD_DISPATCH();
     }
     x = rd(r + 0x14);
     wd(0x0020, x);
@@ -340,22 +427,130 @@ static void OP_LIGHT_TIMED(void)
     st = rd(0x0014);                                    /* CODE:2D547 */
     e = (uint32_t)rw(rd(0x0004) + 6) * rw(st + 0x50);
     wd(0x0020, e);
-    r = rd(0x0008);
-    ww(r + 0x2E, (uint16_t)e);
-    if (rb(r) & 4)
-        return;
-    wb(r, (uint8_t)(rb(r) | 4));
-    wd(r + 0x30, 0);
-    x = rd(st + 0x2A36);
-    wd(0x0020, x);
-    if (x == 0) {
-        wd(st + 0x2A32, r);
-        wd(st + 0x2A36, r);
-        return;
+    ww(rd(0x0008) + 0x2E, (uint16_t)e);
+    lit_list_add();
+}
+
+/* CODE:2D36E, event opcode 1 (a slot-15 record): lit for the player
+ * unless lit already or blocked: its lamp blinking (not while a mode
+ * runs and flag bit 4 is set), its record +0Ch (RECORD_DISPATCH) and
+ * display stream +14h; then no timer (+2Eh FFFFh) and
+ * onto the lit list */
+static void OP_LIGHT(void)
+{
+    uint32_t r = rd(rd(0x0004) + 2), x;
+    unsigned b = pbit();
+    int was;
+
+    wd(0x0008, r);
+    was = bit_of(r + 1, b);
+    wb(r + 1, (uint8_t)(rb(r + 1) | 1u << b));
+    if (!was && !bit_of(r + 2, b)) {
+        if (!(rd(rd(0x0014) + 0x0D5E) != 0 && (rb(r) & 0x10))) {
+            x = rd(r + 4);                              /* CODE:2D3BC */
+            wd(0x0020, x);
+            if (x != 0) {
+                wd(0x0000, x);
+                wb(x, (uint8_t)(rb(x) | (uint8_t)rd(0x003C)));
+                wb(x + 2, (uint8_t)(rb(x + 2) | 2));
+                wb(x + 3, 0);
+                wb(x + 4, 8);
+            }
+        }
+        r = rd(0x0008);                                 /* CODE:2D3F0 */
+        x = rd(r + 0x0C);
+        wd(0x0020, x);
+        if (x != 0) {
+            wd(0x0000, x);
+            RECORD_DISPATCH();
+        }
+        x = rd(r + 0x14);
+        wd(0x0020, x);
+        if (x != 0) {
+            wd(0x0000, x);
+            DISPLAY_QUEUE();
+        }
     }
-    wd(0x0000, x);
-    wd(x + 0x30, r);
-    wd(rd(0x0014) + 0x2A36, r);
+    ww(rd(0x0008) + 0x2E, 0xFFFF);                      /* CODE:2D42C */
+    lit_list_add();
+}
+
+/* CODE:2D23E, event opcode 4 (an object, a word): a drop target's (word
+ * +0 1) +0Bh cleared and the word to DROP_SET */
+static void OP_DROP(void)
+{
+    uint32_t c = rd(0x0004), o = rd(c + 2);
+
+    wd(0x0000, o);
+    cw(0x0020, rw(c + 6));
+    if (rw(o) != 1)
+        return;
+    wb(o + 0x0B, 0);
+    DROP_SET();
+}
+
+/* CODE:2D274, event opcode 0Dh (a slot-16 counter): reset for the
+ * player: the step from +28h, +2Ch, the counts +6, +16h to +2, the value
+ * 0, the thresholds' bits cleared and their lamps off */
+static void OP_COUNTER_RESET(void)
+{
+    uint32_t c = rd(rd(0x0004) + 2), a, l;
+    unsigned b;
+
+    wd(0x0008, c);
+    wd(c + 0x30, rd(c + 0x28));
+    wd(c + 0x34, rd(c + 0x2C));
+    cw(0x0020, rw(c + 2));
+    ww(c + sx16(rw(0x0038)) * 2 + 6, rw(c + 2));
+    ww(c + sx16(rw(0x0038)) * 2 + 0x16, rw(c + 2));
+    wd(c + 0x38, 0);
+    wd(c + 0x3C, 0);
+    wd(0x0004, c + 0x50);
+    for (;;) {                                          /* CODE:2D2CC */
+        a = rd(0x0004);
+        if (rw(a) & 0x8000)
+            return;
+        b = pbit();
+        wb(a + 2, (uint8_t)(rb(a + 2) & ~(1u << b)));
+        l = rd(a + 8);
+        wd(0x0020, l);
+        if (l != 0) {
+            wd(0x0000, l);
+            wb(l, (uint8_t)(rb(l) & ~(1u << b)));
+            wb(l + 2, (uint8_t)(rb(l + 2) & 0xFD));
+            wb(l + 1, 0xFF);
+            wb(l + 3, 0);
+            wb(l + 4, 0);
+        }
+        wd(0x0004, rd(0x0004) + 0x0C);
+    }
+}
+
+/* CODE:2D326, event opcode 0Eh (a slot-15 record): unless flag bit 1 is
+ * set, unlit for the player and its lamp off */
+static void OP_UNLIGHT(void)
+{
+    uint32_t r = rd(rd(0x0004) + 2);
+
+    wd(0x0008, r);
+    if (rb(r) & 2)
+        return;
+    wb(r + 1, (uint8_t)(rb(r + 1) & ~(1u << pbit())));
+    LAMP_OFF();
+}
+
+/* CODE:2D8C2, event opcode 17h (a slot-15 record, a position): unless
+ * the record is lit for the player and not blocked, the stream [0000]
+ * goes on at the position */
+static void OP_UNLESS_LIT(void)
+{
+    uint32_t c = rd(0x0004), r = rd(c + 2);
+    unsigned b = pbit();
+
+    wd(0x0008, r);
+    if (!bit_of(r + 2, b) && bit_of(r + 1, b))
+        return;
+    ww(rd(0x0000) + 2, rw(c + 6));
 }
 
 /* one command of a stream: its handler by its address (CODE:2D193 plus
@@ -365,8 +560,25 @@ static void event_op(uint32_t a)
     static char why[64];
 
     switch (a) {
+    case 0x2D36E:
+        OP_LIGHT();
+        break;
     case 0x2D491:
         OP_LIGHT_TIMED();
+        break;
+    case 0x2D23E:
+        OP_DROP();
+        break;
+    case 0x2D274:
+        OP_COUNTER_RESET();
+        break;
+    case 0x2D326:
+        OP_UNLIGHT();
+        break;
+    case 0x2D8C2:
+        OP_UNLESS_LIT();
+        break;
+    case 0x2D358:                   /* opcode 19h: CODE:B927 (a RET) when RES_CODE is 5 */
         break;
     case 0x2D907:                   /* opcode 5: a slot-15 record taken */
         wd(0x0008, rd(rd(0x0004) + 2));
