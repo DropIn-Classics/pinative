@@ -23,8 +23,10 @@ CD check in src/cd.c) and the sound driver's commands 0 and 4
 `intro\MOD.INT`; the host callbacks they call in src/hostcb.c) and
 CHOOSER_LOAD's eleven files, the intro's palettes, its video mode and
 picture (src/intro.c) and the driver's command 6, the module player
-(src/nsplay.c), up to the driver's command 1 (CODE:795F), where the
-port stops (`Stopped before CODE:795F`). The port loads
+(src/nsplay.c), its commands 1 and 0Dh (the timer, counted by
+pictures: the port has no interrupts) and the intro's script, up to
+the intro's end (CODE:79C3), where the port stops (`Stopped before
+CODE:79C3`; Esc or space in the intro stop it at CODE:7A82). The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
 options' reset, `-opt ?` prints the help.
@@ -99,4 +101,11 @@ headless build writes the pictures `DK_SHOTS` names, as
   and the driver's block 0 bytes differ; the DMA buffer at 13120h and
   the 43 used heap blocks equal byte for byte (a scratch script walking
   the chain). Only the module's first row played there.
+- 2026-09-30, Linux: at the intro's end, CODE:79C3 (dosrun `-break
+  1088F3 -mem -vram`, NOSOUND.SDR, no key): CODE, TAIL and video memory
+  0 bytes differ; 42 of the 43 used heap blocks and the DMA buffer
+  equal; the driver's block differs in 24 bytes, all where the mixing
+  stands in the sample clock (SAMPLE_POS, TIMER_COUNT, MIX_POS,
+  MIX_LEN, the channels' positions). The keys and the window's
+  pictures not checked.
 - Not built with MSVC (build.bat changed alike) or on macOS since.

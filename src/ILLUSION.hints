@@ -85,7 +85,7 @@ name       CODE:634C PCSKY_SEL     ; intro\PCSKY.FLD's (run: 17Ch)
 code       CODE:7341 INTRO_PALS_MAKE ; reached from CODE:7885 through CODE:7438's checksummed jump; INTRO_PALS made from PCSKY.FLD's first 30h bytes (16 colours): rows 0-2 with 0 added, row 3 cleared, rows 4-15 with 0, 0, 0, 0, 0, 3, 0Ah, 0, 19h, 23h, 2Dh, 0Fh added; EDI by CODE:7441 ([CODE:905B] less the byte sum of CODE:6F43..7028: 8D3Ch in the run's memory)
 code       CODE:732D PAL_ADD       ; 30h bytes from DS:0 to ES:EDI, BL added to each, at most 3Fh
 name       CODE:8D3C INTRO_PALS    ; 300h bytes: 16 rows of 16 DAC colours (INTRO_PALS_MAKE); run 2026-09-29: made at CODE:78D9
-code       CODE:7029 INTRO_TICK    ; the driver's command 0Dh (the module's position, presumably; not checked); INTRO_TIME raised to it; each INTRO_SCRIPT entry from INTRO_NEXT whose dword is at most INTRO_TIME has its routine called, INTRO_NEXT moved on 8, up to INTRO_MOD_NAME (the table's end)
+code       CODE:7029 INTRO_TICK    ; the driver's command 0Dh (the module's ticks played, 50 a second: NOSOUND's CMD_POSITION); INTRO_TIME raised to it; each INTRO_SCRIPT entry from INTRO_NEXT whose dword is at most INTRO_TIME has its routine called, INTRO_NEXT moved on 8, up to INTRO_MOD_NAME (the table's end)
 name       CODE:7ABC INTRO_SCRIPT  ; the intro's script: entries of a dword (a position INTRO_TICK compares with INTRO_TIME) and a routine
 name       CODE:8124 INTRO_TIME    ; the highest position INTRO_TICK has seen; 0 in CHOOSER_LOAD
 name       CODE:8128 INTRO_NEXT    ; the next INTRO_SCRIPT entry; INTRO_SCRIPT in CHOOSER_LOAD
@@ -109,6 +109,19 @@ name       CODE:6989 FADE_STEP     ; a byte
 name       CODE:6680 FADE_OUT      ; 300h bytes: FADE_FRAME's palette for the DAC, colour 3Fh made black in it
 code       CODE:6E49 INTROPIX_SHOW ; reached from CODE:795A through CODE:7438's checksummed jump ([CODE:9043] less the byte sum of CODE:7341..73D7: 6E49h); intropix.mgl's picture after its 32 colours (from its dword +18h + 40h) to the four planes at 7D0h, 2580h bytes each
 code       CODE:7223 DRIVER_MIX    ; the driver's command 6
+name       CODE:6380 FADE_PAL      ; 300h bytes FADE_TO_SET copies a palette to
+code       CODE:6A20 VIEW_TOP      ; the start address 0 (before and after an INTRO_FRAME), CR 7 3Eh, CR 9 41h, CR 12h 21h
+code       CODE:6A5C VIEW_2D50     ; the start address 2D50h, INTRO_FRAME, CR 9 40h
+code       CODE:6A7C VIEW_3CF0     ; the start address 3CF0h, INTRO_FRAME, CR 9 40h, CR 12h 8Fh (400 lines) and others
+code       CODE:6B8A ANI_PASS      ; one pass of an introani.roy frame from DS:ESI at 7D0h: a byte below 10h XCHGed with video memory, 10h a word to skip, 11h-FEh that less 10h to skip, FFh the end
+code       CODE:6BB1 ANI_FRAME     ; INTRO_SCRIPT's most (174 of 192): introani.roy's next frame at INTROANI_POS in write mode 2 with function XOR, ANI_PASS for pixel bit 6, then for bit 7
+code       CODE:6C82 PIC_SHOW_240  ; intropix.mgl's picture at its dword [ESI] (300h bytes of palette, then 4B00h bytes a plane) to 3CF0h, an INTRO_FRAME and DRIVER_MIX after each plane; a fade from CODE:8A3C to its palette; VIEW_2D50
+code       CODE:6D50 PIC_SHOW_400  ; the same with 7D00h bytes a plane and VIEW_3CF0
+code       CODE:6AC6 INTRO_FADE_IN ; INTRO_SCRIPT: the start address 0, a fade from INTRO_BLACK to INTRO_PAL1, step 4
+code       CODE:6AF9 INTRO_FADE_21 ; INTRO_SCRIPT: a fade from INTRO_PAL2 to INTRO_PAL1, step 2 (CODE:6B1C the same code)
+code       CODE:6B3F INTRO_FADE_12 ; INTRO_SCRIPT: a fade from INTRO_PAL1 to INTRO_PAL2, step 2
+code       CODE:6B62 INTRO_FADE_TOP ; INTRO_SCRIPT: a fade from CODE:8A3C to INTRO_PAL1, step 4; VIEW_TOP
+code       CODE:6C4B INTRO_PIC_LAST ; INTRO_SCRIPT: a fade from CODE:8A3C to itself, INTRO_FRAME, DRIVER_MIX, PIC_SHOW_400 of intropix.mgl's dword +1Ch
 name       CODE:80CA CHOOSER_MOD_NAME ; "chooser\mod.mus", the module CODE:7182 has it load into slot 0
 name       CODE:1550 SOUND_JUMP    ; SOUND_START's end sets it to 4CF2h (CODE:4CF2's offset); no instruction reads it by this address (a reader through a register not looked for)
 name       CODE:618D HOST_CALLBACKS ; eleven far pointers and FFFFFFFFh: the host's routines the driver calls (docs/audio-driver.md), FS:EDI of its command 0

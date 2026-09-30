@@ -212,6 +212,213 @@ static void INTROPIX_SHOW(void)
     }
 }
 
+/* CODE:6F1F: 300h bytes from `from` (linear) to FADE_PAL, FADE_TO set to it */
+static void FADE_TO_SET(uint32_t from)
+{
+    uint32_t i;
+
+    for (i = 0; i < 0x300; i++)
+        wb(N_FADE_PAL + i, lrb(from + i));
+    wd(N_FADE_TO, N_FADE_PAL);
+}
+
+static void fade(uint32_t from, uint32_t to, uint8_t step)
+{
+    wd(N_FADE_FROM, from);
+    wd(N_FADE_TO, to);
+    wb(N_FADE_LEVEL, 0x40);
+    wb(N_FADE_STEP, step);
+}
+
+/* CODE:6A20: the start address 0, rows of one scan line (CR 9 41h) */
+static void VIEW_TOP(void)
+{
+    vga_outw(0x3D4, 0x000D);
+    vga_outw(0x3D4, 0x000C);
+    INTRO_FRAME();
+    vga_outw(0x3D4, 0x3E07);
+    vga_outw(0x3D4, 0x4109);
+    vga_outw(0x3D4, 0x2112);
+    vga_outw(0x3D4, 0x000D);
+    vga_outw(0x3D4, 0x000C);
+}
+
+/* CODE:6A5C: the start address 2D50h */
+static void VIEW_2D50(void)
+{
+    vga_outw(0x3D4, 0x500D);
+    vga_outw(0x3D4, 0x2D0C);
+    INTRO_FRAME();
+    vga_outw(0x3D4, 0x4009);
+}
+
+/* CODE:6A7C: the start address 3CF0h, 400 lines */
+static void VIEW_3CF0(void)
+{
+    static const uint16_t crtc[] = {
+        0x4009, 0x3E07, 0x8F12, 0x0014, 0x0016, 0xE317, 0xF00D, 0x3C0E
+    };
+    int i;
+
+    vga_outw(0x3D4, 0xF00D);
+    vga_outw(0x3D4, 0x3C0C);
+    INTRO_FRAME();
+    for (i = 0; i < 8; i++)
+        vga_outw(0x3D4, crtc[i]);
+}
+
+/* CODE:6B8A: one pass of an introani.roy frame from `*si` (linear) at
+ * 7D0h: bytes below 10h written (XCHG: the latches read first), 10h a
+ * word to skip, 11h-FEh that less 10h to skip, FFh the end */
+static void ANI_PASS(uint32_t *si)
+{
+    uint32_t edi = 0x7D0;
+
+    for (;;) {
+        uint8_t al = lrb((*si)++);
+
+        if (al < 0x10) {
+            vga_read((uint16_t)edi);
+            vga_write((uint16_t)edi, al);
+            edi++;
+        } else if (al == 0x10) {
+            edi += lrw(*si);
+            *si += 2;
+        } else if (al == 0xFF) {
+            return;
+        } else {
+            edi += (uint32_t)(al - 0x10);
+        }
+    }
+}
+
+/* CODE:6BB1: introani.roy's next frame, XORed into the picture in write
+ * mode 2, pixel bits 6 then 7 */
+static void ANI_FRAME(void)
+{
+    uint32_t base = pmax_base(rw(N_INTROANI_SEL)), si = base + rd(N_INTROANI_POS);
+
+    vga_outw(0x3C4, 0x0F02);
+    vga_outw(0x3CE, 0x4205);
+    vga_outw(0x3CE, 0x4008);
+    vga_outw(0x3CE, 0x1803);
+    ANI_PASS(&si);
+    vga_outw(0x3CE, 0x8008);
+    ANI_PASS(&si);
+    vga_outw(0x3CE, 0x4005);
+    vga_outw(0x3CE, 0xFF08);
+    vga_outw(0x3CE, 0x0003);
+    wd(N_INTROANI_POS, si - base);
+}
+
+/* CODE:6C82 (`words` 2580h) and CODE:6D50 (3E80h): intropix.mgl's picture
+ * at its dword `at` (a palette of 300h bytes, then the four planes) to
+ * 3CF0h plane by plane, a frame after each, then a fade from CODE:8A3C to
+ * its palette */
+static void PIC_SHOW(uint32_t at, uint32_t words)
+{
+    uint32_t base = pmax_base(rw(N_INTROPIX_SEL)), pal = base + lrd(base + at);
+    uint32_t si = pal + 0x300, i;
+    int plane;
+
+    for (plane = 0; plane < 4; plane++) {
+        vga_outw(0x3C4, (uint16_t)(0x0100 << plane | 2));
+        for (i = 0; i < words * 2; i++)
+            vga_write((uint16_t)(0x3CF0 + i), lrb(si++));
+        INTRO_FRAME();
+        DRIVER_MIX();
+    }
+    FADE_TO_SET(pal);
+    wb(N_FADE_LEVEL, 0x40);
+    wb(N_FADE_STEP, 4);
+    wd(N_FADE_FROM, 0x8A3C);
+    if (words == 0x2580)
+        VIEW_2D50();
+    else
+        VIEW_3CF0();
+    DRIVER_MIX();
+}
+
+/* INTRO_SCRIPT's routines by their offsets */
+static void script_call(uint32_t routine)
+{
+    switch (routine) {
+    case 0x7074:                        /* a RET */
+        break;
+    case 0x6AC6:
+        vga_outw(0x3D4, 0x000D);
+        vga_outw(0x3D4, 0x000C);
+        wb(N_FADE_LEVEL, 0x40);
+        wd(N_FADE_FROM, N_INTRO_BLACK);
+        wb(N_FADE_STEP, 4);
+        FADE_TO_SET(pm_ds + N_INTRO_PAL1);
+        break;
+    case 0x6AF9:
+    case 0x6B1C:
+        fade(N_INTRO_PAL2, N_INTRO_PAL1, 2);
+        break;
+    case 0x6B3F:
+        fade(N_INTRO_PAL1, N_INTRO_PAL2, 2);
+        break;
+    case 0x6B62:
+        wb(N_FADE_LEVEL, 0x40);
+        wd(N_FADE_FROM, 0x8A3C);
+        wb(N_FADE_STEP, 4);
+        FADE_TO_SET(pm_ds + N_INTRO_PAL1);
+        VIEW_TOP();
+        break;
+    case 0x6BB1:
+        ANI_FRAME();
+        break;
+    case 0x6C14: PIC_SHOW(0x08, 0x2580); break;
+    case 0x6C1F: PIC_SHOW(0x04, 0x2580); break;
+    case 0x6C2A: PIC_SHOW(0x10, 0x2580); break;
+    case 0x6C35: PIC_SHOW(0x0C, 0x3E80); break;
+    case 0x6C40: PIC_SHOW(0x14, 0x3E80); break;
+    case 0x6C4B:
+        fade(0x8A3C, 0x8A3C, 4);
+        INTRO_FRAME();
+        DRIVER_MIX();
+        PIC_SHOW(0x1C, 0x3E80);
+        break;
+    case 0x6E1E:
+        wb(N_INTRO_END, 1);
+        break;
+    default:
+        pi_stop("INTRO_TICK: a script routine not translated");
+    }
+}
+
+/* CODE:7029: the driver's position (command 0Dh); the script's routines
+ * whose position has come, asking the driver again after each */
+static void INTRO_TICK(void)
+{
+    for (;;) {
+        NsRegs r = { 0 };
+        uint32_t esi;
+
+        r.eax = 0x0D;
+        r.ds = pi_image.desc[ILLUSION_CODE].sel;
+        ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+        if (!((int32_t)rd(N_INTRO_TIME) > (int32_t)r.eax))
+            wd(N_INTRO_TIME, r.eax);
+        esi = rd(N_INTRO_NEXT);
+        if (esi >= N_INTRO_MOD_NAME || rd(N_INTRO_TIME) < rd(esi))
+            return;
+        script_call(rd(esi + 4));
+        wd(N_INTRO_NEXT, rd(N_INTRO_NEXT) + 8);
+    }
+}
+
+/* port 60h, which the intro reads with IRQ 1 masked: the last byte the
+ * keyboard gave */
+static uint8_t port60;
+
+static void key_byte(unsigned char b)
+{
+    port60 = b;
+}
+
 void CHOOSER_LOAD(void)
 {
     uint32_t size, i;
@@ -264,5 +471,30 @@ void CHOOSER_LOAD(void)
     vga_outb(0x3C0, 0x3F);
     /* CODE:795A: through CODE:7438's checksummed jump ([CODE:9043]: 6E49h) */
     INTROPIX_SHOW();
-    pi_stop("CODE:795F (the driver's command 1)");
+
+    /* CODE:795F: command 1 with 0Fh buffers (a failure: text mode, the
+     * text at CODE:80DA, the end; not seen) */
+    {
+        NsRegs r = { 0 };
+
+        r.eax = 1;
+        r.ecx = 0x0F;
+        r.ds = pi_image.desc[ILLUSION_CODE].sel;
+        if (ns_call(rw(N_DRIVER_ENTRY + 4), &r))
+            pi_stop("CODE:7972 (the driver's command 1 failed)");
+    }
+    /* CODE:798B: IRQ 1 masked, port 60h read in the loop */
+    frame_set_keyboard(key_byte);
+    DRIVER_MIX();
+    for (;;) {
+        INTRO_FRAME();
+        INTRO_TICK();
+        /* Esc and space (the MOV AL,1Ch before the third JE sets no
+         * flags: Enter is not a key here) */
+        if (port60 == 0x01 || port60 == 0x39)
+            pi_stop("CODE:7A82 (the intro left by a key)");
+        if (rb(N_INTRO_END) == 1)
+            break;
+    }
+    pi_stop("CODE:79C3 (the intro's end)");
 }

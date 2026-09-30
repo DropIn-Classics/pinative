@@ -2315,6 +2315,39 @@ block, the DMA buffer at 13120h (1333 bytes not zero) and the 43 used
 heap blocks. Only that row's effects ran; the other handlers are not
 checked against a run yet.
 
+### The driver's timer
+
+Command 1 (CMD_PLAY, CODE:0B31; names in src/NOSOUND.hints) sets NBUF
+from CX (the intro asks for 0Fh; NBUF_SET makes the DMA buffer again
+for another count), mixes NBUF frames ahead and starts the timer
+(TIMER_START): IRQ 0's vector by host callback 4 (kept at OLD_IRQ0, in
+the run 0030:0000414B) set to TIMER_IRQ by callback 5, the PIT's
+channel 0 in mode 3 with 1234DCh / MIX_RATE (PIT_DIV 1Bh: IRQ 0 at
+about 44192 Hz). TIMER_IRQ counts SAMPLE_POS, the place in the DMA
+buffer a card would be playing, which MIX_UPDATE mixes up to. Command
+0Dh (CMD_POSITION) returns TICKS less the ticks still unplayed in the
+buffer; INTRO_TICK runs INTRO_SCRIPT on it.
+
+The port has no interrupts: src/nosound.c counts the IRQs of one
+picture (1193182 / PIT_DIV / vga_refresh_hz()) at once, from frame.c's
+tick; host callbacks 4 and 5 only answer for IRQ 0 (the vector dosrun
+gave) and keep nothing. So SAMPLE_POS moves in steps of a picture, not
+of a sample.
+
+The run (NOSOUND.SDR in the header, build/pm/nosound.cfg by `-put`, no
+`-cue`, `ILLUSION.EXE C:\ILLUSION.CFG /`) stopped at the intro's end
+(CODE:79C3, linear 1088F3h, t=72.095299, 3480 frames, no key pressed;
+`-mem`, `-vram` build/pm/ns_79c3.*), 2026-09-30, Linux, against the
+port stopped there: CODE and TAIL 0 bytes differ (INTRO_TIME,
+INTRO_NEXT and INTRO_END among them), video memory equal, 42 of the 43
+used heap blocks equal, the DMA buffer at 13120h equal. The driver's
+block differs in 24 bytes: SAMPLE_POS, TIMER_COUNT, MIX_POS, MIX_LEN
+and each channel's position and fraction (+4..+7), how far the mixing
+stands in the sample clock, which the port counts by pictures. Not
+checked: the keys that leave the intro (Esc, space: port 60h read with
+IRQ 1 masked; Enter is not one, the MOV AL,1Ch before the third JE sets
+no flags), the DAC, the SDL build's pictures by eye.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2494,10 +2527,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      CODE:78D9. Done 2026-09-29: INTRO_MODE and INTROPIX_PALS, up to
      INTRO_FRAME at CODE:7925. Done 2026-09-29: the driver's command 6
      (port/src/nsplay.c; see "The driver's player"), INTRO_FRAME and
-     INTROPIX_SHOW, up to CODE:795F. Next: command 1 (the timer: host
-     callbacks 18h and 1Eh, the PIT; SAMPLE_POS needs a clock in the
-     port, the retraces' presumably) and 0Dh, then the intro's loop
-     (CODE:7996).
+     INTROPIX_SHOW, up to CODE:795F. Done 2026-09-30: commands 1 and
+     0Dh (the timer by pictures; see "The driver's timer") and the
+     intro's loop with INTRO_SCRIPT's routines, up to the intro's end
+     (CODE:79C3). Next: from CODE:79C3 on (and the keys' way out,
+     CODE:7A82).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

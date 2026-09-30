@@ -19,5 +19,7 @@ int ns_call(uint16_t cs, NsRegs *r);
 /* nsplay.c, with DS the driver's: CODE:1A98 and CODE:1057 */
 void MIX_UPDATE(void);
 void CHANNELS_RESET(void);
+/* CODE:1A7B */
+uint16_t MIX_ROOM(void);
 
 #endif

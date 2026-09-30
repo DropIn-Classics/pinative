@@ -37,6 +37,29 @@ uint32_t HCB_LINEAR(uint16_t bx)
     return pmax_base(bx);
 }
 
+/* CODE:627B, callback 4 (INT 93h AH=3): the protected-mode vector BL.
+ * The port has pMAX's only as dosrun answered: IRQ 0's (vector 8, BL 0
+ * here) 0030:0000414B in the run of docs/HANDOFF.md, "The driver's
+ * timer"; the others not seen */
+void HCB_GETVEC(uint8_t bl, uint16_t *es, uint32_t *edx)
+{
+    if (bl != 0)
+        pi_stop("HCB_GETVEC: a vector not seen in a run");
+    *es = 0x30;
+    *edx = 0x414B;
+}
+
+/* CODE:6280, callback 5 (INT 93h AH=4): the vector BL set to ES:EDX.  The
+ * port runs no interrupts: the driver's timer is a frame tick instead
+ * (nosound.c), so only IRQ 0's is taken, and not kept */
+void HCB_SETVEC(uint8_t bl, uint16_t es, uint32_t edx)
+{
+    (void)es;
+    (void)edx;
+    if (bl != 0)
+        pi_stop("HCB_SETVEC: a vector not seen in a run");
+}
+
 /* the game's own data (HOST_DS), where callbacks 6 to 9 keep the file */
 static uint32_t host_ds(void)
 {

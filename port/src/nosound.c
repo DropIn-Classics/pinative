@@ -5,6 +5,7 @@
  * src/NOSOUND.hints ... --base of the block).  The commands one by one as
  * the game reaches them.
  */
+#include "frame.h"
 #include "game.h"
 #include "gen/nosound.h"
 #include "nosound.h"
@@ -342,16 +343,120 @@ static int CMD_LOAD_MODULE(NsRegs *r)
     return 0;
 }
 
+/* The driver's timer.  Under DOS IRQ 0 comes at 1193182 / C327A Hz and
+ * TIMER_IRQ (CODE:0658) counts SAMPLE_POS and the word at CODE:06AC; the
+ * port has no interrupts, so the IRQs a picture's time holds (at the
+ * refresh rate vga.c gives) are counted at once, by frame.c's tick */
+static uint32_t timer_ds;
+static double timer_due;
+
+static void TIMER_IRQ(void)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = timer_ds;
+    timer_due += 1193182.0 / rw(D_PIT_DIV) / vga_refresh_hz();
+    for (; timer_due >= 1.0; timer_due -= 1.0) {
+        wd(D_SAMPLE_POS, rd(D_SAMPLE_POS) + 1);
+        if ((uint16_t)rd(D_SAMPLE_POS) >= rw(D_MIX_SIZE))
+            wd(D_SAMPLE_POS, 0);
+        ww(D_TIMER_COUNT, (uint16_t)(rw(D_TIMER_COUNT) - 1));
+        /* CODE:08A4: command 0Eh's retrace callback, never set here */
+        if (rw(D_TIMER_COUNT) == 0 && rb(0x0799) == 0xFF)
+            pi_stop("NOSOUND: TIMER_IRQ's retrace callback");
+    }
+    pm_ds = save;
+}
+
+/* CODE:059A: SAMPLE_POS 0, IRQ 0's vector to TIMER_IRQ (the old one kept
+ * at C2D44), the PIT at MIX_RATE (CODE:06D2), IRQ 0 unmasked (CODE:10FC) */
+static void TIMER_START(void)
+{
+    uint16_t es;
+    uint32_t edx;
+
+    wd(D_SAMPLE_POS, 0);
+    HCB_GETVEC(0, &es, &edx);
+    wd(D_OLD_IRQ0, edx);
+    ww(D_OLD_IRQ0 + 4, es);
+    HCB_SETVEC(0, 0 /* CS */, D_TIMER_IRQ);
+    ww(D_PIT_DIV, (uint16_t)(0x1234DCu / rw(D_MIX_RATE)));
+    wb(D_IRQ_MASK1, rb(D_IRQ_MASK1) & 0xFE);
+    timer_ds = pm_ds;
+    timer_due = 0;
+    frame_set_tick(TIMER_IRQ);
+}
+
+/* CODE:0B96: NBUF from CX (2..0Fh); the buffers made again for another;
+ * 1 for CF */
+static int NBUF_SET(uint16_t cx)
+{
+    if (cx < 2)
+        cx = 2;
+    if (cx > 0x0F)
+        cx = 0x0F;
+    if (cx == rw(D_NBUF))
+        return 0;
+    ww(D_NBUF, cx);
+    ww(D_MIX_SIZE, (uint16_t)(rw(D_FRAME_BYTES) * cx));
+    ww(D_DMA_SIZE, (uint16_t)(rw(D_FRAME_BYTES2) * cx));
+    if (rw(D_DMA_SEL)) {
+        HCB_FREE(rw(D_DMA_SEL));
+        ww(D_DMA_SEL, 0);
+    }
+    return DMA_ALLOC();
+}
+
+/* CODE:0B31: command 1, the start */
+static int CMD_PLAY(NsRegs *r)
+{
+    uint32_t i;
+
+    if (rb(D_SLOT_LOADED) != 0xFF || rb(D_PLAYING) == 0xFF)
+        pi_stop("NOSOUND: command 1 refused (CODE:0A49)");
+    wb(D_PLAYING, 0xFF);
+    wb(D_STOPPED, 0);
+    wb(D_SONG_END_CB, 0);
+    /* CODE:0C39 */
+    wb(D_BREAK_ROW, 0);
+    wb(D_PAT_DELAY, 0);
+    ww(D_LOOP_TO, 0xFFFF);
+    wd(D_TICKS, 0);
+    if (NBUF_SET((uint16_t)r->ecx))
+        pi_stop("NOSOUND: command 1's buffers (CODE:0A53)");
+    /* CODE:0C1F */
+    ww(D_MIX_POS, 0);
+    for (i = rw(D_NBUF); i; i--)
+        MIX_UPDATE();
+    /* CODE:091D */
+    if (rb(0x0799) == 0xFF)
+        ww(D_TIMER_COUNT, rw(0x072D));
+    TIMER_START();
+    r->eax = rd(D_RESULT);
+    return 0;
+}
+
+/* CODE:0CD0: command 0Dh, TICKS less those still in the buffer */
+static int CMD_POSITION(NsRegs *r)
+{
+    uint16_t ax = (uint16_t)(MIX_ROOM() / rw(D_FRAME_BYTES));
+
+    r->eax = rd(D_TICKS) - (uint16_t)(rw(D_NBUF) - ax);
+    wd(D_RESULT, r->eax);
+    return 0;
+}
+
 /* CODE:0D9F */
 static int CMD_MIX(NsRegs *r)
 {
-    (void)r;                    /* SAMPLE_POS_GET's ECX not used */
+    /* SAMPLE_POS_GET's ECX not used */
     MIX_UPDATE();
     if (rb(D_SONG_END_CB) == 0xFF) {
         wb(D_SONG_END_CB, 0);
         if (rd(D_CMD11_PTR) != 0xFFFFFFFFu)
             pi_stop("NOSOUND: command 11h's pointer called (CMD_MIX)");
     }
+    r->eax = rd(D_RESULT);
     return 0;
 }
 
@@ -369,11 +474,17 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 0:
         cf = CMD_INIT(r);
         break;
+    case 1:
+        cf = CMD_PLAY(r);
+        break;
     case 4:
         cf = CMD_LOAD_MODULE(r);
         break;
     case 6:
         cf = CMD_MIX(r);
+        break;
+    case 0x0D:
+        cf = CMD_POSITION(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

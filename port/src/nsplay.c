@@ -578,7 +578,7 @@ static void MIX(void)
 }
 
 /* CODE:1A7B */
-static uint16_t MIX_ROOM(void)
+uint16_t MIX_ROOM(void)
 {
     uint16_t cx = (uint16_t)rd(D_SAMPLE_POS);
 
