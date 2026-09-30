@@ -52,7 +52,8 @@ opcode-14h object (see "Table 3's opcode-14h record"); the hole's
 stale sound read gives nothing in a run (see "The hole's sound in a
 run"); pMAX's own unpacker read in a run's memory, and the archive's
 decoder (tools/illfiles.py, port/src/archive.c) corrected after it: 10
-of the 125 entries had come out wrong (see "pMAX's decoder").
+of the 125 entries had come out wrong (see "pMAX's decoder"); the
+chooser's retrace timer in the driver (see "The chooser's timer").
 
 ## The earlier analysis
 
@@ -2451,6 +2452,80 @@ as at CODE:4CFB. The DAC and the CRTC's registers are not compared
 attribute controller's palette access is off until the overscan write,
 and no frame is waited for).
 
+### The chooser's timer
+
+CHOOSER (CODE:4FF9) makes four checksummed calls before CHOOSER_WAIT;
+their targets, computed from the run's memory at CODE:4FF9 (the dword
+less the byte sum, as in "The chooser's start"): CODE:26FD, 4CB6, 236A
+(through CODE:4CE8, called) and 38C6 (through CODE:4CF2, jumped to;
+its RET goes to CODE:505C). Names in src/ILLUSION.hints and
+src/NOSOUND.hints:
+
+- CUBE_DRAW (CODE:26FD, AX CUBE_SEL): cube.rix from its byte 3Ah into
+  video memory 72A4h, each plane (map mask 1, 2, 4, 8) four times,
+  rotated left by 0, 2, 4 and 6 bits (a 16-bit ROL of a byte and the
+  next; a line's last byte with its first), 32 lines of B8h bytes each
+  time; the picture's lines are 2E0h bytes, B8h a plane. The map mask is
+  left at 10h. Presumably the backdrop's shapes at four sub-byte
+  positions for the scroll; not looked at as a picture.
+- VSYNC_START (CODE:4CB6): the driver's command 0Eh with CS:4C85h
+  (VSYNC_CB: VSYNC_COUNT, CODE:1548, counted) and 0Fh with CS:4C93h and
+  ECX 1999h (CRT_START_CB: while CRT_START_ON, CODE:191A, is 1, CRTC
+  0Ch/0Dh from CRT_START, CODE:1323). CS is 14h (DS 1Ch): the far
+  pointers the driver keeps hold 14h.
+- MUSIC_PLAY (CODE:236A): command 1 with ECX 0Fh.
+- then CHOOSER_LOADED 0 and CHOOSER_WAIT.
+
+NOSOUND's commands 0Eh and 0Fh (CMD_VSYNC, CMD_VSYNC2): command 0Eh
+measures a picture with the PIT (FRAME_MEASURE, CODE:07D6: channel 0 in
+mode 0 counting down from 0 from a retrace's start; the count at the
+first read with the display on after the retrace, at the last such read
+before the next retrace, and at that retrace). The run's numbers
+(2026-09-30, Linux, as in "The driver's timer", `-break 1047F6`,
+CODE:38C6, t=108.021548, 5403 frames; build/pm/ns_38c6.*): VS_RETRACE
+BDh (189), VS_DISPLAY 4D76h (19830), VS_FRAME 4E35h (20021),
+VS_FRAME97 4BDCh, VS2_TICKS 87Bh, VS_IRQS 2CEh, VS2_IRQS 50h, MIX_RATE
+44100. They fit dosrun's CRT timing for the chooser's mode (its
+vga_timing in doskit/tools/run/vga.c): CHOOSER_MODE leaves CR 0 at
+mode 0Dh's 2Dh (its table starts at CR 1), so 50 characters of 8 dots
+at 25.175 MHz / 2 a line, 528 lines (CR 6 0Eh, CR 7 3Eh), 20019.86 PIT
+ticks a picture (59.6 Hz), and 5 retrace lines (CR 10h D7h with bit 8,
+CR 11h's 0Ch) 189.58 ticks. So VS_RETRACE and VS_RETRACE + VS_DISPLAY
+(20019) are the whole ticks of those, and VS_FRAME is two ticks more:
+fitted to this run (the polling's delay, presumably), not derived. On a
+real card the numbers are its own.
+
+VSYNC_TICK (CODE:08A4) is TIMER_IRQ's at TIMER_COUNT 0 with VSYNC_ON:
+it toggles VSYNC_PHASE; to 1 it waits (in the handler, interrupts on,
+the IRQs still counted) for the retrace, sets TIMER_COUNT VS2_IRQS and
+calls VSYNC_CB; to 0 it sets TIMER_COUNT VS_IRQS - VS2_IRQS and calls
+VSYNC2_CB. CMD_PLAY starts TIMER_COUNT at VS_IRQS. So VSYNC_CB comes at
+each retrace and VSYNC2_CB 50h IRQs (87Bh ticks, a tenth of the display
+past the retrace's end) after it; the wait takes up the 3 % of a
+picture VS_FRAME97 leaves.
+
+The port (port/src/nosound.c) computes FRAME_MEASURE's numbers from the
+CRTC's registers the same way (the two fitted ticks included) and waits
+two pictures; TIMER_IRQ's picture of IRQs runs VSYNC_TICK where
+TIMER_COUNT reaches 0, and a retrace wait ends at the next picture's
+tick. The callbacks are the port's C (ns_far_call in chooser.c; any
+other pointer stops the port). In the port both come in the tick before
+the game's loop goes on; in the original VSYNC2_CB comes 87Bh ticks
+after the retrace, so a CRT_START the game writes within that time is
+shown a picture earlier there. Not seen in a run yet.
+
+Against the port stopped at CHOOSER_WAIT, 2026-09-30, Linux: CODE, TAIL
+and video memory 0 bytes differ; 175 of 176 used heap blocks equal; the
+driver's block differs in the sample clock only (SAMPLE_POS,
+TIMER_COUNT, TICK_COUNT, TICKS, MIX_POS, MIX_LEN, the channels'
+positions), the timing numbers above equal. The DMA buffer at 13120h
+differs (9446 bytes): CMD_PLAY mixes as far as the SAMPLE_POS left from
+the intro's timer (MIX_POS 2470h in the run, 20CCh in the port, each
+its SAMPLE_POS at CODE:4FF9), the sample-clock difference of "The
+intro's end". The run's CPU time (CUBE_DRAW's writes: CHOOSER at
+t=107.847899, CHOOSER_WAIT at 108.021548) is not modelled; the port
+waits only FRAME_MEASURE's two pictures.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2636,9 +2711,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (CODE:79C3). Done 2026-09-30: the intro's end, the scroller, the
      keys' way out and commands 3 and 8, up to the chooser (CODE:4CFB;
      see "The intro's end"). Done 2026-09-30: the chooser's start, up to
-     CHOOSER (CODE:4FF9; see "The chooser's start"). Next: from CHOOSER
-     on: CODE:26FD with CUBE_SEL, CODE:4CB6, CODE:236A, then
-     CHOOSER_WAIT (the turning shapes and the compiled captions).
+     CHOOSER (CODE:4FF9; see "The chooser's start"). Done 2026-09-30: CHOOSER's first calls
+     (CUBE_DRAW, VSYNC_START with NOSOUND's commands 0Eh and 0Fh,
+     MUSIC_PLAY), up to CHOOSER_WAIT (CODE:38C6; see "The chooser's
+     timer"). Next: CHOOSER_WAIT's loop (CODE:38FD: the turning shapes,
+     ATTRACT_STEP, the compiled captions called, MENU_KEYS,
+     CAPTION_STEP).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

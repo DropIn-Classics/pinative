@@ -71,7 +71,7 @@ words      CODE:2B27 10 CODE       ; the effects at a row, by effect number (COD
 name       CODE:2B27 ROW_FX
 words      CODE:2BA7 10 CODE       ; the same with byte +37h 1: only effects 0Bh, 0Dh, 0Eh, 0Fh
 name       CODE:2BA7 ROW_FX_SFX
-code       CODE:0658 TIMER_IRQ     ; IRQ 0's handler, set by CODE:059A through host callback 1Eh (EDX 658h): SAMPLE_POS counted, wrapped at MIX_SIZE; every [06ACh]-th an old handler's turn at CODE:08A4 (presumably; not followed)
+code       CODE:0658 TIMER_IRQ     ; IRQ 0's handler, set by CODE:059A through host callback 1Eh (EDX 658h): SAMPLE_POS counted, wrapped at MIX_SIZE; at TIMER_COUNT 0 VSYNC_TICK (CODE:08A4)
 name       CODE:06A8 SAMPLE_POS    ; TIMER_IRQ's count, 0 at command 1 (CODE:059A); CODE:0651 reads it
 words      CODE:2B67 10 CODE       ; effect 0Eh (CODE:1965) by the parameter's high nibble
 name       CODE:2B67 ROW_FX_E
@@ -156,3 +156,22 @@ code       CODE:0618 TIMER_STOP    ; the PIT's channel 0 to divisor 0 (PIT_RESET
 code       CODE:1367 PIT_RESET     ; PIT channel 0 mode 3 with divisor 0
 code       CODE:10E1 PORTS_RESTORE ; SAVED_61, SAVED_IMR1, SAVED_IMR2 to ports 61h, 21h, A1h; PIT_RESET
 code       CODE:0F17 CMD_ORDER     ; command 8: slot CL's module from its order BL (ORDER_POS, CUR_PATTERN, PAT_OFFSET, SPEED 6); with C2D64 FFh (set by command 0Ah, a jingle playing presumably) only kept for the music's return (SAVED_SLOT, C21BB, C21BD, SAVED_SPEED)
+; the retrace callbacks (commands 0Eh, 0Fh), read 2026-09-30 for the chooser (CODE:4CB6 of ILLUSION.386)
+code       CODE:0731 CMD_VSYNC     ; command 0Eh: ES:EDX to VSYNC_CB, FRAME_MEASURE, VSYNC_ON FFh
+code       CODE:074F CMD_VSYNC2    ; command 0Fh: ES:EDX to VSYNC2_CB, VS2_TICKS = CX * VS_DISPLAY / 10000h + VS_RETRACE, VS2_IRQS from it, VSYNC2_ON FFh
+code       CODE:079A VSYNC_OFF     ; with VSYNC_ON: both callbacks set to the RETF at CODE:0798, VSYNC2_ON and VSYNC_ON 0 (CMD_STOP)
+code       CODE:07D6 FRAME_MEASURE ; a retrace's start waited for, the PIT's channel 0 in mode 0 from 0; VS_RETRACE at the first read with the display on after the retrace, the last such read before the next retrace less that VS_DISPLAY, that retrace VS_FRAME; VS_FRAME97 = VS_FRAME * F851h / 10000h (97 %), VS_IRQS from it
+code       CODE:0887 TICKS_TO_IRQS ; AX PIT ticks to IRQs at MIX_RATE: (AX * MIX_RATE + 91A6Eh) / 1234DCh
+code       CODE:08A4 VSYNC_TICK    ; TIMER_IRQ's at TIMER_COUNT 0 with VSYNC_ON: VSYNC_PHASE toggled; to 0 with VSYNC2_ON: TIMER_COUNT VS_IRQS - VS2_IRQS and VSYNC2_CB called; else (interrupts on) the retrace waited for, TIMER_COUNT VS2_IRQS (VS_IRQS without VSYNC2_ON) and VSYNC_CB called. So VSYNC_CB at each retrace, VSYNC2_CB VS2_TICKS after it
+name       CODE:0723 VS_RETRACE    ; PIT ticks from a retrace's start to the display (run 2026-09-30, the chooser's mode: BDh)
+name       CODE:0725 VS_DISPLAY    ; PIT ticks of the display (run: 4D76h)
+name       CODE:0727 VS_FRAME      ; PIT ticks from a retrace's start to the next (run: 4E35h)
+name       CODE:0729 VS_FRAME97    ; VS_FRAME * F851h / 10000h (run: 4BDCh)
+name       CODE:072B VS2_TICKS     ; command 0Fh's PIT ticks after a retrace's start (run, CX 1999h: 87Bh)
+name       CODE:072D VS_IRQS       ; VS_FRAME97 in IRQs (run: 2CEh)
+name       CODE:072F VS2_IRQS      ; VS2_TICKS in IRQs (run: 50h)
+name       CODE:0791 VSYNC2_ON     ; FFh after command 0Fh
+name       CODE:0797 VSYNC_PHASE   ; VSYNC_TICK's toggle: 1 while the retrace is waited for next
+name       CODE:0799 VSYNC_ON      ; FFh after command 0Eh
+name       CODE:2D38 VSYNC_CB      ; command 0Eh's far pointer (offset, selector at +4)
+name       CODE:2D3E VSYNC2_CB     ; command 0Fh's far pointer (offset, selector at +4)

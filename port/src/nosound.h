@@ -16,6 +16,10 @@ typedef struct {
  * r->eax; 1 for CF (then r->eax is the driver's error) */
 int ns_call(uint16_t cs, NsRegs *r);
 
+/* the game's routine at sel:off, which the driver calls (CALL FWORD) with
+ * DS its own: the port's C for it (chooser.c) */
+void ns_far_call(uint16_t sel, uint32_t off);
+
 /* nsplay.c, with DS the driver's: CODE:1A98 and CODE:1057 */
 void MIX_UPDATE(void);
 void CHANNELS_RESET(void);

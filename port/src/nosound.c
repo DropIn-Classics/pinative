@@ -346,26 +346,119 @@ static int CMD_LOAD_MODULE(NsRegs *r)
 /* The driver's timer.  Under DOS IRQ 0 comes at 1193182 / C327A Hz and
  * TIMER_IRQ (CODE:0658) counts SAMPLE_POS and the word at CODE:06AC; the
  * port has no interrupts, so the IRQs a picture's time holds (at the
- * refresh rate vga.c gives) are counted at once, by frame.c's tick */
+ * refresh rate vga.c gives) are counted at once, by frame.c's tick.
+ * VSYNC_TICK's wait for the retrace (CODE:08E7, in the handler with
+ * interrupts on, so the IRQs go on being counted) ends at the next
+ * picture: the tick is the retrace */
 static uint32_t timer_ds;
 static double timer_due;
+static int vsync_wait;
+
+static void far_call(uint32_t ptr)
+{
+    ns_far_call(rw(ptr + 4), rd(ptr));
+}
 
 static void TIMER_IRQ(void)
 {
     uint32_t save = pm_ds;
 
     pm_ds = timer_ds;
+    if (vsync_wait) {
+        /* CODE:08F4 */
+        vsync_wait = 0;
+        ww(D_TIMER_COUNT, rb(D_VSYNC2_ON) == 0xFF ? rw(D_VS2_IRQS) : rw(D_VS_IRQS));
+        far_call(D_VSYNC_CB);
+    }
     timer_due += 1193182.0 / rw(D_PIT_DIV) / vga_refresh_hz();
     for (; timer_due >= 1.0; timer_due -= 1.0) {
         wd(D_SAMPLE_POS, rd(D_SAMPLE_POS) + 1);
         if ((uint16_t)rd(D_SAMPLE_POS) >= rw(D_MIX_SIZE))
             wd(D_SAMPLE_POS, 0);
         ww(D_TIMER_COUNT, (uint16_t)(rw(D_TIMER_COUNT) - 1));
-        /* CODE:08A4: command 0Eh's retrace callback, never set here */
-        if (rw(D_TIMER_COUNT) == 0 && rb(0x0799) == 0xFF)
-            pi_stop("NOSOUND: TIMER_IRQ's retrace callback");
+        /* CODE:08A4, VSYNC_TICK */
+        if (rw(D_TIMER_COUNT) != 0 || rb(D_VSYNC_ON) != 0xFF)
+            continue;
+        wb(D_VSYNC_PHASE, rb(D_VSYNC_PHASE) ^ 1);
+        if (rb(D_VSYNC_PHASE) == 0 && rb(D_VSYNC2_ON) == 0xFF) {
+            ww(D_TIMER_COUNT, (uint16_t)(rw(D_VS_IRQS) - rw(D_VS2_IRQS)));
+            far_call(D_VSYNC2_CB);
+        } else {
+            vsync_wait = 1;
+        }
     }
     pm_ds = save;
+}
+
+/* CODE:0887: PIT ticks in AX to IRQs at MIX_RATE, rounded */
+static uint16_t TICKS_TO_IRQS(uint16_t ax)
+{
+    return (uint16_t)(((uint32_t)ax * rw(D_MIX_RATE) + 0x91A6Eu) / 0x1234DCu);
+}
+
+/* CODE:07D6: a picture measured with the PIT's channel 0 counting down
+ * from 0 (mode 0) from a retrace's start: CX at the first read with the
+ * display on after the retrace, BP at the last such read before the next
+ * retrace, DX at that retrace.  The port has no PIT: the numbers come
+ * from the CRTC's timing as dosrun has it (tools/run/vga.c, vga_timing),
+ * CX and BP the whole ticks of the retrace's lines and of the frame, DX
+ * two ticks after BP as the run had it (docs/HANDOFF.md, "The chooser's
+ * timer"; the two are fitted, not derived).  Two retraces waited. */
+static void FRAME_MEASURE(void)
+{
+    static const double clocks[4] = { 25175000.0, 28322000.0, 25175000.0, 25175000.0 };
+    uint8_t cr[0x19], seq1;
+    double dotclk, line;
+    int i, vtotal, vrs, vre;
+    uint16_t cx, bp, dx;
+
+    for (i = 0; i < 0x19; i++) {
+        vga_outb(0x3D4, (uint8_t)i);
+        cr[i] = vga_inb(0x3D5);
+    }
+    vga_outb(0x3C4, 1);
+    seq1 = vga_inb(0x3C5);
+    dotclk = clocks[vga_inb(0x3CC) >> 2 & 3];
+    if (seq1 & 0x08)
+        dotclk /= 2;
+    line = (cr[0] + 5) * ((seq1 & 0x01) ? 8 : 9) / dotclk * 1193182.0;
+    vtotal = (cr[6] | (cr[7] & 0x01) << 8 | (cr[7] & 0x20) << 4) + 2;
+    vrs = cr[0x10] | (cr[7] & 0x04) << 6 | (cr[7] & 0x80) << 2;
+    vre = (vrs & ~0x0F) | (cr[0x11] & 0x0F);
+    if (vre <= vrs)
+        vre = vrs + 2;
+    frame_wait();
+    frame_wait();
+    cx = (uint16_t)(line * (vre - vrs));
+    bp = (uint16_t)(line * vtotal);
+    dx = (uint16_t)(bp + 2);
+    ww(D_VS_RETRACE, cx);
+    ww(D_VS_FRAME, dx);
+    ww(D_VS_DISPLAY, (uint16_t)(bp - cx));
+    ww(D_VS_FRAME97, (uint16_t)((uint32_t)0xF851 * dx >> 16));
+    ww(D_VS_IRQS, TICKS_TO_IRQS(rw(D_VS_FRAME97)));
+}
+
+/* CODE:0731: command 0Eh, ES:EDX called at each retrace (VSYNC_TICK) */
+static int CMD_VSYNC(NsRegs *r)
+{
+    ww(D_VSYNC_CB + 4, r->es);
+    wd(D_VSYNC_CB, r->edx);
+    FRAME_MEASURE();
+    wb(D_VSYNC_ON, 0xFF);
+    return 0;
+}
+
+/* CODE:074F: command 0Fh, ES:EDX called CX / 10000h of the display after
+ * the retrace's end */
+static int CMD_VSYNC2(NsRegs *r)
+{
+    ww(D_VSYNC2_CB + 4, r->es);
+    wd(D_VSYNC2_CB, r->edx);
+    ww(D_VS2_TICKS, (uint16_t)(((uint32_t)(uint16_t)r->ecx * rw(D_VS_DISPLAY) >> 16) + rw(D_VS_RETRACE)));
+    ww(D_VS2_IRQS, TICKS_TO_IRQS(rw(D_VS2_TICKS)));
+    wb(D_VSYNC2_ON, 0xFF);
+    return 0;
 }
 
 /* CODE:059A: SAMPLE_POS 0, IRQ 0's vector to TIMER_IRQ (the old one kept
@@ -429,8 +522,8 @@ static int CMD_PLAY(NsRegs *r)
     for (i = rw(D_NBUF); i; i--)
         MIX_UPDATE();
     /* CODE:091D */
-    if (rb(0x0799) == 0xFF)
-        ww(D_TIMER_COUNT, rw(0x072D));
+    if (rb(D_VSYNC_ON) == 0xFF)
+        ww(D_TIMER_COUNT, rw(D_VS_IRQS));
     TIMER_START();
     return 0;                   /* CODE:0975: EAX as the caller had it */
 }
@@ -451,7 +544,7 @@ static int CMD_STOP(NsRegs *r)
     wb(D_IRQ_MASK2, 0xFF);
     CHANNELS_RESET();
     /* CODE:079A: command 0Eh's retrace callback taken back */
-    if (rb(0x0799) == 0xFF)
+    if (rb(D_VSYNC_ON) == 0xFF)
         pi_stop("NOSOUND: command 3 with the retrace callback set");
     /* CODE:10E1: ports 61h, 21h, A1h and the PIT again: nothing in memory */
     return 0;
@@ -542,6 +635,12 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 0x0D:
         cf = CMD_POSITION(r);
+        break;
+    case 0x0E:
+        cf = CMD_VSYNC(r);
+        break;
+    case 0x0F:
+        cf = CMD_VSYNC2(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

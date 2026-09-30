@@ -27,8 +27,12 @@ picture (src/intro.c) and the driver's command 6, the module player
 pictures: the port has no interrupts), 3 and 8, and the whole intro:
 its script, the scroller after it, Esc and space to leave it, and the
 chooser's start (src/chooser.c: its video mode, keyboard handler and
-the captions compiled into code as the original makes them), up to
-CHOOSER (CODE:4FF9), where the port stops (`Stopped before CHOOSER`).
+the captions compiled into code as the original makes them) and
+CHOOSER's first calls (the backdrop's picture into video memory, the
+driver's retrace routines, commands 0Eh and 0Fh, and the music's start),
+up to CHOOSER_WAIT (CODE:38C6), where the port stops (`Stopped before
+CHOOSER_WAIT`). The driver's picture measurement (command 0Eh) is
+computed from the CRTC's registers as dosrun times them.
 The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
@@ -132,6 +136,13 @@ SVGA_CHECK.
   DK_KEYS 4550): CODE differs only in INTRO_TIME, or SCROLL_POS and
   SCROLL_LEFT, the key having come at another moment; the heap as
   without a key. The window build not run for this.
+- 2026-09-30, Linux: at CHOOSER_WAIT, CODE:38C6 (dosrun `-break
+  1047F6 -mem -vram`, NOSOUND.SDR, no key): CODE, TAIL and video memory
+  0 bytes differ; 175 of 176 used heap blocks equal; the driver's block
+  in the sample clock only, its retrace numbers (VS_RETRACE .. VS2_IRQS)
+  equal. The DMA buffer differs, mixed up to the intro timer's
+  SAMPLE_POS, which differed already (docs/HANDOFF.md, "The chooser's
+  timer"). The window build not run for this.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

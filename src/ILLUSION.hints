@@ -645,6 +645,15 @@ comment    CODE:340A a keyboard handler: the scan code (port 60h) into a ring of
 ds         CODE:4C8C-4C92 CODE     ; DS from CODE:131D, as above
 comment    CODE:4C85 the routine handed to the sound driver with command 0Eh at CODE:4CB6: counts the dword at CODE:1548 (presumably a timer tick, not checked)
 comment    CODE:4C93 the routine handed with command 0Fh (ECX 1999h) at CODE:4CD1: the CRT start address (3D4h, 0Ch/0Dh) from CODE:1323 while CODE:191A is 1
+; CHOOSER's first calls, CODE:4FF9 to CHOOSER_WAIT (2026-09-30; the targets from the run's memory at CODE:4FF9)
+code       CODE:26FD CUBE_DRAW     ; the backdrop picture of the selector in AX (CUBE_SEL at CODE:500E) from its byte 3Ah into video memory 72A4h, each plane (map mask 1, 2, 4, 8) four times, rotated left by 0, 2, 4, 6 bits (32 lines of B8h bytes each, a line wrapped round; the picture's lines 2E0h bytes, B8h a plane); GC 3 0 (CODE:29C7)
+code       CODE:4CB6 VSYNC_START   ; the sound driver's command 0Eh with CODE:4C85 (VSYNC_COUNT at each retrace) and 0Fh with CODE:4C93 and ECX 1999h (the start address a tenth of the display after the retrace, see NOSOUND.hints)
+code       CODE:236A MUSIC_PLAY    ; the sound driver's command 1 with ECX 0Fh
+code       CODE:4C85 VSYNC_CB      ; VSYNC_COUNT counted, DS from CHOOSER_DS
+code       CODE:4C93 CRT_START_CB  ; while CRT_START_ON is 1: CRT_START to CRTC 0Ch/0Dh
+name       CODE:1548 VSYNC_COUNT   ; a dword VSYNC_CB counts, once a retrace
+name       CODE:1323 CRT_START     ; the start address CRT_START_CB sets (E60h from SCROLL_INIT)
+name       CODE:191A CRT_START_ON  ; 1 from CHOOSER_MODE
 ds         CODE:9CDC-9CE3 CODE     ; DS from CODE:A10B, as KBD_IRQ
 comment    CODE:9CD4 the completion routine handed with command 11h at CODE:9B31: sets CODE:9CE5 to FFh; the driver calls it from its command 6 once a jingle has ended (a jump to the order it plays, SB16.SDR +1EAF; run 2026-09-29: 1.69 s after the command 0Ah of order 0Eh)
 name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: counts CODE:BAD4 (the blinking of display opcode 1Ah, the random awards of handler 1Ah); run 2026-09-29, table 1: 838 writes by CODE:B9AA from t=130.11 to 142, 70.5 a second, so once a frame at 70 Hz

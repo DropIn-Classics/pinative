@@ -6,12 +6,16 @@
  * captions are compiled: CAPTION_BUILD draws each into two bitmaps and
  * makes six 16-bit routines of it (GEN_CODE, GEN_CODE2) in blocks of their
  * own, which the chooser later calls to draw; the port makes the same
- * bytes, so memory compares with a run.
+ * bytes, so memory compares with a run.  CHOOSER then draws the backdrop's
+ * picture, hands the driver its two retrace routines and starts the music.
  */
+#include <string.h>
+
 #include "frame.h"
 #include "game.h"
 #include "image.h"
 #include "names.h"
+#include "nosound.h"
 #include "pmax.h"
 #include "pmem.h"
 #include "vga.h"
@@ -436,6 +440,130 @@ static void CAPTIONS_MAKE(void)
     pmax_free_linear(rd(N_GEN_BUF));
 }
 
+/* ---- CHOOSER ---- */
+
+/* CODE:26FD: the picture of selector `sel` from its byte 3Ah into video
+ * memory 72A4h, each plane four times rotated by 0, 2, 4, 6 bits */
+static void CUBE_DRAW(uint16_t sel)
+{
+    uint32_t src = pmax_base(sel), esi = 0x3A, edi = 0x72A4;
+    uint8_t bl = 1;
+
+    vga_outw(0x3CE, 0x0003);            /* CODE:29C7 */
+    vga_outb(0x3C4, 2);
+    vga_outb(0x3C5, bl);
+    do {
+        int cl, ch, k;
+
+        for (cl = 0; cl < 8; cl += 2) {
+            for (ch = 0; ch < 0x20; ch++) {
+                uint32_t s = esi;
+                uint16_t ax;
+
+                for (k = 0; k < 0xB7; k++, s++) {
+                    ax = lrw(src + s);
+                    vga_write((uint16_t)edi++, (uint8_t)(ax << cl | ax >> (16 - cl)));
+                }
+                /* the line's last byte with its first */
+                ax = (uint16_t)(lrb(src + esi) << 8 | lrb(src + s));
+                vga_write((uint16_t)edi++, (uint8_t)(ax << cl | ax >> (16 - cl)));
+                esi += 0x2E0;
+            }
+            esi -= 0x5C00;
+        }
+        esi += 0xB8;
+        edi -= 0x5C00;
+        bl <<= 1;
+        vga_outb(0x3C5, bl);            /* 10h after the last plane, as the original */
+    } while (bl < 0x10);
+}
+
+/* CODE:4C85, called by the driver at each retrace */
+static void VSYNC_CB(void)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = PI_IMAGE_BASE;
+    wd(N_VSYNC_COUNT, rd(N_VSYNC_COUNT) + 1);
+    pm_ds = save;
+}
+
+/* CODE:4C93, called by the driver a tenth of the display after the
+ * retrace */
+static void CRT_START_CB(void)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = PI_IMAGE_BASE;
+    if (rb(N_CRT_START_ON) == 1) {
+        uint16_t bx = rw(N_CRT_START);
+
+        vga_outw(0x3D4, (uint16_t)((bx & 0xFF00) | 0x0C));
+        vga_outw(0x3D4, (uint16_t)(bx << 8 | 0x0D));
+    }
+    pm_ds = save;
+}
+
+void ns_far_call(uint16_t sel, uint32_t off)
+{
+    if (sel == pmax_code_sel()) {
+        switch (off) {
+        case 0x4C85:
+            VSYNC_CB();
+            return;
+        case 0x4C93:
+            CRT_START_CB();
+            return;
+        }
+    }
+    pi_stop("a driver's callback not translated");
+}
+
+static void driver(NsRegs *r)
+{
+    r->ds = pi_image.desc[ILLUSION_CODE].sel;
+    ns_call(rw(N_DRIVER_ENTRY + 4), r);
+}
+
+/* CODE:4CB6: the driver's commands 0Eh and 0Fh */
+static void VSYNC_START(void)
+{
+    NsRegs r = { 0 };
+
+    r.eax = 0x0E;
+    r.edx = 0x4C85;
+    r.es = pmax_code_sel();
+    driver(&r);
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0F;
+    r.ecx = 0x1999;
+    r.edx = 0x4C93;
+    r.es = pmax_code_sel();
+    driver(&r);
+}
+
+/* CODE:236A: the driver's command 1 */
+static void MUSIC_PLAY(void)
+{
+    NsRegs r = { 0 };
+
+    r.eax = 1;
+    r.ecx = 0x0F;
+    driver(&r);
+}
+
+/* CODE:4FF9, up to CHOOSER_WAIT */
+static void CHOOSER(void)
+{
+    /* the checksummed calls in their order (targets from the run's
+     * memory, docs/HANDOFF.md "The chooser's timer") */
+    CUBE_DRAW(rw(N_CUBE_SEL));
+    VSYNC_START();
+    MUSIC_PLAY();
+    wb(N_CHOOSER_LOADED, 0);
+    pi_stop("CHOOSER_WAIT (CODE:38C6)");
+}
+
 /* CODE:4CFB, up to CHOOSER (CODE:4FF9) */
 void CHOOSER_START(void)
 {
@@ -485,5 +613,5 @@ void CHOOSER_START(void)
     wb(0x1534, 0);
     if (rw(N_CHOOSER_LOADED) != 1)
         pi_stop("CODE:4E98 (the chooser's files loaded again)");
-    pi_stop("CHOOSER (CODE:4FF9)");
+    CHOOSER();
 }
