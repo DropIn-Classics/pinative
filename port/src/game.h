@@ -40,6 +40,8 @@ int CD_INSTALLED(void);
 void CD_LOCK(uint8_t bl);
 int CD_READ_TOC(void);
 void CD_STOP(void);
+/* CODE:35DDC: the track's frames back (ECX) */
+uint32_t CD_PLAY(uint32_t ebx);
 
 /* hostcb.c: the host callbacks; 1 for CF */
 int HCB_ALLOC(uint32_t size, uint16_t *bx);
@@ -92,6 +94,11 @@ void TABLE_GAME(void);
 
 /* table.c: CODE:9F2C, the sound record at [CODE:0000] */
 void SFX_PLAY(void);
+/* table.c: CODE:9B92, the driver's retrace routines and the table's
+ * music started; CODE:B99C and CODE:B9B9, those routines */
+void GAME_SOUND(void);
+void DRV_TICK(void);
+void DRV_FRAME(void);
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 

@@ -559,6 +559,12 @@ void ns_far_call(uint16_t sel, uint32_t off)
         case 0x4C93:
             CRT_START_CB();
             return;
+        case 0xB99C:
+            DRV_TICK();
+            return;
+        case 0xB9B9:
+            DRV_FRAME();
+            return;
         }
     }
     pi_stop("a driver's callback not translated");

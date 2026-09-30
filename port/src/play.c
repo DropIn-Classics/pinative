@@ -160,5 +160,6 @@ void TABLE_GAME(void)
     wb(0xD973, 1);             /* CODE:D973, not followed */
     ww(N_GAME_PHASE, 1);
     wb(N_QUIT_TABLE, 0);
-    pi_stop("CODE:9B92");
+    GAME_SOUND();
+    pi_stop("CODE:B976");
 }

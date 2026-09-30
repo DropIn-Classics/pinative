@@ -52,8 +52,11 @@ and the lights reset, the drop targets drawn, the attract scroll's
 first line, the flippers drawn, the nudges and the flippers' moves with
 their sounds, src/flipper.c and the driver's commands 9 and 12h, the
 lights' states and flashing a frame, the dot-matrix display shown and
-the table's palette faded in) up to CODE:9B92 (`Stopped before
-CODE:9B92`); the Info page (a table's
+the table's palette faded in, the driver's retrace routines, the
+module music silenced and the table's CD track asked for, the driver's
+player started: src/table.c, commands 0Ch and 1, the port's MSCDEX
+taking the play and playing nothing) up to CODE:B976 (`Stopped before
+CODE:B976`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -271,6 +274,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   pixel for pixel (the fade's second-last step). No light drawn, no
   group complete there: the lights' drawing, the event queue, the
   flashing and the lane change are not checked yet.
+- 2026-09-30, Linux: each of the four tables up to CODE:B976 (dosrun
+  `-break 10C8A6 -mem -vram`, the same keys): CODE differs only in
+  FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but
+  the leftovers named above, the DMA buffer as at CODE:9B92. The disc
+  has no audio tracks there (dosrun without -cue): a play of a real
+  track is not compared; DRV_TICK and DRV_FRAME not run yet.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

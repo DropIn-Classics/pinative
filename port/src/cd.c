@@ -1,5 +1,5 @@
 /* cd.c - the CD through MSCDEX: CD_INSTALLED (CODE:35B52), CD_LOCK
- * (CODE:35B7D), CD_READ_TOC (CODE:35C58), CD_STOP, CD_REQUEST (CODE:35B0D), and in
+ * (CODE:35B7D), CD_READ_TOC (CODE:35C58), CD_STOP, CD_PLAY, CD_REQUEST (CODE:35B0D), and in
  * place of MSCDEX a drive D: with one data track, as dosrun has it without
  * a cue sheet (the GOG release's audio tracks come with the sound).
  */
@@ -39,6 +39,8 @@ static void mscdex(uint32_t rm)
             pi_stop("MSCDEX: an IOCTL output the port does not answer");
         /* 1: lock or unlock the door: nothing to do */
     } else if (cmd == 0x85) {  /* stop audio: nothing plays */
+    } else if (cmd == 0x84) {  /* play audio: taken, nothing plays (the
+                                 * data track's frames are not sound) */
     } else {
         pi_stop("MSCDEX: a request the port does not answer");
     }
@@ -105,8 +107,33 @@ int CD_READ_TOC(void)
     return 0;
 }
 
-/* CODE:35E4F (the request at CODE:35E94, command 85h) */
+/* CODE:35E4F: the request at CD_STOP_REQ (command 85h) */
 void CD_STOP(void)
 {
-    CD_REQUEST(0x35E94);
+    CD_REQUEST(N_CD_STOP_REQ);
+}
+
+/* CODE:35E65: a Red Book address (frame, second, minute as the low
+ * bytes) in frames; the second's word keeps the dword's top byte (MOV AH,0
+ * after SHR 8), 0 in a Red Book address */
+static uint32_t RB_FRAMES(uint32_t eax)
+{
+    return (eax >> 16) * 0x1194 + ((eax >> 8) & 0xFFFF00FFu) * 0x4B + (eax & 0xFF);
+}
+
+/* CODE:35DDC: track `ebx` played from its start (CD_TRACK_START) to the
+ * next track's, or for 3:34 (32200h) when that is negative; the request at
+ * CODE:35EA1 (command 84h, start at CD_PLAY_START, frames at CD_PLAY_LEN);
+ * the frames back */
+uint32_t CD_PLAY(uint32_t ebx)
+{
+    uint32_t ecx = RB_FRAMES(0x32200), eax;
+
+    wd(N_CD_PLAY_START, rd(N_CD_TRACK_START + ebx * 4));
+    eax = rd(N_CD_TRACK_START + 4 + ebx * 4);
+    if ((int32_t)eax >= 0)
+        ecx = RB_FRAMES(eax) - RB_FRAMES(rd(N_CD_TRACK_START + ebx * 4));
+    wd(N_CD_PLAY_LEN, ecx);
+    CD_REQUEST(N_CD_PLAY_REQ);
+    return rd(N_CD_PLAY_LEN);
 }

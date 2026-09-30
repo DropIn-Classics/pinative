@@ -3043,6 +3043,28 @@ blocks equal but the known leftovers; table 1's screen at t=133.005
 the DAC of the fade's second-last step with them. The last step's DAC
 is not compared (the port stops before its picture).
 
+GAME_SOUND (CODE:9B92; names in src/ILLUSION.hints, "the game's sound
+start") hands the driver DRV_TICK (command 0Eh) and DRV_FRAME (0Fh, ECX
+VSYNC_START_ARG), silences the module music (MOD_SILENT: command 0Ch,
+NOSOUND's CMD_LEVEL, MASTER_VOL 0), takes the first music record
+(MODULE_HEADER+8Ch) into MUSIC_FLAGS and MUSIC_TRACK (CD_STOP, CD_PLAY:
+the MSCDEX request 84h from the track's start to the next one's), and
+starts the driver's player (command 1, CX 3). DRV_FRAME's pel panning in
+VGA 320x240 is 2, 4 or 6 by the sign of the word at CODE:D884 (the
+hints said 4 or 6; corrected). On the runs' disc of one data track
+(dosrun without -cue) the tracks' starts are FFFFFFFFh (only track 1's
+is read from the disc, the others keep what the image has), so
+CD_PLAY_START is FFFFFFFFh and the length the default 3:34, 16050
+frames; TRACK_LEFT 16050 x 61 / 75 = 13054 frames, on all four tables
+(tracks 2, 0Eh, 1Ah, 27h). The port's MSCDEX takes the play request and
+plays nothing, as dosrun does without a cue sheet; what a disc with
+audio tracks gives is not compared. Against the runs at CODE:B976
+(`-break 10C8A6`), all four tables: CODE only FRAME_SPINS, TAIL and
+video memory equal, the heap blocks equal but the known leftovers (the
+driver's in SAVED_61 only), the DMA buffer as at CODE:9B92. No retrace
+came between command 1 and CODE:B976, so DRV_TICK and DRV_FRAME did not
+run there.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3257,10 +3279,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      CODE:1048B (same section). Done 2026-09-30: FLIPPERS_STEP, up to
      LIGHTS_STEP (same section; its up path unchecked). Done
      2026-09-30: LIGHTS_STEP, FLASH_STEP and TABLE_FADE_IN, up to
-     CODE:9B92 (same section). Next: CODE:9B92 (the driver's commands
-     0Eh and 0Fh with DRV_TICK and DRV_FRAME, 0Ch, MUSIC_TRACK, 1),
-     then the loop from CODE:B976 (GAME_PHASE 1, the attract mode,
-     CODE:2A4F8) and KBD_IRQ (CODE:A076).
+     CODE:9B92 (same section). Done 2026-09-30: GAME_SOUND (CODE:9B92:
+     the driver's commands 0Eh, 0Fh, 0Ch and 1, MUSIC_TRACK), up to
+     CODE:B976 (same section). Next: the loop from CODE:B976 (GAME_PHASE
+     1, the attract mode, CODE:2A4F8) and KBD_IRQ (CODE:A076).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

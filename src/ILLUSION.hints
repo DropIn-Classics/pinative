@@ -732,7 +732,7 @@ name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: count
 ds         CODE:B9AA-B9B7 CODE     ; DS from CODE:A10B
 comment    CODE:BAFE GAME_PHASE 0: waits for the retrace (CODE:3D372) until port 60h reads 1 (Esc pressed), then returns with the phase still 0, so CODE:B993 calls it again; nothing else, QUIT_TABLE untouched. Run 2026-09-29 (table 1, GAME_PHASE poked to 0 at t=145.156 during play, Esc at 146 and 150): 70 passes a second to t=156, AL 1 at both Esc presses and the loop went on; the screen frozen from then on. A leftover, presumably (a debug pause)
 comment    CODE:BB0A after the text '9090', no reference found: a routine at CODE:BB0E in the style of CODE:BAFE (the retrace, CODE:1023E, then port 60h): keys 1/2 (scan codes 2, 3) move the word CODE:DBFE by -1/+1, keys 3/4 the word CODE:DC00 (state+10BEh..10C2h, read nowhere else; at 23Ah or more CODE:DBFC gets F001h), the screen start line CODE:A2B9 to [DC00h]-100 through CODE:9311, and the dword at DS:72h to [DC00h]*150h+[DBFEh], the form CODE:269D7 gives a ball's +72h ([CODE:0010]+72h). A debug tool that moved a point over the table and scrolled with it, presumably; dead in this release
-comment    CODE:B9B9 handed with command 0Fh at CODE:9BAF (ECX from CODE:9B8E: DDDDh, E898h, EEEEh or F258h, set at CODE:9725..9882): sets CODE:BAD1 to FFh, the CRT start address from CODE:BAD2 (+54h while the word at CODE:D884 is not 0) and, when CODE:00A2 is 3, the attribute controller's pel panning (4 or 6 by the sign of CODE:D884): presumably the screen's scroll per frame, not checked
+comment    CODE:B9B9 handed with command 0Fh at CODE:9BAF (ECX from CODE:9B8E: DDDDh, E898h, EEEEh or F258h, set at CODE:9725..9882): sets CODE:BAD1 to FFh, the CRT start address from CODE:BAD2 (+54h while the word at CODE:D884 is not 0) and, when CODE:00A2 is 3, instead the attribute controller's pel panning (2, 4 or 6 as CODE:D884 is negative, 0 or positive) with the start from CODE:BAD2 alone: presumably the screen's scroll per frame, not checked
 ds         CODE:B9C3-BA7A CODE     ; DS from CODE:A10B
 ; the table's start, CODE:A323 to CODE:B048 (2026-09-30, the code and a run
 ; stopped at CODE:A3F0, table 1)
@@ -932,6 +932,23 @@ code       CODE:167E4 SPOOKY_COPY
 code       CODE:16494 FLIP_MASK    ; the collision mask at the angle into the "flipper mask data" block (+28h) from the word +B0h + 2 x +1Ah (16-byte units): 16 bytes a row of the collision map at +1Ch (2Ah bytes a line, rotated by FLIP_MASK_SHIFT), 20h rows above, height + 1 rows with the flipper's pixels ORed into the middle 8 bytes, 20h below; the next angle's start to +B2h + 2 x +1Ah
 name       CODE:167E3 FLIP_MASK_SHIFT ; (x - 20h) AND 7
 code       CODE:29A5A BALL_PLACE   ; the ball at [CODE:0010] to 11Ch, 1FEh (+12h, +14h, keeping their low three bits) and shifted by 0Ah into +1Eh, +22h (the second from EDI whose high word the first left: MOV DI), the high bytes of +0Eh, +10h 2, byte +1 0, BALL_BUNDLE2
+; the game's sound start (2026-09-30, the code; the port against a run at
+; CODE:B976, the four tables)
+code       CODE:9B92 GAME_SOUND    ; the driver's command 0Eh with DRV_TICK, 0Fh with DRV_FRAME and VSYNC_START_ARG, MOD_SILENT, the first music record (MODULE_HEADER+8Ch) to MUSIC_FLAGS (byte +0Ah) and MUSIC_TRACK (word +8), MUSIC_RET_ORDER 0 first, SFX_PRIO 0, SOUND_PAUSED 0, command 1 with CX 3
+code       CODE:9C1A MOD_SILENT    ; MOD_LEVEL 0, the driver's command 0Ch (MASTER_VOL) with BX 0
+code       CODE:9C34 MOD_FULL      ; MOD_LEVEL 100h, command 0Ch with BX 100h
+name       CODE:9CA0 MOD_LEVEL     ; the last level given to command 0Ch; kept at CODE:9CA2 by CODE:9C6C
+name       CODE:9C6B SOUND_PAUSED  ; FFh from CODE:9C6C (module level 0, CD volume 0, the levels kept; called at CODE:2B53E, presumably the pause, not run) to CODE:9CA6 (put back); while FFh MUSIC_COUNTDOWN holds at 1
+name       CODE:CB97 MUSIC_FLAGS   ; state+59h: a music record's byte +0Ah (bit 0 the track's time counted, bit 2 the CD silent for a jingle)
+name       CODE:9DBD TRACK_LEFT    ; MUSIC_TRACK's frames until the track is played again (or the module music returns), counted down by MUSIC_COUNTDOWN
+name       CODE:9DC1 TRACK_NO      ; the track MUSIC_TRACK played last
+name       CODE:9CE6 MUSIC_RET_ORDER ; the order index to go back to when the track's time is up (0: the track again)
+name       CODE:9CE8 MUSIC_RET_SLOT
+code       CODE:35E65 RB_FRAMES    ; EAX, a Red Book address (frame, second, minute), in frames: minute x 1194h + second x 4Bh + frame (the second's word keeps the dword's top byte; 0 in a Red Book address)
+name       CODE:35E94 CD_STOP_REQ  ; MSCDEX request, command 85h
+name       CODE:35EA1 CD_PLAY_REQ  ; MSCDEX request, command 84h (Red Book addressing)
+name       CODE:35EAF CD_PLAY_START
+name       CODE:35EB3 CD_PLAY_LEN  ; in frames; 32200h's (3:34) when the next track's start is negative
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)

@@ -139,6 +139,109 @@ void SFX_PLAY(void)
     tbl_driver(&r);
 }
 
+/* CODE:B99C, called by the driver at each retrace (command 0Eh): the
+ * frame count at CODE:BAD4 */
+void DRV_TICK(void)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = PI_IMAGE_BASE;
+    ww(0xBAD4, (uint16_t)(rw(0xBAD4) + 1));
+    pm_ds = save;
+}
+
+/* the CRTC's start address from BX */
+static void crt_start(uint16_t bx)
+{
+    vga_outw(0x3D4, (uint16_t)((bx & 0xFF00) | 0x0C));
+    vga_outw(0x3D4, (uint16_t)(bx << 8 | 0x0D));
+}
+
+/* CODE:B9B9, called by the driver after the retrace (command 0Fh):
+ * CODE:BAD1 FFh, the CRT start from CRT_NEXT; in VGA 320x240 the pel
+ * panning 2, 4 or 6 as the word at CODE:D884 is negative, 0 or positive,
+ * elsewhere the start a line (54h) on while that word is not 0 */
+void DRV_FRAME(void)
+{
+    uint32_t save = pm_ds;
+    int16_t d;
+
+    pm_ds = PI_IMAGE_BASE;
+    wb(0xBAD1, 0xFF);
+    d = (int16_t)rw(0xD884);
+    if (rb(N_OPT_RESOLUTION) == 3) {
+        vga_inb(0x3DA);
+        vga_outb(0x3C0, 0x33);
+        vga_outb(0x3C0, d > 0 ? 6 : d < 0 ? 2 : 4);
+        crt_start(rw(N_CRT_NEXT));
+    } else {
+        crt_start((uint16_t)(rw(N_CRT_NEXT) + (d != 0 ? 0x54 : 0)));
+    }
+    pm_ds = save;
+}
+
+/* CODE:9C1A: MOD_LEVEL 0 and the driver's command 0Ch with it: the
+ * module music silent (while a CD track plays) */
+static void MOD_SILENT(void)
+{
+    NsRegs r;
+
+    ww(N_MOD_LEVEL, 0);
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0C;
+    tbl_driver(&r);
+}
+
+/* CODE:9D83: the CD stopped and track EBX played; with MUSIC_FLAGS bit 0
+ * its frames times FRAME_RATE / 75 to TRACK_LEFT */
+static void MUSIC_TRACK(uint32_t ebx)
+{
+    uint64_t t;
+    uint32_t ecx;
+
+    wd(N_TRACK_NO, ebx);
+    CD_STOP();
+    ecx = CD_PLAY(rd(N_TRACK_NO));
+    if (rb(N_MUSIC_FLAGS) & 1) {
+        t = (uint64_t)rw(N_FRAME_RATE) * ecx / 0x4B;
+        if (t > 0xFFFFFFFFu)
+            pi_stop("MUSIC_TRACK: DIV overflow (CODE:9DB5)");
+        wd(N_TRACK_LEFT, (uint32_t)t);
+    }
+}
+
+/* CODE:9B92: the driver's retrace routines (commands 0Eh and 0Fh), the
+ * module music silent, the table's first music record's track played,
+ * the driver's player started (command 1, CX 3) */
+void GAME_SOUND(void)
+{
+    uint32_t rec;
+    NsRegs r;
+
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0E;
+    r.edx = 0xB99C;
+    r.es = pmax_code_sel();
+    tbl_driver(&r);
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0F;
+    r.ecx = rd(N_VSYNC_START_ARG);
+    r.edx = 0xB9B9;
+    r.es = pmax_code_sel();
+    tbl_driver(&r);
+    MOD_SILENT();
+    rec = rd(N_MODULE_HEADER + 0x8C);
+    wb(N_MUSIC_FLAGS, rb(rec + 0x0A));
+    ww(N_MUSIC_RET_ORDER, 0);
+    MUSIC_TRACK(rw(rec + 8));
+    ww(N_SFX_PRIO, 0);
+    wb(N_SOUND_PAUSED, 0);
+    memset(&r, 0, sizeof r);
+    r.eax = 1;
+    r.ecx = 3;
+    tbl_driver(&r);
+}
+
 /* CODE:9AB9: as SOUND_START's driver start (sound.c), with the table's
  * cells; the port loads NOSOUND.SDR whatever the header names */
 static int TABLE_SOUND(void)

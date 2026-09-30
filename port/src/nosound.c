@@ -605,6 +605,15 @@ static int CMD_END(NsRegs *r)
     return 0;
 }
 
+/* CODE:0CB9: command 0Ch, MASTER_VOL from BX, at most 100h */
+static int CMD_LEVEL(NsRegs *r)
+{
+    uint16_t bx = (uint16_t)r->ebx;
+
+    ww(D_MASTER_VOL, bx > 0x100 ? 0x100 : bx);
+    return 0;                   /* CODE:0975 */
+}
+
 /* CODE:0CD0: command 0Dh, TICKS less those still in the buffer */
 static int CMD_POSITION(NsRegs *r)
 {
@@ -717,6 +726,9 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 0x0B:
         cf = CMD_END(r);
+        break;
+    case 0x0C:
+        cf = CMD_LEVEL(r);
         break;
     case 0x0D:
         cf = CMD_POSITION(r);
