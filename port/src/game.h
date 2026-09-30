@@ -55,8 +55,9 @@ void HCB_SEEK(uint32_t edx);
 /* 1: callbacks 6 to 9 keep the file in the table's cells */
 void hcb_use_table(int table);
 
-/* dotmatrix.c: CODE:2833E; 1 (CF) when a block or file failed */
+/* dotmatrix.c: CODE:2833E, 1 (CF) when a block or file failed; CODE:2FBA8 */
 int DM_LOAD(void);
+void DM_CLEAR(void);
 
 /* module.c: CODE:B22D, 1 (CF) when a file failed; CODE:30368, host
  * vector +18h */
@@ -77,6 +78,11 @@ int MULTIBALL_CAP(void);
 
 /* flipper.c: CODE:1527F */
 void FLIPPER_RENDER(void);
+
+/* lights.c: CODE:29AF9 */
+void LIGHTS_RESET(void);
+/* play.c: CODE:B928, the game */
+void TABLE_GAME(void);
 
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);

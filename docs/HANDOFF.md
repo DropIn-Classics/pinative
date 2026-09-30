@@ -2957,6 +2957,22 @@ but the known leftovers; with OPT_MULTIBALL 1 (THREE) on table 1 the
 counts 6 and 4 became 3 and 3 in both. So TABLE_LOAD2 is whole in the
 port.
 
+### The game's start
+
+TABLE_GAME (CODE:B928; names in src/ILLUSION.hints, "the game's start")
+begins with DISPLAY_RESET (the display queue's state), LIGHTS_RESET
+(each light of header slot 14's groups reset: off, not blinking; a
+light with +2 bit 3 is a drop target, whose picture is drawn by
+SPRITE4_DRAW into the stage's copy "Spooky" and into video memory
+where the hide-lights mask is 0; the others get their LIGHTS_ONE1 byte
+0), DM_CLEAR and SCREEN_START (the CRTC's start at SCREEN_LINE). In the
+runs tables 3 and 4 draw six drop targets each there, tables 1 and 2
+none (counted in the dumps).
+
+Against the runs of all four tables at CODE:30114 (`-break 131044`):
+CODE only FRAME_SPINS, TAIL and video memory equal, the heap blocks
+equal but the known leftovers.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3165,7 +3181,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      whole, the port stops at the game (CODE:B928; same section). Next:
      the game, CODE:B928: its start (CODE:2A30E .. CODE:9B92, the
      driver's command at CODE:9B92, GAME_PHASE 1), then the main loop
-     from CODE:B976 with KBD_IRQ (CODE:A076) for the keys.
+     from CODE:B976 with KBD_IRQ (CODE:A076) for the keys. Done
+     2026-09-30: the start up to CODE:30114 (see "The game's start").
+     Next: CODE:30114, 156C4, 1048B, LIGHTS_STEP, 2ED15, A654, 9B92.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

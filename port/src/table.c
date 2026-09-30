@@ -230,6 +230,7 @@ int TABLE(uint8_t al)
     if (TABLE_LOAD2())
         pi_stop("TABLE: TABLE_LOAD2 failed (CODE:A40A)");
     /* IRQ 1 unmasked (not modelled: KBD_IRQ is set) */
-    pi_stop("the game (CODE:B928)");
+    TABLE_GAME();
+    pi_stop("TABLE: after the game (CODE:A3FF)");
     return 1;
 }

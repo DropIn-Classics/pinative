@@ -145,14 +145,19 @@ static int DM_ANIMS_LOAD(void)
     return load(N_DM_ANIMS_NAME, N_DM_ANIMS_SEL, N_DM_ANIMS_SIZE);
 }
 
+/* CODE:2FBA8 */
+void DM_CLEAR(void)
+{
+    DM_TEXT_CLEAR();
+    DM_ANIM_CLEAR();
+}
+
 int DM_LOAD(void)
 {
     ww(N_DM_VIDEO_SEL, pmax_video_sel());
     if (DM_TEXT_ALLOC() || DM_ANIM_ALLOC() || DM_FONTS_LOAD() || DM_ANIMS_LOAD())
         return 1;
-    /* CODE:2FBA8 */
-    DM_TEXT_CLEAR();
-    DM_ANIM_CLEAR();
+    DM_CLEAR();
     DM_TEXT_CLEAR();
     DM_ANIM_CLEAR();
     return 0;

@@ -829,6 +829,28 @@ code       CODE:93FB STAGE_TO_SPOOKY ; the same into SPOOKY_SEL's block from 0, 
 name       CODE:A119 SPOOKY_SEL    ; "Spooky", 32DC0h bytes
 ; TABLE_LOAD2's end (2026-09-30, the code; the port against a run at
 ; CODE:28C45, table 1)
+; the game's start (2026-09-30, the code; the port against a run at
+; CODE:30114, the four tables)
+code       CODE:B928 TABLE_GAME    ; DISPLAY_RESET, LIGHTS_RESET, DM_CLEAR, SCREEN_START, CODE:30114, CODE:156C4, CODE:1048B, LIGHTS_STEP, CODE:2ED15, CODE:A654, CODE:D973 1, GAME_PHASE 1, QUIT_TABLE 0, CODE:9B92, then the loop from CODE:B976 until QUIT_TABLE
+code       CODE:2A30E DISPLAY_RESET ; the display queue's state (state+2A26h .. 2A5Fh) 0, state+2A2Ah = DISPLAY_QBUF (its first dword 0), DM_CLEAR
+name       CODE:F71C DISPLAY_QBUF
+code       CODE:9311 SCREEN_START  ; the CRTC's start address SCREEN_LINE x 54h + 1500h
+name       CODE:A2B9 SCREEN_LINE   ; the screen's first line of the stage (see CODE:BB0A)
+code       CODE:29AF9 LIGHTS_RESET ; along header slot 14's groups (state+28DEh, pointers ended by 0; a group's byte +4 AND 6, its +0 the first light, a light's +10h the next): each light without +2 bit 2 LIGHT_INIT; its byte in state+16B2h (by its running number in CODE:0038) 0; +3, +4, +0, +5 0, +1 FFh, +2 bits 0, 1 cleared; state+16AEh the first group, state+16ACh FFFFh; state+17B8h and state+1822h lists emptied
+code       CODE:28FF8 LIGHT_INIT   ; the light [CODE:0000]: without +2 bit 3 its LIGHTS_ONE1 byte (+1Ch) 0; with it the drop target's picture 2 x +1Ch at +14h, +18h (DROP_PIC)
+code       CODE:2912B DROP_PIC     ; DROPS_SEL's picture ESI (the dword table at the block's start; a picture: width, height, bytes) by SPRITE4_DRAW
+code       CODE:29265 SPRITE4_DRAW ; the picture at FS:[SPR_SRC] (SPR_W x SPR_H, a quarter of the width a row per plane, FFh transparent) at SPR_X, SPR_Y: into SPOOKY_SEL (the planes by SPR_PLANES, from x AND 3's, the next byte after the fourth), then into video memory from 1500h where HIDELIGHTS_SEL's byte of the same plane is 0
+name       CODE:28C31 SPR_X
+name       CODE:28C35 SPR_Y
+name       CODE:28C39 SPR_W
+name       CODE:28C3D SPR_H
+name       CODE:28C41 SPR_SRC
+name       CODE:28C00 SPR_SKIP     ; 54h less a row's bytes
+name       CODE:28BFC SPR_AT       ; y x 54h + x / 4
+name       CODE:28C01 SPR_PLANES   ; the planes' offsets in SPOOKY_SEL: 0, 24EA0h, 189C0h, C4E0h, 0 (by 5 - SPR_PLANE)
+name       CODE:29426 SPR_PLANE
+name       CODE:29427 SPR_PLANE0
+name       CODE:29428 SPR_CARRY
 name       CODE:B14E MULTIBALL_COUNTS ; two dwords a table (see MULTIBALL_CAP)
 name       CODE:B13E MULTIBALL_MAX ; four dwords by OPT_MULTIBALL: 6, 3, 4, 5
 code       CODE:BA9B TOP_COLOURS_SET ; TOP_COLOURS's twelve bytes, shifted right 2, to the DAC from colour FCh
