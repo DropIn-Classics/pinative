@@ -55,8 +55,10 @@ lights' states and flashing a frame, the dot-matrix display shown and
 the table's palette faded in, the driver's retrace routines, the
 module music silenced and the table's CD track asked for, the driver's
 player started: src/table.c, commands 0Ch and 1, the port's MSCDEX
-taking the play and playing nothing) up to CODE:B976 (`Stopped before
-CODE:B976`); the Info page (a table's
+taking the play and playing nothing), the game's loop and the attract
+mode's first frame step (the music's countdown and command 6, the
+dot-matrix display, the lights and drop targets that changed drawn,
+the retrace waited) up to CODE:298C5 (`Stopped before CODE:298C5`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -280,6 +282,15 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   the leftovers named above, the DMA buffer as at CODE:9B92. The disc
   has no audio tracks there (dosrun without -cue): a play of a real
   track is not compared; DRV_TICK and DRV_FRAME not run yet.
+- 2026-09-30, Linux: each of the four tables up to CODE:298C5 (dosrun
+  `-break 12A7F5 -mem -vram`, the same keys), the attract mode's first
+  frame step: CODE differs only in FRAME_SPINS, TAIL and video memory
+  equal, the heap blocks equal but the leftovers named above; the
+  driver's block also in its timer's state (SAMPLE_POS, TIMER_COUNT,
+  VSYNC_PHASE: the port counts a picture's timer IRQs at once). Only
+  MUSIC_UPDATE's countdown ran; of the lights one (off) was drawn a
+  table, no drop target piece (DROPS_UPDATE's drawing not checked), and
+  a frame whose drawing outlasts the retrace is not compared.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

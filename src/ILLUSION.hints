@@ -949,6 +949,34 @@ name       CODE:35E94 CD_STOP_REQ  ; MSCDEX request, command 85h
 name       CODE:35EA1 CD_PLAY_REQ  ; MSCDEX request, command 84h (Red Book addressing)
 name       CODE:35EAF CD_PLAY_START
 name       CODE:35EB3 CD_PLAY_LEN  ; in frames; 32200h's (3:34) when the next track's start is negative
+; the attract mode's frame (2026-09-30, the code; the port against a run
+; at CODE:298C5, the four tables)
+code       CODE:2A4F8 ATTRACT      ; GAME_PHASE 1, a frame: state+2A7Fh 0, +0D70h 0, (+0EC5h set: cleared, CODE:26A6D a RET, LAST_KEY 0), FRAME_STEP, ATTRACT_SCROLL, CODE:156C3 (a RET), FLIPPERS_STEP, then the display (state+0E34h: 0 the display stream and animations, else the players' scores) and the keys
+name       CODE:BAD6 PHASES        ; GAME_PHASE's routines (ten dwords; TABLE_CHECK the third)
+code       CODE:29889 FRAME_STEP
+name       CODE:2982E FRAME_ROUTINES ; the table of four routines FRAME_STEP calls (29912h, see CODE:29912)
+name       CODE:BAD1 FRAME_DONE    ; 0 at FRAME_STEP's start, FFh from DRV_FRAME: the retrace has come
+name       CODE:BAD4 FRAME_COUNT   ; a word, counted by DRV_TICK
+code       CODE:298EF FRAME_MUSIC  ; MUSIC_UPDATE, registers 0, the driver's command 6 (CODE:9C0C)
+code       CODE:29033 LIGHTS_DRAW  ; from LIGHTS_DRAW_POS, each light whose LIGHTS_ONE1 byte differs from LIGHTS_ONE2 (then copied): LIGHT_PIC n (byte not 0) or n + half the count (LIGHTS_SEL's first dword), and for the latter the loop's index itself moved on by the half (ADD ESI,EDX before PUSH ESI), so the lights between are passed over (presumably a slip; run 2026-09-30: LIGHTS_ONE2 from index 2 on not copied in the first frame); stops when FRAME_DONE is FFh, to go on from there
+name       CODE:2909B LIGHTS_DRAW_POS
+code       CODE:2909F LIGHT_PIC    ; LIGHTS_SEL's picture ESI (the dword table at the block's start; x, y, width, height, then the bytes) by LIGHT_SPRITE
+code       CODE:29155 LIGHT_SPRITE ; the picture (SPR_W bytes a row a plane, the four planes after each other, 0 transparent) at byte SPR_X of line SPR_Y into SPOOKY_SEL's planes, then into video memory from 1500h where HIDELIGHTS_SEL's byte is 0
+code       CODE:28F41 DROPS_UPDATE ; from DROPS_UPD_POS, the 64h entries of DROP_PIECES whose state changed: CODE:29101 (as DROP_PIC) 2n, or 2n - 1 for a state not 0, at the entry's x, y; stops as LIGHTS_DRAW
+name       CODE:28FB6 DROPS_UPD_POS
+name       CODE:285BC DROP_PIECES  ; 64h entries of 8 bytes: the state drawn, the state, x, y (words)
+name       CODE:28F3D DROPS_DRAW_POS
+code       CODE:9C4F SND_PAUSE     ; the driver's command 2 (CODE:9C5E the same)
+code       CODE:9C5E SND_RESUME   ; the same as SND_PAUSE
+name       CODE:9CA4 CD_LEVEL      ; the CD volume last given to CD_VOLUME
+name       CODE:9CE5 JINGLE_ENDED
+name       CODE:9DC5 TRACK_ON
+name       CODE:9DC6 JINGLE_ON
+name       CODE:CB98 MUSIC_FLAGS_KEPT ; state+5Ah
+name       CODE:F5C2 MOD_REQUEST   ; state+2A84h
+name       CODE:F5C6 MOD_REQ_ORDER ; state+2A88h
+name       CODE:F5C8 MOD_REQ_SLOT  ; state+2A8Ah
+name       CODE:35EF6 CD_CHANNELS  ; IOCTL output 3's block: inputs 0..3 to outputs 0..3, the volumes of 0 and 1 set by CD_VOLUME
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)

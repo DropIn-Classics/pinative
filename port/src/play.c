@@ -1,6 +1,7 @@
 /* play.c - the game (CODE:B928): its start and main loop, as far as they
  * are translated.
  */
+#include <stdio.h>
 #include "frame.h"
 #include "game.h"
 #include "names.h"
@@ -145,6 +146,69 @@ static void TABLE_FADE_IN(void)
     }
 }
 
+/* one of the frame step's routines by its address in the table at
+ * [FRAME_ROUTINES] */
+static void frame_routine(uint32_t a)
+{
+    static char name[16];
+
+    switch (a) {
+    case N_FRAME_MUSIC:
+        FRAME_MUSIC();
+        break;
+    case N_DM_SHOW:
+        DM_SHOW();
+        break;
+    case N_LIGHTS_DRAW:
+        LIGHTS_DRAW();
+        break;
+    case N_DROPS_UPDATE:
+        DROPS_UPDATE();
+        break;
+    default:
+        snprintf(name, sizeof name, "CODE:%X", (unsigned)a);
+        pi_stop(name);
+    }
+}
+
+/* CODE:29889: FRAME_DONE 0; the four routines of the table at
+ * [FRAME_ROUTINES] while the retrace has not come (FRAME_DONE FFh, set by
+ * DRV_FRAME); then the retrace waited.  The port has no interrupts: the
+ * retrace comes only in the wait, so the four always run (as in the runs,
+ * docs/HANDOFF.md, "The attract mode's frame") */
+static void FRAME_STEP(void)
+{
+    uint32_t ebx;
+
+    wb(N_FRAME_DONE, 0);
+    for (ebx = 0; ebx < 4; ebx++) {
+        if (rb(N_FRAME_DONE) == 0xFF)
+            break;
+        frame_routine(rd(rd(N_FRAME_ROUTINES) + ebx * 4));
+    }
+    if (ebx == 4) {
+        ww(0x2982A, 0);
+        while (rb(N_FRAME_DONE) != 0xFF)
+            frame_wait();
+    }
+    pi_stop("CODE:298C5");
+}
+
+/* CODE:2A4F8: GAME_PHASE 1, the attract mode, a frame */
+static void ATTRACT(void)
+{
+    uint32_t st = rd(0x0014);
+
+    wb(st + 0x2A7F, 0);
+    ww(st + 0x0D70, 0);
+    if (rb(st + 0x0EC5) != 0) {
+        wb(st + 0x0EC5, 0);
+        /* CODE:26A6D, a RET */
+        wb(N_LAST_KEY, 0);
+    }
+    FRAME_STEP();
+}
+
 void TABLE_GAME(void)
 {
     DISPLAY_RESET();
@@ -161,5 +225,18 @@ void TABLE_GAME(void)
     ww(N_GAME_PHASE, 1);
     wb(N_QUIT_TABLE, 0);
     GAME_SOUND();
-    pi_stop("CODE:B976");
+    /* CODE:B976 */
+    while (rb(N_QUIT_TABLE) == 0) {
+        static char name[16];
+        uint16_t ph = rw(N_GAME_PHASE);
+
+        if (ph >= 0x0A)
+            pi_stop("CODE:BA7D");
+        if (ph == 1) {
+            ATTRACT();
+            continue;
+        }
+        snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));
+        pi_stop(name);
+    }
 }

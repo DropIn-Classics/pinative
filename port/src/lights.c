@@ -89,6 +89,126 @@ static void DROP_PIC(uint32_t n)
     SPRITE4_DRAW();
 }
 
+/* CODE:29155: a picture at LIGHTS_SEL:[SPR_SRC] of SPR_W x SPR_H bytes a
+ * plane (the four planes one after the other, 0 transparent) at byte
+ * SPR_X of line SPR_Y: into SPOOKY_SEL's planes 0..3, then into video
+ * memory from 1500h where HIDELIGHTS_SEL's byte of the plane is 0 */
+static void LIGHT_SPRITE(void)
+{
+    uint32_t fs = pmax_base(rw(N_LIGHTS_SEL)), src, di, ebx, r, c, k;
+    uint32_t w = rd(N_SPR_W), h = rd(N_SPR_H);
+    uint32_t spooky = pmax_base(rw(N_SPOOKY_SEL)), hide = pmax_base(rw(N_HIDELIGHTS_SEL));
+
+    wd(N_SPR_SKIP, 0x54 - w);
+    wd(N_SPR_AT, rd(N_SPR_Y) * 0x54 + rd(N_SPR_X));
+    src = rd(N_SPR_SRC);
+    for (k = 4; k > 0; k--) {
+        di = rd(N_SPR_AT) + rd(N_SPR_PLANES + 4 * k);
+        for (r = 0; r < h; r++, di += rd(N_SPR_SKIP))
+            for (c = 0; c < w; c++, di++) {
+                uint8_t al = lrb(fs + src++);
+                if (al != 0)
+                    lwb(spooky + di, al);
+            }
+    }
+    src = rd(N_SPR_SRC);
+    ebx = 0;
+    for (k = 4; k > 0; k--, ebx += 0xC4E0) {
+        di = rd(N_SPR_AT) + 0x1500;
+        MAP_MASK((uint8_t)(0x10 >> k));
+        for (r = 0; r < h; r++, di += rd(N_SPR_SKIP))
+            for (c = 0; c < w; c++, di++) {
+                if (lrb(hide + ebx + di - 0x1500)) {
+                    src++;
+                } else {
+                    uint8_t al = lrb(fs + src++);
+                    if (al != 0)
+                        vga_write((uint16_t)di, al);
+                }
+            }
+    }
+}
+
+/* CODE:2909F: LIGHTS_SEL's picture `n` (its offset in the dword table at
+ * the block's start; x, y, width, height before the bytes) by
+ * LIGHT_SPRITE */
+static void LIGHT_PIC(uint32_t n)
+{
+    uint32_t fs = pmax_base(rw(N_LIGHTS_SEL)), at = lrd(fs + n * 4);
+
+    wd(N_SPR_X, lrd(fs + at));
+    wd(N_SPR_Y, lrd(fs + at + 4));
+    wd(N_SPR_W, lrd(fs + at + 8));
+    wd(N_SPR_H, lrd(fs + at + 12));
+    wd(N_SPR_SRC, at + 16);
+    LIGHT_SPRITE();
+}
+
+/* CODE:29033: from LIGHTS_DRAW_POS on, each light whose LIGHTS_ONE1 byte
+ * differs from LIGHTS_ONE2 (then copied there) drawn: picture n when the
+ * byte is not 0, n plus half the count otherwise (the count the first
+ * dword of LIGHTS_SEL), and then the loop goes on from that picture's
+ * number, passing over the lights between (presumably a slip); stopped
+ * when the retrace has come (FRAME_DONE FFh), to go on from there the
+ * next frame */
+void LIGHTS_DRAW(void)
+{
+    uint32_t ecx = lrd(pmax_base(rw(N_LIGHTS_SEL))), edx = ecx >> 1;
+    uint32_t esi = rd(N_LIGHTS_DRAW_POS);
+
+    for (;;) {
+        uint8_t al;
+
+        if (rb(N_FRAME_DONE) == 0xFF)
+            break;
+        al = rb(N_LIGHTS_ONE1 + esi);
+        if (al != rb(N_LIGHTS_ONE2 + esi)) {
+            wb(N_LIGHTS_ONE2 + esi, al);
+            /* the index itself moved on by half for a light off (ADD
+             * ESI,EDX before PUSH ESI), so the loop goes on from there */
+            if (al == 0)
+                esi += edx;
+            LIGHT_PIC(esi);
+        }
+        if (++esi >= ecx) {
+            esi = 0;
+            break;
+        }
+    }
+    wd(N_LIGHTS_DRAW_POS, esi);
+}
+
+/* CODE:28F41: from DROPS_UPD_POS on, the 64h entries of DROP_PIECES (8
+ * bytes: the state drawn, the state, x, y words) whose state changed
+ * (then copied): DROPS_SEL's picture 2n, or 2n - 1 when the state is not
+ * 0, at x, y (the words go into SPR_X and SPR_Y through AX, EAX's high
+ * word 0 there: 6 from the driver's command 6, then SPRITE4_DRAW's);
+ * stopped as LIGHTS_DRAW */
+void DROPS_UPDATE(void)
+{
+    uint32_t esi = rd(N_DROPS_UPD_POS), e;
+
+    for (;;) {
+        uint8_t dl;
+
+        if (rb(N_FRAME_DONE) == 0xFF)
+            break;
+        e = N_DROP_PIECES + esi * 8;
+        dl = rb(e + 1);
+        if (rb(e) != dl) {
+            wb(e, dl);
+            wd(N_SPR_X, rw(e + 2));
+            wd(N_SPR_Y, rw(e + 4));
+            DROP_PIC(dl != 0 ? esi * 2 - 1 : esi * 2);
+        }
+        if (++esi >= 0x64) {
+            esi = 0;
+            break;
+        }
+    }
+    wd(N_DROPS_UPD_POS, esi);
+}
+
 /* CODE:28FF8: the light [0000]: without bit 3 of +2 its LIGHTS_ONE1 byte
  * (+1Ch) 0, with it its drop target's picture 2 x +1Ch at +14h, +18h */
 static void LIGHT_INIT(void)

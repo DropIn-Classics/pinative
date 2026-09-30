@@ -35,9 +35,10 @@ static void mscdex(uint32_t rm)
             pi_stop("MSCDEX: an IOCTL input the port does not answer");
         }
     } else if (cmd == 0x0C) {   /* IOCTL output */
-        if (lrb(xfer) != 1)
+        if (lrb(xfer) != 1 && lrb(xfer) != 3)
             pi_stop("MSCDEX: an IOCTL output the port does not answer");
-        /* 1: lock or unlock the door: nothing to do */
+        /* 1: lock or unlock the door, 3: the audio channels' volumes:
+         * nothing to do (nothing plays) */
     } else if (cmd == 0x85) {  /* stop audio: nothing plays */
     } else if (cmd == 0x84) {  /* play audio: taken, nothing plays (the
                                  * data track's frames are not sound) */
@@ -105,6 +106,19 @@ int CD_READ_TOC(void)
         dl++;
     } while (dl <= dh);
     return 0;
+}
+
+/* CODE:35C09: IOCTL output 3 (audio channel control, CODE:35EF6: inputs
+ * 0..3 to outputs 0..3) with the volume `bl` for outputs 0 and 1 */
+void CD_VOLUME(uint8_t bl)
+{
+    wb(N_CD_CHANNELS + 4, bl);
+    wb(N_CD_CHANNELS + 2, bl);
+    wb(N_CD_IOCTL + 2, 0x0C);
+    ww(N_CD_IOCTL + 0x12, 9);
+    ww(N_CD_IOCTL + 0x10, pmax_rm_seg());
+    ww(N_CD_IOCTL + 0x0E, (uint16_t)(N_CD_CHANNELS - N_CD_IOCTL));
+    CD_REQUEST(N_CD_IOCTL);
 }
 
 /* CODE:35E4F: the request at CD_STOP_REQ (command 85h) */

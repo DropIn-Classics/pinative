@@ -3065,6 +3065,61 @@ driver's in SAVED_61 only), the DMA buffer as at CODE:9B92. No retrace
 came between command 1 and CODE:B976, so DRV_TICK and DRV_FRAME did not
 run there.
 
+### The attract mode's frame
+
+The loop from CODE:B976 calls GAME_PHASE's routine (PHASES) until
+QUIT_TABLE; phase 1 is ATTRACT (CODE:2A4F8; names in src/ILLUSION.hints,
+"the attract mode's frame"). Already in the attract mode one ball lies
+on the table (state+0D32h 1 at CODE:B976 on all four tables), so the
+first frame reaches the balls' drawing (below).
+
+ATTRACT begins with FRAME_STEP (CODE:29889): FRAME_DONE 0, then the four
+routines of the table at [FRAME_ROUTINES] (29912h: FRAME_MUSIC, DM_SHOW,
+LIGHTS_DRAW, DROPS_UPDATE) as long as FRAME_DONE has not become FFh
+(DRV_FRAME at the retrace), then the wait for it. In a run of table 1
+(`-log` at CODE:29889, 298B3 and 298C5 from t=133 to 140) 489 frames
+began and 487 ran all four routines before the retrace (the others: the
+last one, cut off by the run's end, and one more); the port has no
+interrupts, so its retrace comes only in the wait and the four always
+run. LIGHTS_DRAW and DROPS_UPDATE also stop within their loops at
+FRAME_DONE and go on from there the next frame (LIGHTS_DRAW_POS,
+DROPS_UPD_POS); in the port they never stop. Where a frame's lights take
+longer than a picture in the original, the port draws them in one go:
+not seen yet, not compared.
+
+FRAME_MUSIC is MUSIC_UPDATE (CODE:9DC7) and the driver's command 6.
+MUSIC_UPDATE counts TRACK_LEFT down (MUSIC_COUNTDOWN) and handles a
+jingle's end, a track in MUSIC_NEXT and the module request (see the
+hints); only the countdown ran in the first frame. The paths with the
+driver's commands 2 and 0Ah stop the port (not in its NOSOUND yet);
+CD_VOLUME (IOCTL output 3) is taken by the port's MSCDEX and does
+nothing.
+
+LIGHTS_DRAW (CODE:29033) draws each light whose LIGHTS_ONE1 byte changed
+(LIGHTS_ONE2 the byte drawn) from LIGHTS_SEL (`masks\lights.mgl`: a
+dword count, a dword table of offsets, each picture x, y, width, height
+and the bytes, four planes one after the other) by LIGHT_SPRITE into
+"Spooky" and into video memory where the hide-lights mask is 0. A light
+off takes picture n plus half the count, and `ADD ESI,EDX` moves the
+loop's own index there, so the lights between are not looked at in
+that pass (a slip, presumably; the run's LIGHTS_ONE2 from index 2 on
+stayed as it was in the first frame, which the port did not do until
+it followed this; 31 to 42 lights had changed before the first frame,
+light 1, off, was drawn, and the pass went on from 1 plus half the
+count; what it met there not looked at). DROPS_UPDATE (CODE:28F41) is the same for the 64h
+entries of DROP_PIECES with DROPS_SEL's pictures by SPRITE4_DRAW; the
+words it puts into SPR_X and SPR_Y go through AX, EAX's high word 0
+there (the driver's command 6 gives back EAX 6; SPRITE4_DRAW leaves a
+small value). No piece had changed in the first frame: its drawing is
+not checked in a run.
+
+Against the runs at CODE:298C5 (`-break 12A7F5`, the first frame's
+wait over), all four tables: CODE only FRAME_SPINS, TAIL and video
+memory equal, the heap blocks equal but the known leftovers; the
+driver's block in SAVED_61 and in its timer's state (SAMPLE_POS,
+TIMER_COUNT, VSYNC_PHASE: the port counts a picture's timer IRQs at
+once, dosrun stops right after DRV_FRAME).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3281,8 +3336,14 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30: LIGHTS_STEP, FLASH_STEP and TABLE_FADE_IN, up to
      CODE:9B92 (same section). Done 2026-09-30: GAME_SOUND (CODE:9B92:
      the driver's commands 0Eh, 0Fh, 0Ch and 1, MUSIC_TRACK), up to
-     CODE:B976 (same section). Next: the loop from CODE:B976 (GAME_PHASE
-     1, the attract mode, CODE:2A4F8) and KBD_IRQ (CODE:A076).
+     CODE:B976 (same section). Done 2026-09-30: the loop from CODE:B976,
+     ATTRACT's start and FRAME_STEP's four routines, up to CODE:298C5
+     (see "The attract mode's frame"). Next: FRAME_STEP's rest from
+     CODE:298C5: BALLS_STEP (the balls' compiled sprites per table,
+     CODE:36320 on, which the port must read from the image as the
+     chooser's captions), DROPS_DRAW, CODE:14C46, FLIPPERS_DRAW; then
+     ATTRACT's rest (the display stream DISPLAY_RUN, ANIMS_STEP, the
+     keys) and KBD_IRQ (CODE:A076).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

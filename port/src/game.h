@@ -42,6 +42,8 @@ int CD_READ_TOC(void);
 void CD_STOP(void);
 /* CODE:35DDC: the track's frames back (ECX) */
 uint32_t CD_PLAY(uint32_t ebx);
+/* CODE:35C0D: the CD's volume for both outputs */
+void CD_VOLUME(uint8_t bl);
 
 /* hostcb.c: the host callbacks; 1 for CF */
 int HCB_ALLOC(uint32_t size, uint16_t *bx);
@@ -88,6 +90,9 @@ void FLIPPERS_STEP(void);
 void LIGHTS_RESET(void);
 void LIGHTS_STEP(void);
 void FLASH_STEP(void);
+/* lights.c: CODE:29033, CODE:28F41 */
+void LIGHTS_DRAW(void);
+void DROPS_UPDATE(void);
 void EVENT_QUEUE(void);
 /* play.c: CODE:B928, the game */
 void TABLE_GAME(void);
@@ -99,6 +104,8 @@ void SFX_PLAY(void);
 void GAME_SOUND(void);
 void DRV_TICK(void);
 void DRV_FRAME(void);
+/* table.c: CODE:298EF, MUSIC_UPDATE and the driver's command 6 */
+void FRAME_MUSIC(void);
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 

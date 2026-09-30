@@ -146,7 +146,7 @@ void DRV_TICK(void)
     uint32_t save = pm_ds;
 
     pm_ds = PI_IMAGE_BASE;
-    ww(0xBAD4, (uint16_t)(rw(0xBAD4) + 1));
+    ww(N_FRAME_COUNT, (uint16_t)(rw(N_FRAME_COUNT) + 1));
     pm_ds = save;
 }
 
@@ -167,7 +167,7 @@ void DRV_FRAME(void)
     int16_t d;
 
     pm_ds = PI_IMAGE_BASE;
-    wb(0xBAD1, 0xFF);
+    wb(N_FRAME_DONE, 0xFF);
     d = (int16_t)rw(0xD884);
     if (rb(N_OPT_RESOLUTION) == 3) {
         vga_inb(0x3DA);
@@ -239,6 +239,152 @@ void GAME_SOUND(void)
     memset(&r, 0, sizeof r);
     r.eax = 1;
     r.ecx = 3;
+    tbl_driver(&r);
+}
+
+/* CODE:9C34: MOD_LEVEL 100h, command 0Ch with it */
+static void MOD_FULL(void)
+{
+    NsRegs r;
+
+    ww(N_MOD_LEVEL, 0x100);
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0C;
+    r.ebx = 0x100;
+    tbl_driver(&r);
+}
+
+/* CODE:9C4F and CODE:9C5E, the same: the driver's command 2 (a toggle:
+ * pause, then resume) */
+static void SND_PAUSE(void)
+{
+    NsRegs r;
+
+    memset(&r, 0, sizeof r);
+    r.eax = 2;
+    tbl_driver(&r);
+}
+
+/* the driver's command 8: the module of slot `cx` from order `bx` */
+static void drv_order(uint16_t bx, uint16_t cx)
+{
+    NsRegs r;
+
+    memset(&r, 0, sizeof r);
+    r.eax = 8;
+    r.ebx = bx;
+    r.ecx = cx;
+    tbl_driver(&r);
+}
+
+/* CD_LEVEL = `bl` and CD_VOLUME with it */
+static void cd_level(uint8_t bl)
+{
+    wb(N_CD_LEVEL, bl);
+    CD_VOLUME(bl);
+}
+
+/* CODE:9CEA: TRACK_LEFT counted down; at 0 (held at 1 while
+ * SOUND_PAUSED) the track again, or with MUSIC_RET_ORDER the module
+ * music from there */
+static void MUSIC_COUNTDOWN(void)
+{
+    uint16_t bx;
+
+    /* the TEST at CODE:9CEA jumps to CODE:9CF6 either way */
+    wd(N_TRACK_LEFT, rd(N_TRACK_LEFT) - 1);
+    if (rd(N_TRACK_LEFT) != 0)
+        return;
+    if (rb(N_SOUND_PAUSED) == 0xFF) {
+        wd(N_TRACK_LEFT, 1);
+        return;
+    }
+    if (rw(N_MUSIC_RET_ORDER) == 0) {
+        SND_PAUSE();
+        CD_STOP();
+        MUSIC_TRACK(rd(N_TRACK_NO));
+        SND_PAUSE();
+        return;
+    }
+    wb(N_TRACK_ON, 0);                  /* CODE:9D3C */
+    SND_PAUSE();
+    cd_level(0);
+    bx = rw(N_MUSIC_RET_ORDER);
+    ww(N_MUSIC_RET_ORDER, 0);
+    drv_order(bx, rw(N_MUSIC_RET_SLOT));
+    MOD_FULL();
+    SND_PAUSE();
+}
+
+/* CODE:9DC7: MUSIC_COUNTDOWN; a jingle's end; a track asked for in
+ * MUSIC_NEXT; the module request MOD_REQUEST (positive: a jingle, the
+ * driver's command 0Ah; negative: the module from MOD_REQ_ORDER) */
+static void MUSIC_UPDATE(void)
+{
+    NsRegs r;
+    uint32_t ebx;
+
+    MUSIC_COUNTDOWN();
+    if (rb(N_JINGLE_ENDED) == 0xFF) {
+        wb(N_JINGLE_ENDED, 0);
+        wb(N_JINGLE_ON, 0);
+        if (rb(N_TRACK_ON) == 0xFF) {
+            wb(N_MUSIC_FLAGS, rb(N_MUSIC_FLAGS_KEPT));
+            SND_PAUSE();
+            cd_level(0xC0);
+            SND_PAUSE();
+            MOD_SILENT();
+        }
+    }
+    if (rw(N_MUSIC_NEXT) != 0 && rb(N_JINGLE_ON) != 0xFF) {    /* CODE:9E13 */
+        wb(N_TRACK_ON, 0xFF);
+        SND_PAUSE();
+        ww(N_MUSIC_RET_ORDER, rw(N_MOD_REQ_ORDER));
+        ww(N_MUSIC_RET_SLOT, rw(N_MOD_REQ_SLOT));
+        ww(N_MOD_REQUEST, 0);
+        ebx = rw(N_MUSIC_NEXT);
+        ww(N_MUSIC_NEXT, 0);
+        MUSIC_TRACK(ebx);
+        cd_level(0xC0);
+        MOD_SILENT();
+        SND_PAUSE();
+    }
+    if (rw(N_MOD_REQUEST) == 0) {                               /* CODE:9E83 */
+        ;
+    } else if (rw(N_MOD_REQUEST) & 0x8000) {                    /* CODE:9EDB */
+        wb(N_TRACK_ON, 0);
+        SND_PAUSE();
+        cd_level(0);
+        wd(N_TRACK_LEFT, 0xFFFFFFFFu);
+        SND_PAUSE();
+        drv_order(rw(N_MOD_REQ_ORDER), rw(N_MOD_REQ_SLOT));
+        MOD_FULL();
+    } else {
+        wb(N_JINGLE_ON, 0xFF);
+        if (rb(N_MUSIC_FLAGS) & 4) {
+            SND_PAUSE();
+            cd_level(0);
+            SND_PAUSE();
+        }
+        MOD_FULL();
+        memset(&r, 0, sizeof r);
+        r.eax = 0x0A;
+        r.ebx = rw(N_MOD_REQ_ORDER);
+        r.ecx = rw(N_MOD_REQ_SLOT);
+        tbl_driver(&r);
+    }
+    ww(N_MOD_REQUEST, 0);                                       /* CODE:9F22 */
+}
+
+/* CODE:298EF, the frame step's first routine: MUSIC_UPDATE, then the
+ * driver's command 6 (CODE:9C0C; it gives EAX back as it was, 6) */
+void FRAME_MUSIC(void)
+{
+    NsRegs r;
+
+    MUSIC_UPDATE();
+    memset(&r, 0, sizeof r);
+    r.eax = 6;
     tbl_driver(&r);
 }
 
