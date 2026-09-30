@@ -7,7 +7,8 @@
  * makes six 16-bit routines of it (GEN_CODE, GEN_CODE2) in blocks of their
  * own, which the chooser later calls to draw; the port makes the same
  * bytes, so memory compares with a run.  CHOOSER then draws the backdrop's
- * picture, hands the driver its two retrace routines and starts the music.
+ * picture, hands the driver its two retrace routines and starts the music;
+ * the Info and greetings pages switch to a 256-colour mode of their own.
  */
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +84,24 @@ static void READ_MODE1(void)
     vga_outw(0x3CE, 0x1003);
     vga_outw(0x3CE, 0x0F02);
     vga_outw(0x3CE, 0x0805);
+}
+
+/* CODE:2613 (CODE:254D a RET) */
+static void SCROLL_INIT(void)
+{
+    ww(N_SCROLL_TOP, 0xE60);
+    ww(N_SCROLL_SHOWN, 0xE60);
+    ww(N_CRT_START, 0xE60);
+    wb(N_SCROLL_PHASE, 3);
+}
+
+/* CODE:2FE3 */
+static void VIDEO_TOP_SET(void)
+{
+    int i;
+
+    for (i = 0; i < 0x26; i++)
+        vga_write((uint16_t)i, 0xFF);
 }
 
 /* CODE:36AE */
@@ -459,12 +478,14 @@ static void CAPTIONS_MAKE(void)
 /* ---- CHOOSER ---- */
 
 static void CUBE_WAIT(uint8_t bl);
+static void MUSIC_MIX(void);
 
 /* CODE:26FD: the picture of selector `sel` from its byte 3Ah into video
  * memory 72A4h, each plane four times rotated by 0, 2, 4, 6 bits; with
  * `wait` CUBE_DRAW_WAIT (CODE:263B), a frame of the chooser every 16
  * lines */
 static void CUBE_DRAW(uint16_t sel, int wait)
+/* `wait` 2: CUBE_DRAW_MIX (CODE:2789), MUSIC_MIX after each rotation */
 {
     uint32_t src = pmax_base(sel), esi = 0x3A, edi = 0x72A4;
     uint8_t bl = 1;
@@ -488,10 +509,12 @@ static void CUBE_DRAW(uint16_t sel, int wait)
                 ax = (uint16_t)(lrb(src + esi) << 8 | lrb(src + s));
                 vga_write((uint16_t)edi++, (uint8_t)(ax << cl | ax >> (16 - cl)));
                 esi += 0x2E0;
-                if (wait && (ch & 0x0F) == 0)
+                if (wait == 1 && (ch & 0x0F) == 0)
                     CUBE_WAIT(bl);
             }
             esi -= 0x5C00;
+            if (wait == 2)
+                MUSIC_MIX();
         }
         esi += 0xB8;
         edi -= 0x5C00;
@@ -1084,6 +1107,498 @@ static void MUSIC_STOP(void)
 }
 
 /* CODE:4FF9, CHOOSER, to the chooser's end */
+/* ---- the Info and greetings pages ---- */
+
+/* CODE:3CFD: DAC 0..127 from CODE:`from` */
+static void PAGE_DAC(uint32_t from)
+{
+    int i;
+
+    vga_outb(0x3C8, 0);
+    for (i = 0; i < 0x180; i++)
+        vga_outb(0x3C9, rb(from + i));
+}
+
+/* CODE:3D19 */
+static void PAGE_FADE(void)
+{
+    uint8_t bl, bh;
+    int i;
+
+    if ((int8_t)rb(N_CH_FADE_LEVEL) < 0)
+        return;
+    bl = rb(N_CH_FADE_LEVEL);
+    bh = 0x40;
+    if (bl > bh)
+        bl = bh;
+    bh = (uint8_t)(bh - bl);
+    for (i = 0x180; i > 0; i--) {
+        uint16_t ax = (uint16_t)(rb(rd(N_PAL_FROM) + i - 1) * bl + rb(rd(N_PAL_TO) + i - 1) * bh);
+
+        wb(N_PAGE_PAL + i - 1, (uint8_t)(ax >> 6));
+    }
+    wb(N_CH_FADE_LEVEL, (uint8_t)(rb(N_CH_FADE_LEVEL) - rb(N_CH_FADE_STEP)));
+}
+
+/* CODE:3B72 (`right` 0) and CHAR_PUT_R (CODE:3CCE, 1): character `ch`
+ * of tinyfont.fnt at the pixel address *edi */
+static void CHAR_PUT(uint8_t ch, uint32_t *edi, int right)
+{
+    uint32_t fs = pmax_base(rw(N_TINYFONT_SEL)), esi, end, ebx;
+    uint8_t w = lrb(fs + ch * 4u + 2), al;
+
+    if (right)
+        *edi -= w;
+    ebx = (uint32_t)(uint16_t)(0x4C * lrb(fs + ch * 4u + 3)) + (*edi >> 2);
+    al = (uint8_t)(0x11 << (*edi & 3) | 0x11 >> (8 - (*edi & 3)));
+    if (!right)
+        *edi += w;
+    end = lrw(fs + ch * 4u + 4);
+    esi = lrw(fs + ch * 4u);
+    if (esi == end)
+        return;
+    vga_outb(0x3C4, 2);
+    do {
+        uint16_t bp = lrw(fs + esi);
+        uint32_t b = ebx;
+        int k;
+
+        bp = (uint16_t)(bp << 8 | bp >> 8);
+        esi += 2;
+        for (k = 0; k < 16; k++) {
+            int carry = al >> 7;
+
+            al = (uint8_t)(al << 1 | carry);
+            b += (uint32_t)carry;
+            if (bp & 0x8000) {
+                vga_outb(0x3C5, al);
+                vga_write((uint16_t)b, 1);
+            }
+            bp = (uint16_t)(bp << 1);
+        }
+        ebx += 0x4C;
+    } while (esi < end);
+}
+
+/* CODE:3D72 */
+static void PAGE_PAL_MAKE(void)
+{
+    uint32_t src = pmax_base(rw(N_INFODATA_SEL)) + rd(N_PAGE_BASE) + 0x0A;
+    int i;
+
+    for (i = 0; i < 0x300; i++)
+        wb(N_PAGE_PAL_TO + i, lrb(src + i));
+    ww(N_PAGE_PAL_TO + 0x30, 0);
+    wb(N_PAGE_PAL_TO + 0x32, 0x10);
+    wb(N_PAGE_PAL_TO + 3, 0x3F);
+    wb(N_PAGE_PAL_TO + 4, 0x3F);
+    wb(N_PAGE_PAL_TO + 5, 0x3F);
+    wd(N_PAL_FROM, 0x8A3C);
+    wd(N_PAL_TO, N_PAGE_PAL_TO);
+    wb(N_CH_FADE_LEVEL, 0x40);
+}
+
+/* CODE:3DD7 */
+static void TILE_DRAW(uint8_t al)
+{
+    uint32_t src = pmax_base(rw(N_INFODATA_SEL)) + rd(N_PAGE_BASE)
+                   + ((al & 0xF0u) << 6) + ((al & 0x0Fu) << 3) + 0x30A;
+    uint16_t di = (uint16_t)((al & 0xF0) * 0x26 + (al & 0x0F) * 2 + 0x28A);
+    int row, p;
+
+    vga_outb(0x3C4, 2);
+    for (row = 0; row < 8; row++) {
+        for (p = 0; p < 4; p++) {
+            vga_outb(0x3C5, (uint8_t)(1 << p));
+            vga_write(di, lrb(src + p));
+            vga_write((uint16_t)(di + 1), lrb(src + 4 + p));
+        }
+        src += 0x80;
+        di = (uint16_t)(di + 0x4C);
+    }
+}
+
+/* CODE:3FCA */
+static void TILE_STEP(void)
+{
+    uint32_t ebx = rd(N_TILE_ORDER);
+
+    if (ebx == 0xFFFFFFFFu)
+        return;
+    TILE_DRAW(rb(ebx + rb(N_TILE_COUNT)));
+    wb(N_TILE_COUNT, (uint8_t)(rb(N_TILE_COUNT) + 1));
+    if (rb(N_TILE_COUNT) == 0)
+        wd(N_TILE_ORDER, 0xFFFFFFFFu);
+}
+
+/* the start of the next row of 48 lines (E40h bytes), plus `add`: the
+ * 16-bit DIV and MUL of CODE:4046 */
+static uint32_t NEXT_ROW(uint32_t eax, uint32_t add)
+{
+    uint16_t q = (uint16_t)((uint16_t)eax / 0xE40);
+
+    return ((eax & 0xFFFF0000u) | (uint16_t)((q + 1) * 0xE40)) + add;
+}
+
+/* CODE:41A8 (`base` INFODATA.MGL's) and LINE_MEASURE2 (CODE:4197, base
+ * CODE's) */
+static void LINE_MEASURE(uint32_t base)
+{
+    uint32_t fs = pmax_base(rw(N_TINYFONT_SEL)), esi = rd(N_TEXT_POS);
+    uint16_t bx = 0;
+    uint8_t dl = 0, dh = 0, al;
+
+    for (;;) {
+        al = lrb(base + esi++);
+        if (al == 0x20) {
+            dh = dl;
+        } else if (al == 0x0A) {
+            dh = dl;
+            break;
+        } else if (al == 0) {
+            wb(N_LINE_LEFT, dl);
+            return;
+        }
+        dl++;
+        bx = (uint16_t)(bx + lrb(fs + al * 4u + 2));
+        if (bx >= rw(N_WRAP_WIDTH))
+            break;
+    }
+    wb(N_LINE_LEFT, (uint8_t)(dh + 1));
+}
+
+/* CODE:3FF3 (`base` INFODATA.MGL's) and TEXT_STEP2 (CODE:405E, CODE's) */
+static void TEXT_STEP(uint32_t base)
+{
+    uint32_t esi = rd(N_TEXT_POS), edi;
+    uint8_t al;
+
+    if (esi == 0xFFFFFFFFu)
+        return;
+    if (rb(N_LINE_LEFT) == 0) {
+        LINE_MEASURE(base);
+        wd(N_TEXT_DI, NEXT_ROW(rd(N_TEXT_DI), 4));
+        return;
+    }
+    edi = rd(N_TEXT_DI);
+    al = lrb(base + esi);
+    if (al != 0x0A)
+        CHAR_PUT(al, &edi, 0);
+    wd(N_TEXT_POS, rd(N_TEXT_POS) + 1);
+    wd(N_TEXT_DI, edi);
+    wb(N_LINE_LEFT, (uint8_t)(rb(N_LINE_LEFT) - 1));
+}
+
+/* CODE:40C1 (TITLE_TEXT at TITLE_DI, a newline + A8h) and SCORES_STEP
+ * (CODE:412C, right-aligned, + 128h) */
+static void COLUMN_STEP(uint32_t text, uint32_t di, uint32_t add, int right)
+{
+    uint32_t esi = rd(text), edi;
+    uint8_t al;
+
+    if (esi == 0xFFFFFFFFu)
+        return;
+    edi = rd(di);
+    al = rb(esi);
+    if (al == 0) {
+        wd(text, 0xFFFFFFFFu);
+    } else if (al == 0x0A) {
+        wd(text, esi + 1);
+        wd(di, NEXT_ROW(rd(di), add));
+    } else {
+        CHAR_PUT(al, &edi, right);
+        wd(text, esi + 1);
+        wd(di, edi);
+    }
+}
+
+/* CODE:4442 */
+static void TITLE_MAKE(void)
+{
+    uint32_t esi = rb(N_MENU_ROW) * 0x32u + N_HISCORES, edi = N_TITLE_BUF;
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        wb(edi++, rb(esi));
+        wb(edi++, rb(esi + 1));
+        wb(edi++, rb(esi + 2));
+        wb(edi++, i < 4 ? 0x0A : 0);
+        esi += 0x0A;
+    }
+}
+
+/* CODE:448B */
+static void SCORES_MAKE(void)
+{
+    static const int order[6] = { 6, 7, 8, 9, 4, 5 };
+    uint32_t esi = rb(N_MENU_ROW) * 0x32u + N_HISCORES, edi = N_SCORES_BUF;
+    int i, k, n;
+
+    for (i = 0; i < 5; i++) {
+        for (k = 0; k < 6; k++) {
+            uint8_t b = rb(esi + order[k]);
+
+            /* AAM 10h: the low nibble first; CODE:447F puts a dot after it
+             * for bytes +7 and +4, CODE:4476 none; a dot too between +8
+             * and +9 */
+            wb(edi++, (uint8_t)((b & 0x0F) + 0x30));
+            if (order[k] == 7 || order[k] == 4)
+                wb(edi++, 0x2E);
+            wb(edi++, (uint8_t)((b >> 4) + 0x30));
+            if (order[k] == 8)
+                wb(edi++, 0x2E);
+        }
+        for (n = 0x0F; n > 0; n--) {
+            if (rb(edi - 1) != 0x30 && rb(edi - 1) != 0x2E)
+                break;
+            edi--;
+        }
+        wb(edi++, 0x0A);
+        esi += 0x0A;
+    }
+    wb(edi - 1, 0);
+}
+
+/* CODE:4214 */
+static void PAGE_MODE(void)
+{
+    int i, k;
+
+    FRAME_WAIT();
+    MUSIC_MIX();
+    ww(N_CRT_START, 0);
+    vga_outw(0x3CE, 0xFF08);
+    vga_outw(0x3CE, 0x0005);
+    vga_outw(0x3CE, 0x0003);
+    vga_outw(0x3C4, 0x0F02);
+    for (k = 0; k < 8; k++) {
+        for (i = 0; i < 0x2000; i++)
+            vga_write((uint16_t)(k * 0x2000 + i), 0);
+        FRAME_WAIT();
+        MUSIC_MIX();
+    }
+    FRAME_WAIT();
+    PAGE_DAC(0x8A3C);
+    MUSIC_MIX();
+    ww(N_CRT_START, 0);
+    FRAME_WAIT();
+    MUSIC_MIX();
+    wb(N_CRT_START_ON, 0);
+    FRAME_WAIT();
+    MUSIC_MIX();
+    FRAME_WAIT();
+    vga_outw(0x3C4, 0x0000);
+    vga_outw(0x3C4, 0x0101);
+    vga_outw(0x3C4, 0x0F02);
+    vga_outw(0x3C4, 0x0604);
+    vga_outw(0x3C4, 0x0300);
+    vga_outw(0x3D4, 0x0E11);
+    for (i = 0; i < 0x19; i++) {
+        vga_outb(0x3D4, (uint8_t)i);
+        vga_outb(0x3D5, rb(N_PAGE_CRTC + i));
+    }
+    vga_inb(0x3DA);
+    vga_outb(0x3C0, 0x30);
+    vga_outb(0x3C0, 0x41);
+    for (i = 0; i < 5; i++)
+        vga_outw(0x3CE, (uint16_t)i);
+    vga_outw(0x3CE, 0x4005);
+    vga_outw(0x3CE, 0x0506);
+    vga_outw(0x3CE, 0x0F07);
+    vga_outw(0x3CE, 0xFF08);
+    MUSIC_MIX();
+    FRAME_WAIT();
+    MUSIC_MIX();
+}
+
+/* CODE:4357 */
+static void PAGE_MODE_END(void)
+{
+    int i;
+
+    MUSIC_MIX();
+    FRAME_WAIT();
+    for (i = 0; i < 9; i++)
+        vga_outw(0x3D4, rw(N_CHOOSER_CRTC + 2 * i));
+    vga_outw(0x3C4, 0x0901);
+    vga_outw(0x3C4, 0x0F02);
+    vga_outw(0x3C4, 0x0604);
+    vga_outb(0x3C0, 0x30);
+    vga_outb(0x3C0, 0x01);
+    for (i = 0; i < 5; i++)
+        vga_outw(0x3CE, (uint16_t)i);
+    vga_outw(0x3CE, 0x0005);
+    vga_outw(0x3CE, 0x0506);
+    vga_outw(0x3CE, 0x0F07);
+    vga_outw(0x3CE, 0xFF08);
+    /* VIDEO_TOP_CLEAR (CODE:2522) */
+    vga_outw(0x3C4, 0x0F02);
+    for (i = 0; i < 0x5C; i++)
+        vga_write((uint16_t)i, 0);
+    wb(N_CRT_START_ON, 1);
+}
+
+/* CODE:43EF */
+static void PAGE_BORDER(void)
+{
+    int i;
+
+    vga_outw(0x3C4, 0x0F02);
+    for (i = 0; i < 0x4C; i++) {
+        vga_write((uint16_t)i, 1);
+        vga_write((uint16_t)(0x4234 + i), 1);
+    }
+    vga_outw(0x3C4, 0x0102);
+    for (i = 0; i < 0xDE; i++)
+        vga_write((uint16_t)(0x4C + 0x4C * i), 1);
+    vga_outw(0x3C4, 0x0802);
+    for (i = 0; i < 0xDE; i++)
+        vga_write((uint16_t)(0x97 + 0x4C * i), 1);
+}
+
+/* PAGE_KEYS (CODE:3465): only Esc */
+static void PAGE_KEYS(void)
+{
+    uint8_t bl = rb(N_KEY_READ) & 0x0F, bh = rb(N_KEY_READ + 1) & 0x0F;
+
+    if (bl == bh)
+        return;
+    if (rb(0x1906 + bl) == 1)
+        wb(N_ESC_KEY, 1);
+    wb(N_KEY_READ, (uint8_t)(rb(N_KEY_READ) + 1));
+}
+
+/* the pages' common end: the fade out (from CODE:45F5 and 4935) */
+static void PAGE_LEAVE(void)
+{
+    wb(N_ESC_KEY, 0);
+    wb(N_MENU_FADE, 0);
+    wd(N_PAL_FROM, N_PAGE_PAL_TO);
+    wd(N_PAL_TO, 0x8A3C);
+    wb(N_CH_FADE_LEVEL, 0x40);
+}
+
+static void PAGE_FADE_OUT(void)
+{
+    do {
+        MUSIC_MIX();
+        PAGE_FADE();
+        FRAME_WAIT();
+        PAGE_DAC(N_PAGE_PAL);
+    } while ((int8_t)rb(N_CH_FADE_LEVEL) > -1);
+}
+
+/* the chooser again, the next backdrop (CODE:4687, 49F1) */
+static void PAGE_BACKDROP(void)
+{
+    uint8_t b;
+
+    SPLIT_SET(0x1BD);
+    CHOOSER_DAC();
+    WRITE_MODE1();
+    READ_MODE1();
+    VIDEO_TOP_SET();
+    wb(N_MENU_FADE, 0);
+    wb(N_MENU_DONE, 0);
+    b = (uint8_t)(rb(N_BACKDROP) + 1);
+    if (b >= 3)
+        b = 0;
+    wb(N_BACKDROP, b);
+    CUBE_DRAW(rw(N_CUBE_SEL + 2 * b), 2);
+}
+
+/* CODE:4504 */
+static void INFO_PAGE(void)
+{
+    uint32_t info = pmax_base(rw(N_INFODATA_SEL));
+
+    ww(N_WRAP_WIDTH, 0xA0);
+    PAGE_MODE();
+    MUSIC_MIX();
+    wd(N_PAGE_BASE, lrd(info + 4 * rb(N_MENU_ROW) + 4));
+    wd(N_TEXT_POS, 0x430A + rd(N_PAGE_BASE));
+    PAGE_BORDER();
+    PAGE_PAL_MAKE();
+    wd(N_TILE_ORDER, N_TILE_PERM);
+    wd(N_TEXT_DI, 0x394);
+    wd(N_TITLE_DI, 0xABA8);
+    wd(N_SCORES_DI, 0xAC28);
+    wd(N_TITLE_TEXT, N_TITLE_BUF);
+    wd(N_SCORES_TEXT, N_SCORES_BUF);
+    wb(N_TILE_COUNT, 0);
+    LINE_MEASURE(info);
+    TITLE_MAKE();
+    SCORES_MAKE();
+    do {
+        MUSIC_MIX();
+        TILE_STEP();
+        TEXT_STEP(info);
+        COLUMN_STEP(N_TITLE_TEXT, N_TITLE_DI, 0xA8, 0);
+        COLUMN_STEP(N_SCORES_TEXT, N_SCORES_DI, 0x128, 1);
+        TILE_STEP();
+        TEXT_STEP(info);
+        TILE_STEP();
+        TEXT_STEP(info);
+        PAGE_KEYS();
+        PAGE_FADE();
+        FRAME_WAIT();
+        PAGE_DAC(N_PAGE_PAL);
+    } while (rb(N_ESC_KEY) != 1);
+    PAGE_LEAVE();
+    PAGE_FADE_OUT();
+    PAGE_MODE_END();
+    SCROLL_INIT();
+    ATTRACT_START();
+    wd(N_PAL_FROM, 0x1371);
+    PAGE_BACKDROP();
+}
+
+/* CODE:4886 */
+static void GREETINGS_PAGE(void)
+{
+    int i;
+
+    ww(N_WRAP_WIDTH, 0x128);
+    PAGE_MODE();
+    MUSIC_MIX();
+    wd(N_TEXT_POS, N_GREETINGS_TEXT);
+    for (i = 0; i < 0x300; i++)
+        wb(N_PAGE_PAL_TO + i, 0);
+    ww(N_PAGE_PAL_TO + 0x30, 0);
+    wb(N_PAGE_PAL_TO + 0x32, 0x10);
+    wb(N_PAGE_PAL_TO + 3, 0x3F);
+    wb(N_PAGE_PAL_TO + 4, 0x3F);
+    wb(N_PAGE_PAL_TO + 5, 0x3F);
+    wd(N_PAL_FROM, 0x8A3C);
+    wd(N_PAL_TO, N_PAGE_PAL_TO);
+    wb(N_CH_FADE_LEVEL, 0x40);
+    PAGE_BORDER();
+    wd(N_TEXT_DI, 0x394);
+    LINE_MEASURE(PI_IMAGE_BASE);
+    do {
+        MUSIC_MIX();
+        TEXT_STEP(PI_IMAGE_BASE);
+        TEXT_STEP(PI_IMAGE_BASE);
+        PAGE_KEYS();
+        PAGE_FADE();
+        FRAME_WAIT();
+        PAGE_DAC(N_PAGE_PAL);
+    } while (rb(N_ESC_KEY) != 1);
+    PAGE_LEAVE();
+    wb(N_CH_FADE_STEP, 2);
+    PAGE_FADE_OUT();
+    PAGE_MODE_END();
+    SCROLL_INIT();
+    wb(N_ATTRACT_STAGE, 1);
+    ww(N_ATTRACT_TIME, 0x12C);
+    wd(N_PAL_FROM, 0x1371);
+    wd(N_PAL_TO, 0x191B);
+    wb(N_CH_FADE_LEVEL, 0x46);
+    wb(N_CH_FADE_STEP, 2);
+    PAL_FADE();
+    PAGE_BACKDROP();
+}
+
 static uint8_t CHOOSER(void)
 {
     uint8_t al;
@@ -1099,13 +1614,16 @@ static uint8_t CHOOSER(void)
     /* CODE:505C, the table menu */
     if (rb(N_MENU_DONE) != 1) {
         wb(N_MENU_ROW, 0);
-        if (rd(N_KEY_HISTORY) == 0x0F3A2A1Du)
-            pi_stop("GREETINGS_PAGE");
+        if (rd(N_KEY_HISTORY) == 0x0F3A2A1Du) {
+            GREETINGS_PAGE();
+            wb(N_MENU_INFO, 0);
+        }
         for (;;) {
             MENU_LOOP();
             if (rb(N_MENU_INFO) == 0 || rb(N_ESC_KEY) == 1)
                 break;
-            pi_stop("INFO_PAGE");
+            INFO_PAGE();
+            wb(N_MENU_INFO, 0);
         }
     }
     /* CODE:50A9 */
@@ -1177,8 +1695,6 @@ static uint8_t CHOOSER(void)
 /* CODE:4CFB, the chooser: the table chosen, or FFh */
 uint8_t CHOOSER_START(void)
 {
-    uint32_t i;
-
     ww(N_CHOOSER_DS, PI_SEL_CODE);
     wb(0x5E1C, 0);
     ww(0x8A3C + 0x30, 0);
@@ -1195,11 +1711,7 @@ uint8_t CHOOSER_START(void)
     SPLIT_SET(0x1BD);
     ww(N_CHOOSER_VSEL, pmax_video_sel());
     VIDEO_CLEAR();
-    /* CODE:2613 (CODE:254D a RET) */
-    ww(0x131F, 0xE60);
-    ww(0x1321, 0xE60);
-    ww(0x1323, 0xE60);
-    wb(0x1329, 3);
+    SCROLL_INIT();
     MENUCHAR_INIT();
     wd(N_GEN_BUF, 0);                   /* CODE:28B8 */
     /* CODE:4E20: the overscan colour 10h */
@@ -1207,9 +1719,7 @@ uint8_t CHOOSER_START(void)
     vga_outb(0x3C0, 0x10);
     WRITE_MODE1();
     READ_MODE1();
-    /* VIDEO_TOP_SET */
-    for (i = 0; i < 0x26; i++)
-        vga_write((uint16_t)i, 0xFF);
+    VIDEO_TOP_SET();
     /* BITMAP_ALLOC (INT 92h AH=7, name CODE:226F) */
     ww(N_BITMAP_SEL, pmax_alloc_top(0x5C08));
     if (!rw(N_BITMAP_SEL))

@@ -55,7 +55,8 @@ decoder (tools/illfiles.py, port/src/archive.c) corrected after it: 10
 of the 125 entries had come out wrong (see "pMAX's decoder"); the
 chooser's retrace timer in the driver (see "The chooser's timer");
 the chooser's backdrop and captions in the port (see "CHOOSER_WAIT's
-loop"); the chooser's end in the port (see "The chooser's end").
+loop"); the chooser's end in the port (see "The chooser's end"); its
+Info and greetings pages (see "The Info and greetings pages").
 
 ## The earlier analysis
 
@@ -2635,6 +2636,62 @@ against the port with the keys at the pictures that matched in
 Not checked: the pages (INFO_PAGE, GREETINGS_PAGE stop the port), F1..F4
 and Up in the menu, a country other than 0.
 
+### The Info and greetings pages
+
+INFO_PAGE (CODE:4504) and GREETINGS_PAGE (CODE:4886); names in
+src/ILLUSION.hints, the block "the Info and greetings pages". Both go
+through PAGE_MODE: video memory cleared over 8 frames, the DAC's first
+128 colours from CODE:8A3C, CRT_START_ON 0, then a 256-colour mode with
+chain 4 off (4Ch bytes a line, 304 pixels; its CRTC from PAGE_CRTC,
+59.6 Hz in dosrun as the chooser's mode). A frame of colour 1
+(PAGE_BORDER), a palette faded in by PAGE_FADE (128 colours, sent each
+frame by PAGE_DAC), then once a frame until Esc (PAGE_KEYS):
+
+- INFO_PAGE: the page of MENU_ROW in INFODATA.MGL (PAGE_BASE, the dword
+  at 4 + 4 * MENU_ROW): at +0Ah the palette (300h bytes), at +30Ah a
+  picture of 128 x 128 pixels drawn in 256 tiles of 8 x 8, three a
+  frame, in the order of TILE_PERM (CODE:4A1B); at +430Ah the text,
+  three characters a frame in tinyfont.fnt (CHAR_PUT: each pixel set by
+  the map mask), lines broken at the last space before A0h pixels
+  (LINE_MEASURE); the table's five high-score names (TITLE_MAKE) and
+  scores (SCORES_MAKE: hex digits of the entry's bytes +6..+9, +4, +5,
+  low digit first with dots, drawn right to left by CHAR_PUT_R), a
+  character of each a frame.
+- GREETINGS_PAGE: GREETINGS_TEXT from CODE, two characters a frame,
+  lines of 128h pixels; black with white text.
+
+After Esc a fade to CODE:8A3C, PAGE_MODE_END (the chooser's CRTC pairs
+from CHOOSER_CRTC, VIDEO_TOP_CLEAR), SCROLL_INIT, the attract palettes
+again and the next backdrop drawn by CUBE_DRAW_MIX (CUBE_DRAW with
+MUSIC_MIX after each rotation, no FRAME_WAIT), then MENU_LOOP again.
+
+Runs 2026-09-30, Linux (NOSOUND.SDR as in "The driver's timer"):
+
+- Enter at 112, Right at 114, Enter at 115 (the Info page of Law 'N
+  Justice), `-break 1034EB#900` (FRAME_WAIT's 900th call, t=123.189670)
+  against the port with DK_FRAMES 6300 (899 frames of the chooser) and
+  the keys at pictures 5637, 5756, 5815: CODE only FRAME_SPINS, TAIL and
+  video memory equal.
+- The four keys of KEY_HISTORY at 110, 110.5, 111, 111.5 (`-key 110
+  tab -key 110.5 3A -key 111 lshift -key 111.5 lctrl`; pictures 5518,
+  5548, 5578, 5607): the greetings page, the same comparison at the
+  900th FRAME_WAIT: the same.
+- Then Esc at 125 and Enter at 130 to table 1 (`-break 10B253`,
+  t=130.769651): with Esc at picture 6407 and Enter at 6695 CODE differs
+  only in FRAME_SPINS and VSYNC_COUNT (3Ah against 30h), TAIL and video
+  memory equal, after either page. With Enter at 6705 (VSYNC_COUNT
+  equal) the menu's scroll and ATTRACT_TIME are 10 frames apart: the
+  original spends about 10 retraces in CUBE_DRAW_MIX's CPU time, which
+  counts VSYNC_COUNT but no loop frames; the port draws it at once. The
+  same holds for CUBE_DRAW at the chooser's start (CHOOSER at t=107.85,
+  CHOOSER_WAIT at 108.02). Not modelled: on another CPU it is another
+  time.
+
+The port's pictures at 6290 of both pages looked at: the picture, the
+text, the names and the scores (1.000.000.000 down to 50.000.000) of
+Law 'N Justice; the greetings text. Not checked: the other three tables'
+Info pages, a text longer than the page.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2826,9 +2883,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      timer"). Done 2026-09-30: CHOOSER_WAIT's loop, up to CODE:505C (see
      "CHOOSER_WAIT's loop"). Done 2026-09-30: the table menu and the
      chooser's end, ENTRY's end after Esc, up to the table (CODE:A323;
-     see "The chooser's end"). Next: INFO_PAGE and GREETINGS_PAGE, or
-     the table (CODE:A323, then CODE:7182 and the chooser again), which
-     wants stage 1 of `SOURCE\T001.BPC` first (item 5 below).
+     see "The chooser's end"). Done 2026-09-30: INFO_PAGE and
+     GREETINGS_PAGE (see "The Info and greetings pages"): the chooser
+     is whole in the port. Next: the table (CODE:A323, then CODE:7182
+     and the chooser again), which wants stage 1 of `SOURCE\T001.BPC`
+     first (item 5 below).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

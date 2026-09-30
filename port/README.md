@@ -36,8 +36,9 @@ reading their bytes) and the keys, up to the table menu's start
 (CODE:505C), the table menu and the chooser's end (the driver's
 commands 5 and 0Bh, everything freed): Esc ends the program with the
 original's goodbye text, a table chosen stops the port before the table
-(`Stopped before the table (CODE:A323)`); the Info and greetings pages
-stop it too. With -mem the port writes its memory at the program's end
+(`Stopped before the table (CODE:A323)`); the Info page (a table's
+picture, text and high scores) and the greetings page in their own
+256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
 computed from the CRTC's registers as dosrun times them.
 The port loads
@@ -164,6 +165,12 @@ SVGA_CHECK.
   video memory equal at the table; after Esc equal before the original's
   INT 10h mode 3, which the port does not model (docs/HANDOFF.md, "The
   chooser's end").
+- 2026-09-30, Linux: the Info page and the greetings page against dosrun
+  at FRAME_WAIT's 900th call (`-break 1034EB#900`) and at the table
+  after each: CODE differs only in FRAME_SPINS and, at the table,
+  VSYNC_COUNT (the original's CPU time in CUBE_DRAW_MIX, not modelled;
+  docs/HANDOFF.md, "The Info and greetings pages"), TAIL and video
+  memory equal.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

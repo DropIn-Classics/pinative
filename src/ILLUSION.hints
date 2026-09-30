@@ -701,6 +701,44 @@ code       CODE:28CF CAPTIONS_FREE ; every caption routine's block (the selector
 code       CODE:28F5 CHOOSER_FREE  ; CAPTIONS_FREE, then MENUCHAR_SEL, CUBE_SEL, TUBE_SEL, TORUS_SEL, TINYFONT_SEL, INFODATA_SEL and DRIVER_SEL freed (computed at CODE:521C)
 code       CODE:33F5 KBD_RESTORE   ; IRQ 1 masked at the PIC, its vector back from KBD_OLD (INT 93h AH=4 BL=1) (computed at CODE:5256)
 name       CODE:2B0A2 KEY_CHARS    ; 256 bytes: the keyboard table of CODE:50A9 upper-cased, FFh for no character
+; the Info and greetings pages (INFO_PAGE, GREETINGS_PAGE), read 2026-09-30
+code       CODE:4214 PAGE_MODE     ; video memory cleared over 8 frames (FRAME_WAIT, MUSIC_MIX each), the DAC's first 128 colours from CODE:8A3C, CRT_START 0, CRT_START_ON 0, then a 256-colour unchained mode: sequencer 0101h, 0604h, the CRTC from PAGE_CRTC (4Ch bytes a line), attribute mode 41h, GC 5 40h
+name       CODE:433E PAGE_CRTC     ; PAGE_MODE's CRTC registers 0..18h
+code       CODE:4357 PAGE_MODE_END ; back to the chooser's mode: the CRTC pairs at CHOOSER_CRTC, sequencer 1 09h, memory mode 06h, attribute mode 01h, GC 5 0, VIDEO_TOP_CLEAR, CRT_START_ON 1
+name       CODE:43DD CHOOSER_CRTC  ; nine CRTC index, value pairs
+code       CODE:2522 VIDEO_TOP_CLEAR ; video memory 0..5Bh cleared, all planes
+code       CODE:43EF PAGE_BORDER   ; a frame of colour 1: the first line (4Ch bytes, all planes) and the one at 4234h, the left pixel (plane 0) and the right one (plane 3, byte 4Bh) of the lines between
+code       CODE:3D72 PAGE_PAL_MAKE ; PAGE_PAL_TO from INFODATA.MGL at PAGE_BASE + 0Ah (300h bytes), colour 1 white, colour 16 (0, 0, 10h); a fade from CODE:8A3C to it (PAL_FROM, PAL_TO, CH_FADE_LEVEL 40h)
+name       CODE:5A67 PAGE_PAL_TO   ; a page's palette, 300h bytes
+name       CODE:5767 PAGE_PAL      ; PAGE_FADE's 128 colours (180h bytes), sent by PAGE_DAC
+code       CODE:3D19 PAGE_FADE     ; while CH_FADE_LEVEL is not negative: PAGE_PAL mixed from PAL_FROM and PAL_TO as PAL_FADE does, then CH_FADE_LEVEL less CH_FADE_STEP (not held at 0)
+code       CODE:3CFD PAGE_DAC      ; DAC 0..127 (180h bytes) from ESI
+code       CODE:3DD7 TILE_DRAW     ; tile AL (row: high nibble, column: low) of a page's 128 x 128 picture, 8 x 8 pixels from INFODATA.MGL at PAGE_BASE + 30Ah (a line 80h bytes) to video memory 28Ah + row * 260h + column * 2
+code       CODE:3FCA TILE_STEP     ; the next tile by TILE_ORDER and TILE_COUNT; TILE_ORDER FFFFFFFFh after 256
+name       CODE:3B54 TILE_ORDER    ; the permutation of the tiles (CODE:4A1B), FFFFFFFFh when all are drawn
+name       CODE:3B70 TILE_COUNT    ; the tiles drawn (a byte)
+name       CODE:4A1B TILE_PERM     ; 256 bytes, each tile once presumably (not checked)
+name       CODE:3B47 PAGE_BASE     ; the Info page's offset in INFODATA.MGL (the dword at 4 + 4 * MENU_ROW)
+code       CODE:3B72 CHAR_PUT      ; tinyfont.fnt's character AL at EDI (a pixel address: plane EDI AND 3), EDI moved on by its width: a record of 4 bytes a character (+0 its bits' start, +2 the width, +3 the first line; the next record's +0 the end), a word a line of 16 pixels, pixels set to colour 1 one at a time by the map mask; the first pixel one to the right of EDI
+code       CODE:3CCE CHAR_PUT_R    ; the same with EDI moved back by the width first (right-aligned text)
+code       CODE:41A8 LINE_MEASURE  ; LINE_LEFT: the characters from TEXT_POS (in INFODATA.MGL) up to the last space before WRAP_WIDTH pixels, or the line's end, and the space or newline; at the text's end the characters left
+code       CODE:4197 LINE_MEASURE2 ; the same with the text in CODE (GREETINGS_PAGE)
+code       CODE:3FF3 TEXT_STEP     ; one character of TEXT_POS (INFODATA.MGL) drawn at TEXT_DI, LINE_LEFT counted; at 0 LINE_MEASURE and TEXT_DI to the next 48-line row's start + 4
+code       CODE:405E TEXT_STEP2    ; the same with the text in CODE
+name       CODE:3B4F WRAP_WIDTH    ; a line's width in pixels (A0h on the Info page, 128h on the greetings page)
+name       CODE:3B64 TEXT_DI       ; the text's pixel address
+name       CODE:3B71 LINE_LEFT     ; the characters left of the line
+code       CODE:4442 TITLE_MAKE    ; TITLE_BUF: the five names (3 bytes) of MENU_ROW's table in HISCORES (32h bytes a table, 0Ah an entry), each ended by 0Ah, the last by 0
+code       CODE:448B SCORES_MAKE   ; SCORES_BUF: the five scores from bytes +6, +7, +8, +9, +4, +5 of each entry as hex digits, low digit first, with dots after thousands; the leading zeros and dots taken off (the string is drawn right to left), 0Ah after each, 0 at the end
+name       CODE:5D67 TITLE_BUF     ; TITLE_MAKE's
+name       CODE:5D7B SCORES_BUF    ; SCORES_MAKE's
+code       CODE:40C1 TITLE_STEP    ; a character of TITLE_TEXT at TITLE_DI (a newline: the next 48-line row + A8h), FFFFFFFFh at the end
+code       CODE:412C SCORES_STEP   ; a character of SCORES_TEXT right-aligned at SCORES_DI (a newline: + 128h)
+name       CODE:3B5C TITLE_TEXT    ; TITLE_BUF's next character
+name       CODE:3B60 SCORES_TEXT   ; SCORES_BUF's next character
+name       CODE:3B68 TITLE_DI      ; ABA8h at the start
+name       CODE:3B6C SCORES_DI     ; AC28h at the start
+code       CODE:2789 CUBE_DRAW_MIX ; CUBE_DRAW with MUSIC_MIX after each rotation of a plane (after the pages)
 ds         CODE:9CDC-9CE3 CODE     ; DS from CODE:A10B, as KBD_IRQ
 comment    CODE:9CD4 the completion routine handed with command 11h at CODE:9B31: sets CODE:9CE5 to FFh; the driver calls it from its command 6 once a jingle has ended (a jump to the order it plays, SB16.SDR +1EAF; run 2026-09-29: 1.69 s after the command 0Ah of order 0Eh)
 name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: counts CODE:BAD4 (the blinking of display opcode 1Ah, the random awards of handler 1Ah); run 2026-09-29, table 1: 838 writes by CODE:B9AA from t=130.11 to 142, 70.5 a second, so once a frame at 70 Hz
