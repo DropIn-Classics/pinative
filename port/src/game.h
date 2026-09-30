@@ -59,6 +59,9 @@ void HCB_SEEK(uint32_t edx);
 /* 1: callbacks 6 to 9 keep the file in the table's cells */
 void hcb_use_table(int table);
 
+/* tblinit.c: CODE:29A5A, the ball at [0010] put at the plunger */
+void BALL_PLACE(void);
+
 /* dotmatrix.c: CODE:2833E, 1 (CF) when a block or file failed; CODE:2FBA8 */
 int DM_LOAD(void);
 void DM_CLEAR(void);

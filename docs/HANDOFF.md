@@ -3348,6 +3348,30 @@ nudge ran a frame earlier and had run out by the break. A key's place
 within a frame is not modelled (as FRAME_COUNT's tick); keys without an
 effect in FLIPPERS_STEP compare equal.
 
+### A game's start
+
+GAME_START (CODE:2A976, GAME_PHASE 2, from ATTRACT_KEYS): the balls per
+game to state+0D36h, the player 0 and its bit 1, the eight player
+records cleared, then BALLS_RESET (CODE:29AB3), LIGHTS_RESET,
+COUNTERS_RESET (CODE:29FFA: slot 16's counters and slot 17's lists),
+RECORDS_RESET (CODE:29ED6: slot 15's records, lit ones onto the lit list
+and their lamps on, then STREAMS_RESET, CODE:29E45, which CODE:29CE3
+ends with too), DROPS_UP_ALL with DROP_SET, DISPLAY_RESET, a few cells,
+the sound record CODE:1009A, the module's slot 40 (state+2946h; a RET
+but on table 2, where it resets the tune chooser, docs/bpc-module.md;
+the port stops there), GAME_PHASE 6. The port's routines are in
+src/play.c.
+
+The runs had F1 at t=150 on all four tables, and the port's key had
+to be put where the run's landed: t=150 is another point of each
+table's attract mode. The picture was found from the attract scroll
+at the break (ATTRACT_LINE, SCROLL_LINE: a picture of the port moves
+it a line): pictures 7087, 7063, 7102, 7143 for tables 1..4, where the
+scroll and FRAME_COUNT both came out as the run's (at CODE:2A976 the
+port's FRAME_COUNT had been one ahead, see "The table's keyboard
+handler"; the break lies at another place in the frame). There only
+FRAME_SPINS differs in CODE, the rest as in port/README.md.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3589,8 +3613,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      key the attract mode goes round in the port. Done 2026-09-30:
      KBD_IRQ (CODE:A076; see "The table's keyboard handler"). Done
      2026-09-30: Esc in the attract mode (CODE:2A8AB; see "Esc in the
-     attract mode"). Next: a game's start, GAME_PHASE 2 (CODE:2A976),
-     and the other phases as a game reaches them; the table's end after
+     attract mode"). Done 2026-09-30: a game's start, GAME_PHASE 2
+     (CODE:2A976; see "A game's start"). Next: GAME_PHASE 6 (CODE:2B1DC,
+     the ball waiting for its launch), table 2's slot 40, and the other
+     phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte

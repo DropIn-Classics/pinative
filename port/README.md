@@ -69,7 +69,10 @@ opcode 3's text in the display's fonts) to the attract record's end,
 the high-score pages (CODE:2A6FA: an entry a page, its score drawn from
 packed BCD, src/dotmatrix.c) and the attract record again, round and
 round with no key; the table's keyboard handler (KBD_IRQ, src/table.c),
-so F1..F8 or keypad Enter start a game (`Stopped before CODE:2A976`);
+so F1..F8 or keypad Enter start a game (GAME_PHASE 2, CODE:2A976: the
+players, balls, lights, counters, records and drop targets reset; then
+`Stopped before CODE:2B1DC`, GAME_PHASE 6, on table 2 at its module's
+slot 40, `GAME_START: the module's slot 40 is not a RET`);
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
 key back to the attract mode; with no key the port stops there only when the window is closed
@@ -378,6 +381,15 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   came during the question frame's drawing, after its FLIPPERS_STEP, the
   port's comes at the frame's wait (docs/HANDOFF.md, "Esc in the attract
   mode").
+- 2026-09-30, Linux: each of the four tables, F1 at t=150 (dosrun `-key
+  150 3B`; the port's pictures 7087, 7063, 7102, 7143 for tables 1..4,
+  where FRAME_COUNT and the attract scroll came out as the run's), at
+  GAME_PHASE 6's routine CODE:2B1DC (`-break 12C10C -mem -vram`; table
+  2 at the slot-40 call, `-break 12B99D`): CODE differs only in
+  FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but
+  the leftovers named above. The resets ran on a table fresh from the
+  attract mode, so most of what they write was already so; a second
+  game (after a game over) not tried.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

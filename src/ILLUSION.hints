@@ -1005,6 +1005,13 @@ name       CODE:2F35B DISPLAY_BUSY  ; FFh after DISPLAY_RUN ran (or waited); 0 w
 name       CODE:27A7D ANIMS_BG_ONLY ; ANIMS_STEP: FFh when no animation plays (state+2A50h 0)
 comment    CODE:27A62 the background animation (state+2A5Ch) +12h from +22h, +16h 0, also when there is none: through EBX 0 at CODE:0012 and 0016 (the CMP's flags are tested after, both ways to the RET; presumably a slip)
 code       CODE:2A7FD ATTRACT_KEYS  ; Esc (state+0E47h) to CODE:2A8AB; else the first of F8..F1 (state+0E88h down to 0E81h) set, or keypad Enter (state+0EE2h) as F1: cleared, GAME_PHASE 2, the key's number (1..8) added to state+0D70h
+; a game's start (2026-09-30, the code; the port against runs with F1 at
+; GAME_PHASE 6's routine, the four tables; table 2 at the slot-40 call)
+code       CODE:2A976 GAME_START    ; GAME_PHASE 2: BALLS_PER_GAME to state+0D36h, state+0D38h and the player (0D72h) 0, its bit (0D74h) 1, the eight player records from state+0D7Ah (16h bytes; 0D76h the first) cleared; BALLS_RESET, LIGHTS_RESET, COUNTERS_RESET, RECORDS_RESET, DROPS_UP_ALL, DISPLAY_RESET; state+0D32h 1, 0D3Ch FFh, 0D3Dh 0, 0D3Ah 0, 0D30h FFh; SFX_PLAY of CODE:1009A; state+2A7Fh FFh; the module's slot 40 (state+2946h, at CODE:2AA6D); state+2A78h 0, GAME_PHASE 6
+code       CODE:29AB3 BALLS_RESET   ; the 13 balls (state+10AEh) put at the plunger (BALL_PLACE), bytes +1, +9, +0Bh 0
+code       CODE:29ED6 RECORDS_RESET ; header slot 15's records (state+28E2h): +1, +2 0; with bit 1 of +0 lit (+1 FFh, +2Eh FFFFh, the lamp +4 on for the player's bit) and on the lit list (bit 2, state+2A32h first, 2A36h last, +30h next), else bit 2 and +30h cleared; then STREAMS_RESET
+code       CODE:29E45 STREAMS_RESET ; the event ring (state+2A1Eh to CODE:F618, its first dword 0; state+2A1Ah, 2A1Ch, 2A22h 0), the mode stream's cells state+0D4Fh..0D6Bh and the display's state+2A58h, 2A5Ch 0 (the end of CODE:29CE3 and RECORDS_RESET)
+code       CODE:29FFA COUNTERS_RESET ; header slot 16's counters (state+28E6h): +30h, +34h from +28h, +2Ch, the eight players' words +6 and +16h to +2, +38h, +3Ch, +26h 0, each threshold's byte +2 0; header slot 17's lists (state+28EAh): bit 1 of each 8-byte entry cleared, up to one whose word +2 is 100h or more
 ; the high-score pages and the numbers on the display (2026-09-30, the
 ; code; the port against runs at CODE:2A7D4 and at CODE:2A6C1's second
 ; call, the four tables)

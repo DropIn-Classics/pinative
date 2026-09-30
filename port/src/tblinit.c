@@ -45,7 +45,7 @@ static void ball_bundle(uint32_t from, uint8_t level)
  * to 11Ch, 1FEh (plus their low three bits) and shifted by 0Ah into +1Eh,
  * +22h, the high bytes of its words +0Eh, +10h to 2, byte +1 0, the
  * second bundle */
-static void BALL_PLACE(void)
+void BALL_PLACE(void)
 {
     uint32_t b = rd(0x0010), edi;
 
