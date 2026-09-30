@@ -41,8 +41,10 @@ with the table's two modules, command 11h) and TABLE_LOAD2's first
 blocks (the hide-lights mask, vm_data.mgl, the dot-matrix display's
 areas, fonts and animations: src/dotmatrix.c) and the table's code
 module (src/module.c: SOURCE\T00n.BPC loaded and relocated, the
-resources its header names, the options applied) up to CODE:911F
-(`Stopped before CODE:911F`); the Info page (a table's
+resources its header names, the options applied) and the table's
+display (src/tblvga.c: VGA 360x350 or 320, unchained, FRAME_RATE, the
+stage drawn) up to CODE:BA9B (`Stopped before CODE:BA9B`); the Info
+page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -220,6 +222,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   and, on table 2, 3 bytes at +2088h of a block of the driver's (host
   callback 0), which differ already at CODE:A3F0 (docs/HANDOFF.md, "The
   module's load").
+- 2026-09-30, Linux: table 1 up to CODE:BA9B (dosrun `-break 10C9CB
+  -mem -vram`, the keys of CODE:A3F0), with OPT_RESOLUTION 0 and 3:
+  CODE differs only in FRAME_SPINS (FRAME_RATE 61 and 59 in both), TAIL
+  and video memory equal, the heap blocks as at CODE:911F and 7 bytes
+  past what STAGE_TO_SPOOKY writes. VGA registers and DAC not compared.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

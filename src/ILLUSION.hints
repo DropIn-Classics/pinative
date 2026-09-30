@@ -771,7 +771,7 @@ name       CODE:98FE TBL_CALLBACKS ; HOST_CALLBACKS again (CODE:995E ...), the f
 name       CODE:9944 TBL_HCB_CURSOR
 name       CODE:9948 TBL_HCB_FILE_SEL
 name       CODE:9CD4 JINGLE_END_CB
-code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, TABLE_MODULE, CODE:911F, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), CODE:BA9B, CODE:B797, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
+code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, TABLE_MODULE, TBL_VGA_INIT, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), CODE:BA9B, CODE:B797, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
 name       CODE:A11B HIDELIGHTS_SEL ; "Hidelights mask": 33450h bytes by INT 92h AH=0Ah, the selector stored whether or not it failed
 code       CODE:B1D0 VM_DATA_LOAD  ; VM_DATA_NAME ("VideoMode data") by INT 94h AH=1 into VM_DATA_SEL and VM_DATA_SIZE; its CF
 name       CODE:B195 VM_DATA_SEL
@@ -805,6 +805,28 @@ code       CODE:278D8 DM_ANIMS_LOAD ; DM_ANIMS_NAME ("Manglade Anims") by INT 94
 name       CODE:278D2 DM_ANIMS_SEL
 name       CODE:278D4 DM_ANIMS_SIZE
 name       CODE:2791F DM_ANIMS_NAME ; "data\s00n\anims\allanims.mgl"
+; the table's display (2026-09-30, the code; the port against a run at
+; CODE:BA9B, table 1)
+code       CODE:911F TBL_VGA_INIT  ; a retrace waited, DAC_LOAD TBL_PALETTE, unchained (CR 11h 0, sequencer 4 AND F6h, CR 14h bit 6 off, CR 17h E3h), video memory 0 (map mask 0Fh), the mode routine of MODE_ROUTINES by OPT_RESOLUTION, MEASURE_RATE, video memory 0 again, DAC_LOAD TBL_PALETTE again (MODULE_HEADER+50h, the stage's palette pointer, read and not used), STAGE_TO_VRAM, policy 0, SPOOKY_SEL (32DC0h bytes, INT 92h AH=0Ah), STAGE_TO_SPOOKY. Run 2026-09-30: three retrace edges counted in it (frames 5866 to 5869)
+name       CODE:910E MODE_ROUTINES
+name       CODE:AA2B TBL_PALETTE   ; 300h bytes, shifted right 2 to the DAC
+code       CODE:92FA DAC_LOAD      ; 300h bytes at ES:ESI, each shifted right 2, to the DAC from colour 0
+code       CODE:3D389 MAP_MASK     ; the sequencer's map mask from AH
+code       CODE:3D39F VGA_UNCHAINED ; mode 13h (INT 10h), then unchained as TBL_VGA_INIT does it
+code       CODE:3D3D4 CRTC_WORDS_SET ; CR 11h bit 7 off, the ten CRTC words at CRTC_WORDS, Misc (3CCh) OR C0h
+name       CODE:3D40B CRTC_WORDS
+code       CODE:9444 VGA360_REGS   ; sequencer 4 = 6, map mask 0Fh, Misc A7h (the 28 MHz clock), the CRTC's timings for 360x350 (CR 0..17h), CR 1 53h, CR 11h A5h
+code       CODE:3D320 TBL_SPLIT_SET ; the line compare from CX less 1, CH bit 0 to CR 7 bit 4, bit 1 to CR 9 bit 6 (as SPLIT_SET, which clears the latter)
+name       CODE:911E MODE_SVGA800_FLAG ; 1 by MODE_SVGA800, 0 by the others
+name       CODE:D890 TBL_D890      ; a word each mode sets (7Fh VGA 360, 53h VGA 320, B3h SVGA 640), not followed
+name       CODE:D892 TBL_D892      ; the same (11Ah, 188h, 98h)
+name       CODE:9B8E VSYNC_START_ARG ; the dword command 0Fh gets in ECX (CODE:B9B9)
+name       CODE:B922 TBL_B922      ; a dword each mode sets (2, VGA 320 0), not followed
+code       CODE:9392 STAGE_BITS    ; AL: the bit 7 - DL of the eight bytes at GS:ESI, 30h apart, the first one's to bit 0
+code       CODE:933F STAGE_TO_VRAM ; for each plane DL 0..3 (map mask STAGE_MASK, rotated a bit after each): from EBP (MODULE_HEADER+4Ch, the stage, STAGE.M) 258h lines of 2Ah words (STAGE_BITS for DL and for DL XOR 4) to video memory from 1500h, the source 180h bytes a line
+name       CODE:933E STAGE_MASK    ; 11h, rotated four times a call, so 11h again
+code       CODE:93FB STAGE_TO_SPOOKY ; the same into SPOOKY_SEL's block from 0, the four planes one after the other (4 x C4E0h bytes)
+name       CODE:A119 SPOOKY_SEL    ; "Spooky", 32DC0h bytes
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)

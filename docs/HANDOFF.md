@@ -2800,8 +2800,8 @@ order 1 of slot 0 played), then TABLE_LOAD2 (CODE:B048), the game
 The run (2026-09-30, Linux, NOSOUND.SDR as in "The driver's timer",
 Enter at 112 and 115, table 1): CODE:A323 at t=115.78, TABLE_LOAD2
 (CODE:A3F0, `-break 10B320`) at 121.00, the game (CODE:B928, `-break
-10C858`) at 132.55; no pictures counted in between (the frames stay
-5866), so nothing there hangs on the retrace. The port (port/src/table.c)
+10C858`) at 132.55; no pictures counted up to CODE:A3F0 (the frames
+stay 5866; TBL_VGA_INIT counts three, see "The table's display"). The port (port/src/table.c)
 against the run at CODE:A3F0 (DK_KEYS "5637:1C 5646:9C 5815:1C
 5824:9C"): CODE only FRAME_SPINS, TAIL and video memory equal; of the 55
 heap blocks (the driver's, its buffers and the two modules' samples and
@@ -2872,6 +2872,42 @@ TABLE_SOUND: 47h 62h .. 04h in the run, 0 in the port, the same at
 CODE:A3F0 already, so before TABLE_LOAD2. Whether the driver wrote them
 or they are a leftover (the block's asked size would tell) is not
 followed; table 1 has no such difference.
+
+### The table's display
+
+TBL_VGA_INIT (CODE:911F; names in src/ILLUSION.hints, "the table's
+display") sets the table's mode: unchained 256 colours, VGA 360x350
+(MODE_VGA360: mode 13h, the CRTC words at CRTC_WORDS, the 28 MHz clock
+and 360x350 timings, 84 bytes a line, the split at 13Dh) or VGA 320
+(OPT_RESOLUTION 3); the SVGA modes stop the port. MEASURE_RATE then
+times one picture with PIT channel 0: FRAME_RATE 61 (3Dh, the cap) for
+VGA 360 and 59 for VGA 320 in the runs, and the port's
+1193182 / vga_refresh_hz() ticks give the same. The stage (STAGE.M,
+header slot 19) goes into video memory from 1500h and into a block
+"Spooky" of 32DC0h bytes, both through STAGE_BITS: each output byte
+takes one bit column of eight source rows 30h bytes apart, so the stage
+is stored as bit planes of 30h-byte rows and made into the unchained
+layout here (presumably; not checked against the file's format). The
+palette is TBL_PALETTE (CODE:AA2B) both times; the stage palette's
+pointer (slot 20) is read and overwritten at once.
+
+The run (table 1, 2026-09-30) counts three retrace edges in it (frames
+5866 to 5869 at CODE:BA9B, t=130.52): the one TBL_VGA_INIT waits for
+and two in MEASURE_RATE; the port waits three pictures. ("The table's
+start" said the frames stay 5866 up to CODE:B928; that is not so.)
+Against the run at CODE:BA9B (`-break 10C9CB`), with OPT_RESOLUTION 0
+and 3 (a copy of build/pm/nosound.cfg with the option re-encoded):
+CODE only FRAME_SPINS, TAIL and video memory equal, the heap blocks
+equal but the known leftovers and 7 bytes of "Spooky" past the 31380h
+it writes. The VGA registers and the DAC are not compared (memcmp.py
+has neither).
+
+Not modelled: MEASURE_RATE leaves PIT channel 0 in mode 0, the channel
+the driver's timer runs on (mode 3, "The driver's timer"). In the run
+IRQ 0 then comes once more and stops, presumably, until something
+programs the PIT again; the port's NOSOUND counts IRQs per picture from
+PIT_DIV regardless. Whether and where the game or the driver restarts
+it is not followed; the driver's sample clock will show it.
 
 ## Next
 
@@ -3072,8 +3108,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (CODE:B048; see "The table's start"). Done 2026-09-30: TABLE_LOAD2
      up to the module, CODE:B22D (see "The dot-matrix display's
      blocks"). Done 2026-09-30: the module's load, up to CODE:911F on
-     all four tables (see "The module's load"). Next: the rest of
-     TABLE_LOAD2 (CODE:911F, CODE:BA9B, CODE:B797, CODE:28C45,
+     all four tables (see "The module's load"). Done 2026-09-30:
+     TBL_VGA_INIT, up to CODE:BA9B (see "The table's display"). Next:
+     the rest of TABLE_LOAD2 (CODE:BA9B, CODE:B797, CODE:28C45,
      CODE:15030, MULTIBALL_CAP), then the game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,

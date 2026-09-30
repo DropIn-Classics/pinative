@@ -63,6 +63,9 @@ int DM_LOAD(void);
 int TABLE_MODULE(void);
 void DEC_TEXT(void);
 
+/* tblvga.c: CODE:911F */
+void TBL_VGA_INIT(void);
+
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 

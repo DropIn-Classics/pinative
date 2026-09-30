@@ -6,9 +6,10 @@
  * kept in memory differ).  It loads the table (TABLE_LOAD: the driver
  * started again with the table's music; TABLE_LOAD2: the module and the
  * rest), runs the game with IRQ 1 unmasked (CODE:B928) and frees it all.
- * Translated so far: TABLE_LOAD2 up to CODE:911F, the module loaded
- * (docs/HANDOFF.md, "The table's start", "The dot-matrix display's
- * blocks", "The module's load").
+ * Translated so far: TABLE_LOAD2 up to CODE:BA9B, the module loaded
+ * and the display set (docs/HANDOFF.md, "The table's start", "The
+ * dot-matrix display's blocks", "The module's load", "The table's
+ * display").
  */
 #include <string.h>
 
@@ -19,6 +20,7 @@
 #include "nosound.h"
 #include "pmax.h"
 #include "pmem.h"
+#include "vga.h"
 
 /* CODE:A076, IRQ 1's handler while the table runs: not translated yet */
 static void KBD_IRQ(unsigned char ah)
@@ -187,7 +189,17 @@ static int TABLE_LOAD2(void)
         return 1;
     if (DM_LOAD() || TABLE_MODULE())
         return 1;
-    pi_stop("CODE:911F");
+    TBL_VGA_INIT();
+    if (rb(N_OPT_RESOLUTION) == 3) {
+        /* the attribute controller's mode control 61h, panning 4 */
+        vga_inb(0x3DA);
+        vga_outb(0x3C0, 0x30);
+        vga_outb(0x3C0, 0x61);
+        vga_inb(0x3DA);
+        vga_outb(0x3C0, 0x33);
+        vga_outb(0x3C0, 4);
+    }
+    pi_stop("CODE:BA9B");
     return 1;
 }
 
