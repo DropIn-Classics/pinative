@@ -1,13 +1,15 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
+ *     pinative [-game DIR | -gog FILE|FOLDER] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
  * directory or in the data folder (sys_find_game).  When there is none,
  * the installed GOG release's image is unpacked into the data folder's
- * `game` (cdimage.h; -gog names the image instead of looking for it).
+ * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
+ * copied there (cdimage.h; -gog names the image or the folder instead of
+ * looking for it).
  * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there);
  * -opt the letters after the '/' of the command line (the GOG release's
  * ILLUSION.BAT passes its own arguments there: o the options screen, s the
@@ -48,26 +50,36 @@ static void show(void)
     plat_present(pixels, TM_WIDTH, TM_HEIGHT, palette);
 }
 
-/* the game's files: found, or unpacked from the GOG image; 1 if there */
+/* the game's files: found, or from the GOG release (its CD image
+ * unpacked, or an installed folder of the game's files copied); 1 if
+ * there */
 static int get_game(const char *given, const char *gog, char *out, size_t n)
 {
-    char image[SYS_PATH], data[SYS_PATH], err[256];
+    char from[SYS_PATH], data[SYS_PATH], err[256];
+    int folder, r;
 
     if (sys_find_game(given, "PINATIVE_GAME", "ILLUSION.EXE", out, n))
         return 1;
     if (given)
         return 0;
     if (gog)
-        snprintf(image, sizeof image, "%s", gog);
-    else if (!gog_find(&release, image, sizeof image))
+        snprintf(from, sizeof from, "%s", gog);
+    else if (!gog_find(&release, from, sizeof from) &&
+             !gog_find_folder(&release, from, sizeof from))
         return 0;
+    folder = sys_is_dir(from);
     sys_data_dir(data, sizeof data);
     sys_join(out, n, data, "game");
     tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
-    tm_text(2, 2, "Unpacking the game's files from", TM_ATTR(TM_WHITE, TM_BLUE));
-    tm_text(2, 3, image, TM_ATTR(TM_YELLOW, TM_BLUE));
+    tm_text(2, 2, folder ? "Copying the game's files from" : "Unpacking the game's files from",
+            TM_ATTR(TM_WHITE, TM_BLUE));
+    tm_text(2, 3, from, TM_ATTR(TM_YELLOW, TM_BLUE));
     show();
-    if (cd_unpack(image, out, "ILLUSION.EXE", NULL, NULL, err, sizeof err) != 0) {
+    if (folder)
+        r = gog_copy(from, out, "ILLUSION.EXE", NULL, NULL, err, sizeof err);
+    else
+        r = cd_unpack(from, out, "ILLUSION.EXE", NULL, NULL, err, sizeof err);
+    if (r != 0) {
         plat_message(err);
         return 0;
     }
@@ -97,7 +109,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-entry"))
             entry = 1;
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE|FOLDER] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
             return 2;
         }
     }
