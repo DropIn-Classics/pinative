@@ -2395,6 +2395,62 @@ timer"; `-break 105C2B`, CODE:4CFB), against the port stopped there:
 The keyboard after CODE:7A82 (IRQ 1 unmasked: which INT 9 handler takes
 the keys then) is not followed; the port hands the keys to nobody.
 
+### The chooser's start
+
+CODE:4CFB to CHOOSER (CODE:4FF9) is a chain of checksummed jumps and
+calls (each target a dword less the byte sum of some code), 16 of them;
+the targets were computed from the run's memory at CODE:4CFB and the
+path followed in a `-trace` of the run from there (3 million
+instructions, `-log 105C2B -trace FILE 3000000`; the whole start takes
+21 million, no frame in between: CHOOSER at t=107.847899). In order
+(names in src/ILLUSION.hints): KBD_INSTALL (IRQ 1's vector by INT 93h
+AH=3 BL=1, 0030:00004152 in the run, kept at KBD_OLD; CODE:340A set by
+AH=4; AH=9 BL=1 not looked into), INT 10h mode 0Dh, CHOOSER_MODE (a
+304-pixel mode of 2Eh bytes a line over 0Dh's registers),
+ATTRACT_START, CHOOSER_DAC, SPLIT_SET (CX 1BDh through the XCHG [ESP]
+trick at CODE:4D8B), CHOOSER_VIDEO, VIDEO_CLEAR, SCROLL_INIT,
+MENUCHAR_INIT (menuchar.rix already loaded by CHOOSER_LOAD), CODE:28B8,
+the overscan colour, WRITE_MODE1, READ_MODE1, VIDEO_TOP_SET,
+BITMAP_ALLOC, CAPTIONS_MAKE, BITMAP_FREE; with CHOOSER_LOADED 1 the
+files are not loaded again.
+
+pMAX services new here (from the trace's registers and the heap in
+`-mem` dumps): INT 92h AH=7 cuts a block from the top of the heap with
+a selector (5C08h bytes, selector 15Ch, the lowest free: the intro's
+first); AH=6 cuts one below it and gives only its linear address in EAX
+(10000h bytes at FDA3D0h), AH=2 frees that; INT 93h AH=0Ch gives
+selector 80h, flat presumably (the chooser writes GEN_BUF through it by
+linear address); INT 93h AH=14h (CX 9Ah: a code segment) and AH=9 leave
+nothing the port models. Whether AH=7 always takes the top whatever the
+policy is not known (seen once).
+
+The captions are compiled. CAPTION_BUILD draws a caption's layout (text
+of menuchar.rix, lines) into two bitmaps of 2E04h bytes, a bit a pixel,
+then makes six 16-bit routines of them (GEN_CODE, GEN_CODE2) in
+GEN_BUF, each copied into a block of its own (INT 92h AH=4, first fit
+from the bottom: 138 blocks, selectors 164h to 5ACh); the record gets
+their far pointers. The routines are made of: MOV SI,ES:[150Ch+2n]
+and ADD SI,ES:[151Ch+2n] (every 32 lines, after ADD DI,5C0h), a latch
+read MOV AL,[SI+d], a byte write MOV BYTE [DI+d],imm or MOV [DI+d],BH,
+and a 32-bit RETF (66h CBh). The chooser draws a caption by calling
+them (not followed yet); the port can draw by those few patterns
+instead of running x86 code. CAPTION_BUILD's layout commands leave EAX
+in states the next command reads the upper bits of (command 2's SHR
+EAX,3 after a LODSW); the port tracks EAX as the code leaves it.
+
+doskit's runtime had no mode 0Dh (vga_set_mode gave mode 13h's
+registers for any other mode): added in doskit e9c69cf with the
+runner's tables and a test.
+
+The run (as in "The driver's timer", `-break 105F29`) against the port
+stopped at CHOOSER, 2026-09-30, Linux: CODE, TAIL and video memory 0
+bytes differ; 175 of the 176 used heap blocks equal (the 138 generated
+routines among them), the driver's differing in the sample clock only
+as at CODE:4CFB. The DAC and the CRTC's registers are not compared
+(memcmp.py has neither); nothing is shown on the screen here (the
+attribute controller's palette access is off until the overscan write,
+and no frame is waited for).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2579,7 +2635,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      intro's loop with INTRO_SCRIPT's routines, up to the intro's end
      (CODE:79C3). Done 2026-09-30: the intro's end, the scroller, the
      keys' way out and commands 3 and 8, up to the chooser (CODE:4CFB;
-     see "The intro's end"). Next: the chooser, CODE:4CFB.
+     see "The intro's end"). Done 2026-09-30: the chooser's start, up to
+     CHOOSER (CODE:4FF9; see "The chooser's start"). Next: from CHOOSER
+     on: CODE:26FD with CUBE_SEL, CODE:4CB6, CODE:236A, then
+     CHOOSER_WAIT (the turning shapes and the compiled captions).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

@@ -1,0 +1,489 @@
+/* chooser.c - the chooser (CODE:4CFB): its start, up to CHOOSER.
+ *
+ * The start is a chain of checksummed jumps (each target a dword less the
+ * byte sum of some code; the targets were computed from a run's memory
+ * and followed in a -trace, docs/HANDOFF.md "The chooser's start").  The
+ * captions are compiled: CAPTION_BUILD draws each into two bitmaps and
+ * makes six 16-bit routines of it (GEN_CODE, GEN_CODE2) in blocks of their
+ * own, which the chooser later calls to draw; the port makes the same
+ * bytes, so memory compares with a run.
+ */
+#include "frame.h"
+#include "game.h"
+#include "image.h"
+#include "names.h"
+#include "pmax.h"
+#include "pmem.h"
+#include "vga.h"
+
+/* CODE:340A, IRQ 1's handler while the chooser runs: a key pressed (below
+ * 80h) into the ring at CODE:1906 (16 bytes, index CODE:1903) and shifted
+ * into KEY_HISTORY; releases dropped */
+static void KBD_IRQ(unsigned char ah)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = PI_IMAGE_BASE;
+    if (ah < 0x80) {
+        wb(0x1906 + (rb(0x1903) & 0x0F), ah);
+        wb(0x1903, (uint8_t)(rb(0x1903) + 1));
+        wd(N_KEY_HISTORY, rd(N_KEY_HISTORY) << 8 | ah);
+    }
+    pm_ds = save;
+}
+
+/* CODE:33B8: IRQ 1's vector kept (INT 93h AH=3 BL=1 gave 0030:00004152 in
+ * the run), CODE:340A set; INT 93h AH=9 BL=1 (not looked into) and the
+ * PIC leave nothing in memory */
+static void KBD_INSTALL(void)
+{
+    wd(N_KBD_OLD, 0x4152);
+    ww(N_KBD_OLD + 4, 0x30);
+    frame_set_keyboard(KBD_IRQ);
+}
+
+/* CODE:23CA */
+static void CHOOSER_MODE(void)
+{
+    static const uint16_t crtc[] = {
+        0x2501, 0x2702, 0x8F03, 0x2A04, 0x9005, 0x0E06, 0x3E07, 0x4109,
+        0xD710, 0x2C11, 0xBF12, 0x1713, 0x0014, 0xD615, 0xF816, 0xE317
+    };
+    int i;
+
+    wb(0x191A, 1);
+    vga_outw(0x3C4, 0x8901);
+    vga_outb(0x3D4, 0x11);
+    vga_outb(0x3D5, vga_inb(0x3D5) & 0x7F);
+    for (i = 0; i < (int)(sizeof crtc / sizeof crtc[0]); i++)
+        vga_outw(0x3D4, crtc[i]);
+    vga_outb(0x3C2, vga_inb(0x3CC) | 0xC0);
+    vga_inb(0x3DA);
+    for (i = 0x10; i > 0; i--) {
+        vga_outb(0x3C0, (uint8_t)(i - 1));
+        vga_outb(0x3C0, (uint8_t)(i - 1));
+    }
+}
+
+/* CODE:36AE */
+static void ATTRACT_START(void)
+{
+    wb(0x1919, 1);
+    ww(0x1917, 0x12C);
+    wd(0x1540, rw(N_CHOOSER_LOADED) == 1 ? 0x1371 : 0x13D7);
+    wd(0x1544, 0x191B);
+    wb(0x132B, 0x46);
+    wb(0x132C, 2);
+}
+
+/* CODE:29D2 */
+static void CHOOSER_DAC(void)
+{
+    int i;
+
+    if ((int8_t)rb(0x132B) < 0)
+        return;
+    vga_outb(0x3C8, 0);
+    for (i = 0; i < 0x33; i++)
+        vga_outb(0x3C9, rb(0x13A4 + i));
+}
+
+/* CODE:24AF with CX 1BDh (the run) */
+static void SPLIT_SET(uint16_t cx)
+{
+    uint8_t al;
+
+    vga_outb(0x3D4, 0x11);
+    vga_outb(0x3D5, vga_inb(0x3D5) & 0x7F);
+    vga_outw(0x3D4, (uint16_t)(((cx & 0xFF) - 1) << 8 | 0x18));
+    vga_outb(0x3D4, 7);
+    al = (uint8_t)((vga_inb(0x3D5) & 0xEF) | ((cx >> 8) & 1) << 4);
+    vga_outw(0x3D4, (uint16_t)(al << 8 | 7));
+    vga_outb(0x3D4, 9);
+    al = vga_inb(0x3D5) & 0xBF;
+    vga_outw(0x3D4, (uint16_t)(al << 8 | 9));
+}
+
+/* CODE:2503 */
+static void VIDEO_CLEAR(void)
+{
+    uint32_t i;
+
+    vga_outw(0x3C4, 0x0F02);
+    for (i = 0; i < 0x10000; i++)
+        vga_write((uint16_t)i, 0);
+}
+
+/* CODE:2869 (menuchar.rix loaded by CHOOSER_LOAD): CHAR_STRIDE, CHAR_OFFS */
+static void MENUCHAR_INIT(void)
+{
+    uint16_t bx = 0x3A, dl;
+    int i;
+
+    if (rw(N_CHOOSER_LOADED) != 1)
+        pi_stop("MENUCHAR_INIT: menuchar.rix not loaded yet (CODE:2840)");
+    ww(N_CHAR_STRIDE, (uint16_t)(lrw(pmax_base(rw(N_MENUCHAR_SEL)) + 4) >> 3));
+    dl = rw(N_CHAR_STRIDE) & 0xFF;
+    for (i = 0; i < 0x80; i++) {
+        uint16_t ax = (uint16_t)(rb(N_CHAR_TAB + 3 * i + 1) * dl);
+
+        ww(N_CHAR_OFFS + 2 * i, bx);
+        bx = (uint16_t)(bx + 4 * ax);
+    }
+}
+
+/* ---- the captions ---- */
+
+static uint32_t fs;                     /* BITMAP_SEL's base */
+
+static void or_b(uint32_t off, uint8_t v) { lwb(fs + off, lrb(fs + off) | v); }
+static void or_d(uint32_t off, uint32_t v) { lwd(fs + off, lrd(fs + off) | v); }
+
+static uint32_t swap_lo(uint32_t x) { return (x & 0xFFFF0000u) | (x & 0xFF) << 8 | (x >> 8 & 0xFF); }
+static uint32_t rol(uint32_t x, int n) { n &= 31; return n ? x << n | x >> (32 - n) : x; }
+static uint32_t ror(uint32_t x, int n) { n &= 31; return n ? x >> n | x << (32 - n) : x; }
+
+/* CODE:2CE3: character `ch` into both bitmaps at bit *ebx, *ebx moved on
+ * by its advance; *eax as the routine leaves EAX */
+static void CHAR_DRAW(uint8_t ch, uint32_t *ebx, uint32_t *eax)
+{
+    uint32_t glyph = pmax_base(rw(N_MENUCHAR_SEL));
+    int cl = *ebx & 7, rows = rb(N_CHAR_TAB + 3 * ch + 1);
+    uint32_t si = rw(N_CHAR_OFFS + 2 * ch);
+    uint32_t di = (*ebx >> 3) + (uint16_t)(((rb(N_CHAR_TAB + 3 * ch + 2) + 1) & 0xFF) * 0x2E);
+    /* EAX: the line * 2Eh (MUL AH) until a glyph line is read */
+    uint32_t a = (uint16_t)(((rb(N_CHAR_TAB + 3 * ch + 2) + 1) & 0xFF) * 0x2E), d;
+
+    (void)*eax;
+    *ebx += rb(N_CHAR_TAB + 3 * ch);
+    for (; rows; rows--) {
+        uint32_t bp;
+
+        a = lrw(glyph + si);
+        d = lrw(glyph + si + 2);
+        bp = d & a;
+        a ^= bp;
+        d ^= bp;
+        d |= a;
+        a = swap_lo(ror(rol(swap_lo(a), 16), cl));
+        a = swap_lo(ror(a, 16));
+        d = swap_lo(ror(rol(swap_lo(d), 16), cl));
+        d = swap_lo(ror(d, 16));
+        or_d(di, a);
+        or_d(di + 0x2E04, d);
+        si += 8;
+        di += 0x2E;
+    }
+    *eax = a;
+}
+
+/* CODE:3013 */
+static void BITMAP_CLEAR(void)
+{
+    uint32_t i;
+
+    for (i = 0; i < 0x5C08; i++)
+        lwb(fs + i, 0);
+}
+
+/* CODE:31BB */
+static void BITMAP_FRAME(uint32_t si)
+{
+    int i;
+
+    for (i = 0; i < 0x26; i++)
+        lwb(fs + si++, 0xFF);
+    si += 8;
+    for (i = 0; i < 0xDF; i++) {
+        or_b(si, 0x80);
+        or_b(si + 0x25, 1);
+        si += 0x2E;
+    }
+}
+
+static uint32_t gen;                    /* GEN_BUF's next byte */
+
+static void emit(uint8_t b) { lwb(gen++, b); }
+static void emit_w(uint16_t w) { emit((uint8_t)w); emit((uint8_t)(w >> 8)); }
+
+/* CODE:2D72 */
+static void GEN_LATCH(uint32_t bp)
+{
+    if (bp == 0) {
+        emit_w(0x048A);
+    } else if (bp < 0x80) {
+        emit_w(0x448A);
+        emit((uint8_t)bp);
+    } else {
+        emit_w(0x848A);
+        emit_w((uint16_t)bp);
+    }
+}
+
+/* CODE:2D9B */
+static void GEN_BYTE(uint32_t bx, uint8_t dl)
+{
+    if (bx == 0) {
+        emit_w(0x05C6);
+    } else if (bx < 0x80) {
+        emit_w(0x45C6);
+        emit((uint8_t)bx);
+    } else {
+        emit_w(0x85C6);
+        emit_w((uint16_t)bx);
+    }
+    emit(dl);
+}
+
+/* CODE:2DCD */
+static void GEN_BH(uint32_t bx)
+{
+    if (bx == 0) {
+        emit_w(0x3D88);
+    } else if (bx < 0x80) {
+        emit_w(0x7D88);
+        emit((uint8_t)bx);
+    } else {
+        emit_w(0xBD88);
+        emit_w((uint16_t)bx);
+    }
+}
+
+/* CODE:2DF6 */
+static void GEN_SI(uint8_t *dh)
+{
+    emit(0x26);
+    emit_w(0x368B);
+    emit_w((uint16_t)(0x150C + 2 * *dh));
+    emit(0x26);
+    emit_w(0x3603);
+    emit_w((uint16_t)(0x151C + 2 * *dh));
+    (*dh)++;
+}
+
+/* CODE:2E35 (`latches` 1) and CODE:2F14 (0): a caption routine from the
+ * bitmap at `si` and the one at `other`; its far pointer to `rec` */
+static void GEN_CODE(uint32_t si, uint32_t other, uint32_t rec, int latches)
+{
+    uint32_t bx = 0, bp = 0, size, i;
+    uint8_t dh = 0, ch;
+    uint16_t sel;
+
+    wd(N_GEN_OTHER, other);
+    gen = rd(N_GEN_BUF);
+    GEN_SI(&dh);
+    for (ch = 0xE0; ch; ch--) {
+        int cl;
+
+        for (cl = 0x26; cl; cl--) {
+            uint8_t dl = lrb(fs + bx + si), al = lrb(fs + rd(N_GEN_OTHER) + bx);
+
+            if (dl != 0) {
+                if (latches)
+                    GEN_LATCH(bp);
+                GEN_BYTE(bx, dl);
+            } else if (al != 0) {
+                if (!latches) {
+                    GEN_BYTE(bx, dl);
+                } else if (ch > 0x20) {
+                    GEN_LATCH(bp);
+                    GEN_BH(bx);
+                }
+            }
+            bx++;
+            bp++;
+        }
+        bx += 8;
+        bp += 0x92;
+        if (bp >= 0x1700) {
+            bp = 0;
+            bx -= 0x5C0;
+            si += 0x5C0;
+            wd(N_GEN_OTHER, rd(N_GEN_OTHER) + 0x5C0);
+            /* CODE:2E23 */
+            emit_w(0xC781);
+            emit_w(0x05C0);
+            GEN_SI(&dh);
+        }
+    }
+    emit_w(0xCB66);
+    size = gen - rd(N_GEN_BUF);
+    /* INT 92h AH=4 (name CODE:2F13), the bytes copied; INT 93h AH=14h CX
+     * 9Ah (a code segment) leaves nothing in memory */
+    sel = pmax_alloc(size);
+    if (!sel)
+        pi_stop("GEN_CODE: no room (INT 92h AH=4)");
+    for (i = 0; i < size; i++)
+        lwb(pmax_base(sel) + i, lrb(rd(N_GEN_BUF) + i));
+    wd(rec, 0);
+    ww(rec + 4, sel);
+}
+
+/* CODE:302E: the caption record at `rec` from the layout at `si` */
+static void CAPTION_BUILD(uint32_t si, uint32_t rec)
+{
+    uint32_t eax = 0, ebx = 0, edx, ebp;
+    uint8_t al;
+
+    fs = pmax_base(rw(N_BITMAP_SEL));
+    BITMAP_CLEAR();                     /* leaves EAX 0 */
+    for (;;) {
+        al = rb(si++);
+        eax = (eax & ~0xFFu) | al;
+        if (al == 0 || al == 1) {
+            uint8_t y = rb(si++);
+
+            eax = (eax & 0xFFFF0000u) | (uint16_t)(y * 0x2E);
+            ebx = (eax & 0xFFFF) << 3;
+            if (al == 1) {
+                uint32_t t = si;
+
+                edx = 0;
+                /* EAX: each width by MOVZX, then LODSB's AL */
+                while ((al = rb(t++)) != 0) {
+                    eax = rb(N_CHAR_TAB + 3 * al);
+                    edx += eax;
+                }
+                eax &= ~0xFFu;
+                ebx += 0x98 - (edx >> 1);
+            }
+            /* CODE:3059 */
+            while ((al = rb(si++)) != 0) {
+                eax = (eax & ~0xFFu) | al;
+                CHAR_DRAW(al, &ebx, &eax);
+            }
+            eax &= ~0xFFu;
+        } else if (al == 2) {
+            uint8_t dl, cl;
+
+            eax = (eax & 0xFFFF0000u) | rw(si);
+            si += 2;
+            ebp = eax & 0xFFFF;
+            cl = ebp & 7;
+            eax = (eax & 0xFFFF0000u) | (uint16_t)(rb(si++) * 0x2E);
+            ebx = eax & 0xFFFF;
+            eax = (eax & 0xFFFF0000u) | rw(si);
+            si += 2;
+            dl = (uint8_t)(0xFF >> cl);
+            ebp >>= 3;
+            or_b(ebx + ebp, dl);
+            or_b(ebx + ebp + 0x2E04, dl);
+            ebp++;
+            cl = (uint8_t)(~eax & 7);
+            dl = (uint8_t)(0xFF << cl);
+            eax >>= 3;
+            or_b(ebx + eax, dl);
+            or_b(ebx + eax + 0x2E04, dl);
+            for (; ebp < eax; ebp++) {
+                or_b(ebx + ebp, 0xFF);
+                or_b(ebx + ebp + 0x2E04, 0xFF);
+            }
+        } else if (al == 3) {
+            uint16_t ax = rw(si);
+            uint32_t di;
+            uint8_t bh, bl, n;
+
+            si += 2;
+            bh = (uint8_t)(0x80 >> (ax & 7));
+            di = ax >> 3;
+            bl = rb(si++);
+            di += (uint16_t)(bl * 0x2E);
+            n = (uint8_t)(rb(si++) - bl + 1);
+            do {
+                or_b(di, bh);
+                or_b(di + 0x2E04, bh);
+                di += 0x2E;
+            } while (--n);
+            /* MOVZX EAX,AX of y1 * 2Eh, then AL counted down to 0 */
+            eax = (uint16_t)(bl * 0x2E) & 0xFF00u;
+        } else if (al == 0xFF) {
+            break;
+        } else {
+            pi_stop("CAPTION_BUILD: a layout command not seen");
+        }
+    }
+    /* CODE:3139 */
+    BITMAP_FRAME(0);
+    BITMAP_FRAME(0x2E04);
+    GEN_CODE(0, 0x33C4, rec + 0x00, 1);
+    GEN_CODE(0x2E04, 0x5C0, rec + 0x06, 1);
+    GEN_CODE(0, 0x33C8, rec + 0x0C, 1);
+    GEN_CODE(0x2E04, 0x5C4, rec + 0x12, 1);
+    GEN_CODE(0, 0x2E04, rec + 0x18, 0);
+    GEN_CODE(0x2E04, 0, rec + 0x1E, 0);
+}
+
+/* CODE:39C8 */
+static void CAPTIONS_MAKE(void)
+{
+    static const uint16_t pairs[][2] = {
+        {0x1AE6, 0x1554}, {0x1B5C, 0x15E4}, {0x1E96, 0x1674}, {0x1BD2, 0x1578},
+        {0x1C48, 0x1608}, {0x1EF6, 0x1698}, {0x1CBE, 0x159C}, {0x1D34, 0x162C},
+        {0x1F56, 0x16BC}, {0x1DAA, 0x15C0}, {0x1E20, 0x1650}, {0x1FB6, 0x16E0},
+        {0x226E, 0x1728}, {0x2016, 0x1704}, {0x202B, 0x174C}, {0x2055, 0x1794},
+        {0x2076, 0x17B8}, {0x20DC, 0x17DC}, {0x2124, 0x1800}, {0x2169, 0x1824},
+        {0x21C5, 0x1848}, {0x220A, 0x1770}, {0x2236, 0x186C}
+    };
+    int i;
+
+    /* INT 92h AH=6, 10000h bytes (name CODE:39C7); INT 93h AH=0Ch's
+     * selector (80h in the run, flat) is the port's linear memory */
+    wd(N_GEN_BUF, pmax_alloc_linear(0x10000));
+    if (!rd(N_GEN_BUF))
+        pi_stop("CAPTIONS_MAKE: no room (INT 92h AH=6)");
+    for (i = 0; i < (int)(sizeof pairs / sizeof pairs[0]); i++)
+        CAPTION_BUILD(pairs[i][0], pairs[i][1]);
+    pmax_free_linear(rd(N_GEN_BUF));
+}
+
+/* CODE:4CFB, up to CHOOSER (CODE:4FF9) */
+void CHOOSER_START(void)
+{
+    uint32_t i;
+
+    ww(N_CHOOSER_DS, PI_SEL_CODE);
+    wb(0x5E1C, 0);
+    ww(0x8A3C + 0x30, 0);
+    wb(0x8A3C + 0x32, 0x10);
+    wb(N_MENU_DONE, 0);
+    wb(N_MENU_FADE, 0);
+    wb(0x132D, 1);
+    /* the checksummed jumps in their order (the -trace) */
+    KBD_INSTALL();
+    vga_set_mode(0x0D);
+    CHOOSER_MODE();
+    ATTRACT_START();
+    CHOOSER_DAC();
+    SPLIT_SET(0x1BD);
+    ww(N_CHOOSER_VSEL, pmax_video_sel());
+    VIDEO_CLEAR();
+    /* CODE:2613 (CODE:254D a RET) */
+    ww(0x131F, 0xE60);
+    ww(0x1321, 0xE60);
+    ww(0x1323, 0xE60);
+    wb(0x1329, 3);
+    MENUCHAR_INIT();
+    wd(N_GEN_BUF, 0);                   /* CODE:28B8 */
+    /* CODE:4E20: the overscan colour 10h */
+    vga_outb(0x3C0, 0x31);
+    vga_outb(0x3C0, 0x10);
+    /* WRITE_MODE1, READ_MODE1 */
+    vga_outw(0x3CE, 0x0105);
+    vga_outw(0x3C4, 0x0F02);
+    vga_outw(0x3CE, 0x1003);
+    vga_outw(0x3CE, 0x0F02);
+    vga_outw(0x3CE, 0x0805);
+    /* VIDEO_TOP_SET */
+    for (i = 0; i < 0x26; i++)
+        vga_write((uint16_t)i, 0xFF);
+    /* BITMAP_ALLOC (INT 92h AH=7, name CODE:226F) */
+    ww(N_BITMAP_SEL, pmax_alloc_top(0x5C08));
+    if (!rw(N_BITMAP_SEL))
+        pi_stop("BITMAP_ALLOC: no room (INT 92h AH=7)");
+    CAPTIONS_MAKE();
+    pmax_free(rw(N_BITMAP_SEL));        /* BITMAP_FREE */
+    wb(0x1534, 0);
+    if (rw(N_CHOOSER_LOADED) != 1)
+        pi_stop("CODE:4E98 (the chooser's files loaded again)");
+    pi_stop("CHOOSER (CODE:4FF9)");
+}

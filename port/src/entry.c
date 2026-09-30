@@ -73,5 +73,5 @@ void ENTRY(void)
     VGA_INIT();
     HISCORE_INIT();
     CHOOSER_LOAD();
-    pi_stop("CODE:4CFB (the chooser)");
+    CHOOSER_START();
 }

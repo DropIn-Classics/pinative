@@ -94,8 +94,8 @@ int pmax_cfg_header(uint32_t off)
  * them: the runs had 4, 0Ch, 2Ch ... 44h, 4Ch ... 12Ch (docs/HANDOFF.md,
  * "The driver's command 4 in a run"). */
 
-#define MAX_BLOCKS 64
-#define MAX_SELS 256
+#define MAX_BLOCKS 512
+#define MAX_SELS 1024
 
 #define LOW_START 0x13120u
 #define LOW_END 0xA0000u
@@ -130,6 +130,9 @@ static uint16_t sel_new(uint32_t base)
     return 0;
 }
 
+/* a new block of `size` bytes by `policy`; its selector to *sel unless
+ * `sel` is NULL (INT 92h AH=6: a linear address only); its base, 0 when
+ * there is no room */
 static uint32_t block_alloc(uint32_t size, uint16_t *sel)
 {
     uint32_t at = (pi_image.base + pi_image.alloc + 0x10 + 15) & ~15u, end = PM_SIZE;
@@ -174,11 +177,11 @@ static uint32_t block_alloc(uint32_t size, uint16_t *sel)
     for (k = 0; k < MAX_BLOCKS && free_slot < 0; k++)
         if (!blocks[k].used)
             free_slot = k;
-    if (free_slot < 0 || (uint64_t)at + size > end || !(*sel = sel_new(at)))
+    if (free_slot < 0 || (uint64_t)at + size > end || (sel && !(*sel = sel_new(at))))
         return 0;
     blocks[free_slot].base = at;
     blocks[free_slot].size = size;
-    blocks[free_slot].sel = *sel;
+    blocks[free_slot].sel = sel ? *sel : 0;
     blocks[free_slot].used = 1;
     return at;
 }
@@ -208,6 +211,37 @@ uint16_t pmax_alloc(uint32_t size)
     return block_alloc(size, &sel) ? sel : 0;
 }
 
+uint16_t pmax_alloc_top(uint32_t size)
+{
+    uint8_t keep = policy;
+    uint16_t sel = 0;
+
+    policy = 1;
+    block_alloc(size, &sel);
+    policy = keep;
+    return sel;
+}
+
+uint32_t pmax_alloc_linear(uint32_t size)
+{
+    uint8_t keep = policy;
+    uint32_t at;
+
+    policy = 1;
+    at = block_alloc(size, NULL);
+    policy = keep;
+    return at;
+}
+
+void pmax_free_linear(uint32_t base)
+{
+    int k;
+
+    for (k = 0; k < MAX_BLOCKS; k++)
+        if (blocks[k].used && !blocks[k].sel && blocks[k].base == base)
+            blocks[k].used = 0;
+}
+
 void pmax_policy(uint8_t bl)
 {
     policy = bl;
@@ -231,7 +265,7 @@ void pmax_free(uint16_t sel)
     int k;
 
     for (k = 0; k < MAX_BLOCKS; k++)
-        if (blocks[k].used && blocks[k].sel == sel) {
+        if (blocks[k].used && sel && blocks[k].sel == sel) {
             blocks[k].used = 0;
             sels[sel / 8].used = 0;
         }

@@ -43,6 +43,15 @@ uint16_t pmax_load(const char *name, uint32_t *size);
 /* INT 92h AH=4: a new block of `size` bytes (not cleared); its selector,
  * or 0 when there is no room */
 uint16_t pmax_alloc(uint32_t size);
+/* INT 92h AH=7: a new block of `size` bytes cut from the top of the heap
+ * (the chooser's, run 2026-09-30: 5C08h bytes under FEFFF0h, whatever
+ * policy was set; whether AH=7 always takes the top is not known); its
+ * selector, 0 when there is no room */
+uint16_t pmax_alloc_top(uint32_t size);
+/* INT 92h AH=6: the same with no selector: its linear address (EAX), 0
+ * when there is no room.  INT 92h AH=2 frees it by that address. */
+uint32_t pmax_alloc_linear(uint32_t size);
+void pmax_free_linear(uint32_t base);
 /* INT 92h AH=8: the allocation policy (0 from the bottom of the heap, 1
  * from its top, 2 DOS memory); pmax_load and pmax_alloc follow it.  INT
  * 92h AH=0Ah (a block with a name) is pmax_alloc: the name goes only into

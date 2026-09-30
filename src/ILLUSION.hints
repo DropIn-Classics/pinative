@@ -597,6 +597,39 @@ name       CODE:18E8 MENU_PICS_NOBOX ; the same with no box (CODE:1674, 1698, 16
 name       CODE:18FA MENU_BLINK    ; flipped each time the backdrop's scroll wraps (CODE:2575), so the menu's box blinks (run 2026-09-29: the list at t=117 without its box)
 code       CODE:302E CAPTION_BUILD ; a caption record at EBX from the layout at ESI (the layouts CODE:1AE6..226E): a list of commands, FFh ends it. 0 y text 0: text from the left edge (leading spaces place it); 1 y text 0: text centred on x 98h (widths from CODE:55E7); 2 x1(word) y x2(word): a horizontal line; 3 x(word) y1 y2: a vertical line; y is a line of 2Eh bytes. Drawn into two bitmaps at FS (CODE:131B, the second at +2E04h), then six routines made by CODE:2E35 whose far pointers fill the record's 24h bytes (six selectors freed by CODE:28CF)
 code       CODE:39C8 CAPTIONS_MAKE ; every caption record made by CAPTION_BUILD from its layout, 64 KiB taken by INT 92h AH=6 first (CODE:153C)
+; the chooser's start, CODE:4CFB to CHOOSER (2026-09-30, a -trace of the run from CODE:4CFB)
+name       CODE:131D CHOOSER_DS    ; DS (1Ch) kept by CODE:4CFB
+code       CODE:33B8 KBD_INSTALL   ; IRQ 1's vector kept at KBD_OLD (INT 93h AH=3 BL=1; run: 0030:00004152), set to CODE:340A (AH=4), INT 93h AH=9 BL=1 (not looked into), IRQ 1 unmasked
+name       CODE:152E KBD_OLD       ; IRQ 1's vector before KBD_INSTALL (offset dword, selector at CODE:1532)
+code       CODE:23CA CHOOSER_MODE  ; after mode 0Dh: sequencer 1 89h, the CRTC's timing (304 pixels, 2Eh bytes a line: CR 1 25h, CR 13h 17h, CR 9 41h, ...), misc bits 6-7 set, attribute registers 0-15 to 0-15; CODE:191A 1 (the start address from CODE:1323 at each retrace, CODE:4C93)
+code       CODE:29D2 CHOOSER_DAC   ; while CODE:132B is not negative: DAC 0-16 (33h bytes) from CODE:13A4
+code       CODE:24AF SPLIT_SET     ; the line compare from CX less 1 (bit 8 from CH bit 0 into CR 7; CR 9 bit 6 cleared); reached from CODE:4DB6 with CX 1BDh (run)
+code       CODE:24F8 CHOOSER_VIDEO ; CHOOSER_VSEL from INT 93h AH=5
+name       CODE:130F CHOOSER_VSEL  ; video memory's selector (48h)
+code       CODE:2503 VIDEO_CLEAR   ; all four planes, 10000h bytes, cleared
+code       CODE:2613 SCROLL_INIT   ; CODE:131F, 1321, 1323 E60h (the start addresses of the backdrop's scroll, presumably; not followed), CODE:1329 3
+code       CODE:2810 MENUCHAR_INIT ; chooser\menuchar.rix loaded unless CHOOSER_LOADED (the run: loaded, by CHOOSER_LOAD); CHAR_STRIDE and CHAR_OFFS from it
+name       CODE:150A CHAR_STRIDE   ; menuchar.rix's word +4 shifted right 3
+name       CODE:140A CHAR_OFFS     ; 128 words: a character's glyph in menuchar.rix, 3Ah and then each glyph's height * CHAR_STRIDE * 4 on
+name       CODE:55E7 CHAR_TAB      ; 128 entries of 3 bytes: the advance in pixels, the height in lines, the line (less 1) the glyph starts at
+code       CODE:299B WRITE_MODE1   ; GC 5 01h (write mode 1, the latches), map mask 0Fh
+code       CODE:29B0 READ_MODE1    ; GC 3 10h (function OR), GC 2 0Fh, GC 5 08h (read mode 1, write mode 0)
+code       CODE:2FE3 VIDEO_TOP_SET ; 26h bytes of FFh at video memory 0 (function OR: all four planes set there)
+code       CODE:3397 BITMAP_ALLOC  ; INT 92h AH=7 5C08h bytes (name CODE:226F): BITMAP_SEL
+code       CODE:33AC BITMAP_FREE   ; INT 92h AH=5 BITMAP_SEL
+name       CODE:131B BITMAP_SEL    ; CAPTION_BUILD's two bitmaps of 2E04h bytes (2Eh a line, a bit a pixel)
+name       CODE:153C GEN_BUF       ; CAPTIONS_MAKE's 64 KiB (INT 92h AH=6: a linear address, run: FDA3D0h), where GEN_CODE builds a routine before its copy
+code       CODE:2CE3 CHAR_DRAW     ; character AL of menuchar.rix into both bitmaps at bit EBX (a line is 170h bits), EBX moved on by its advance: each glyph line's two words, bits in both to the first, then shifted right by EBX's low 3 bits
+code       CODE:3013 BITMAP_CLEAR  ; BITMAP_SEL's 5C08h bytes cleared
+code       CODE:31BB BITMAP_FRAME  ; a bitmap's frame: its first line all set, then 223 lines with the left bit and the 26h-th byte's low bit
+code       CODE:2E35 GEN_CODE      ; a caption routine made in GEN_BUF from the bitmap at ESI and the one at [GEN_OTHER] (EDI), E0h lines of 26h bytes: for a set byte a latch read at SI (GEN_LATCH) and a byte write of it at DI (GEN_BYTE), for a byte set only in the other (in lines while CH > 20h) a latch read and MOV [DI+d],BH (GEN_BH); every 32 lines ADD DI,5C0h and SI anew (GEN_SI); RETF (66h CBh); copied into a new block (INT 92h AH=4, name CODE:2F13; INT 93h AH=14h CX 9Ah); the record at EBX: dword 0, the selector
+code       CODE:2F14 GEN_CODE2     ; the same with byte writes only (GEN_BYTE for a byte set in either bitmap), no latch reads
+name       CODE:2E31 GEN_OTHER     ; GEN_CODE's second bitmap's offset, moved on 5C0h every 32 lines
+code       CODE:2D72 GEN_LATCH     ; MOV AL,[SI+EBP] (8A 04 / 8A 44 d8 / 8A 84 d16)
+code       CODE:2D9B GEN_BYTE      ; MOV BYTE PTR [DI+EBX],DL (C6 05 / C6 45 d8 / C6 85 d16)
+code       CODE:2DCD GEN_BH        ; MOV [DI+EBX],BH (88 3D / 88 7D d8 / 88 BD d16)
+code       CODE:2DF6 GEN_SI        ; MOV SI,ES:[150Ch+2*DH] and ADD SI,ES:[151Ch+2*DH] (26h 8Bh 36h, 26h 03h 36h, 16-bit offsets), DH counted
+code       CODE:2E23 GEN_NEXT      ; ADD DI,5C0h (81h C7h), then GEN_SI
 code       CODE:3849 CAPTION_STEP  ; in CHOOSER_WAIT: the next of CAPTIONS (at the backdrop's scroll, CODE:1901, CODE:18FD); after WAIT_END the empty caption, then CODE:1900 counted to 4. Run 2026-09-29, no keys: a new caption every 5.05 s from t=109.63, the list round again at 165.86
 code       CODE:36AE ATTRACT_START ; stage 1 of ATTRACT_STEP, 300 frames to go (CODE:1917, 1919), the first palette CODE:191B
 code       CODE:36F4 ATTRACT_STEP  ; each frame: after 300 frames (CODE:1917) the backdrop's next palette, 33h bytes each from CODE:191B by the stage CODE:1919, faded in (CODE:132B); after stage 9 the next of three backdrops (CODE:1311 by CODE:132D) is set up (CODE:376A). Run 2026-09-29, no keys: stages 5.03 s apart from t=112.90 (blue cubes, then purple, ...), the crosses from 148.42

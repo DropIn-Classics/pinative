@@ -25,8 +25,10 @@ CHOOSER_LOAD's eleven files, the intro's palettes, its video mode and
 picture (src/intro.c) and the driver's command 6, the module player
 (src/nsplay.c), its commands 1 and 0Dh (the timer, counted by
 pictures: the port has no interrupts), 3 and 8, and the whole intro:
-its script, the scroller after it, Esc and space to leave it, up to the
-chooser (CODE:4CFB), where the port stops (`Stopped before CODE:4CFB`).
+its script, the scroller after it, Esc and space to leave it, and the
+chooser's start (src/chooser.c: its video mode, keyboard handler and
+the captions compiled into code as the original makes them), up to
+CHOOSER (CODE:4FF9), where the port stops (`Stopped before CHOOSER`).
 The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
 `s` and `r` stop at the options screen, the sound set-up and the
@@ -117,6 +119,11 @@ SVGA_CHECK.
   stands in the sample clock (SAMPLE_POS, TIMER_COUNT, MIX_POS,
   MIX_LEN, the channels' positions). The keys and the window's
   pictures not checked.
+- 2026-09-30, Linux: at CHOOSER, CODE:4FF9 (dosrun `-break 105F29
+  -mem -vram`, NOSOUND.SDR, no key): CODE, TAIL and video memory 0
+  bytes differ; 175 of 176 used heap blocks equal, the 138 caption
+  routines the chooser generates among them (the driver's in the sample
+  clock only). DAC and CRTC not compared; nothing on the screen yet.
 - 2026-09-30, Linux: at the chooser, CODE:4CFB (dosrun `-break
   105C2B -mem -vram`, NOSOUND.SDR), no key: CODE, TAIL and video memory
   0 bytes differ, 37 of 38 used heap blocks equal (the driver's in the
