@@ -1,0 +1,65 @@
+; SOURCE\T004.BPC, table 4's module: code and data the main program loads
+; anywhere and relocates by adding its base to every dword T004.REL lists
+; (docs/bpc-module.md), unpacked from the archive in ILLUSION.EXE by
+; tools/illfiles.py. The list says exactly where the offsets are
+; (doskit's `offrel`); the header's resource slots carry flags in their
+; top two bits. Nothing is entered at 0: the main program calls the
+; module through the header's pointers. Made as src/T001.hints.
+bin        build/files/SOURCE/T004.BPC noentry
+offrel     build/files/SOURCE/T004.REL flags=C0000000
+segment    CODE 0 CODE             ; the whole file, code and data
+
+name       CODE:0000 HEADER        ; 45 dword slots, copied relocated to the main program's CODE:F3E4 (docs/bpc-module.md)
+words      CODE:0080 1 CODE        ; slot 32
+words      CODE:009C 3 CODE        ; slots 39..41
+code       CODE:36D1 MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-module.md)
+code       CODE:00B4 MOD_LOADED    ; slot 39: called once the module is loaded (main program CODE:B287)
+code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D)
+code       CODE:00B6 MOD_NEXT_BALL ; slot 41: called at the next player's ball (main program CODE:2BD61)
+comment    CODE:00A8 slot 42: 0, and relocated: the module's base once loaded
+
+; A DS prefix where DS is the default (3E), EBP the index, as in
+; ILLUSION.386 and src/T001.hints; its displacement an offset, so the line
+; is DB, DD label, DB
+raw        CODE:3859
+
+; the opcode-14h object of command 8F9Ch, table 4's sea game on the
+; display (docs/bpc-module.md, "Table 4's sea game"): two methods the
+; main program calls (CODE:2DBAD, CODE:2CFC8)
+name       CODE:97E5 SEA_OBJECT
+words      CODE:97E5 2 CODE
+code       CODE:97ED SEA_START     ; the object's +0
+code       CODE:9878 SEA_UPDATE    ; the object's +4
+; the game's routines, called through a register loaded with their
+; offset (MOV reg,OFFSET; CALL reg), which disasm.py does not follow
+code       CODE:9A20 SEA_SCRIPT_STEP ; a running script's next picture; at its end the script's routine (its first dword)
+code       CODE:9C91 SEA_ROW       ; every column a row down, new objects from the random number, the boat met
+code       CODE:A067 SEA_BONUS_CHECK ; which arrow points at a bonus on the water
+code       CODE:A16E SEA_DRAW_PREP ; the columns copied for the drawing, the five columns' x by the eased position
+code       CODE:A27B SEA_RANDOM    ; the random number (docs/bpc-module.md)
+code       CODE:A2E1 SEA_STEER     ; the flippers move the boat a lane
+code       CODE:A3EC SEA_DRAW      ; the water band, five columns, the boat, the arrow
+; two scripts: the routine run at the end, then the pictures (dwords)
+name       CODE:9A88 SEA_ENTER_SCRIPT ; 24 frames a step
+words      CODE:9A88 1 CODE
+name       CODE:9AEC SEA_CRASH_SCRIPT ; 36h frames a step
+words      CODE:9AEC 1 CODE
+code       CODE:9BC8 SEA_ENTER_END ; Enter's script's end: the rocks cleared, 150 frames of immunity
+code       CODE:9C44 SEA_CRASH_END ; the crash's end: stream 90BAh queued, the game ends
+; the boat meets an object: a jump table of words relative to 9EC0h
+; (JMP EBP at CODE:9EBE), read at 9EBFh + (the object's value + 1) / 16,
+; i.e. by its kind: rock, 5,000,000, 10,000,000, extra ball
+code       CODE:9EC8 SEA_CRASH     ; a rock: the crash's script, audio record 19557h
+code       CODE:9F68 SEA_BONUS_5M  ; kind 2: the score + 5,000,000, the course a step on
+code       CODE:A053 SEA_BONUS_10M ; kind 4: the score + 10,000,000, the course a step on
+code       CODE:9F1D SEA_EXTRA_BALL ; kind 6: stream 90AEh (the extra ball) and the end flag
+; LEA with a 16-bit address and no register (67h): EBX = 152h, a
+; constant; disasm.py writes it as DB
+raw        CODE:A989
+name       CODE:AFD5 SEA_PIC       ; a whole 160 x 16 picture (the scripts)
+name       CODE:B024 SEA_WATER     ; the water band
+name       CODE:B076 SEA_SPRITE    ; a sprite of 16 lines, clipped at x 0 and 160
+name       CODE:B0FA SEA_SPRITE2   ; as SEA_SPRITE (the difference not read)
+name       CODE:B17E SEA_CLEAR     ; the display cleared to 0FCh, every frame
+name       CODE:B1B1 SEA_CLEAR_BUF ; at the start, 1400h bytes at ES = EAX cleared
+name       CODE:ACB6 SEA_STATE     ; the game's bytes from here (docs/bpc-module.md, "Table 4's sea game")

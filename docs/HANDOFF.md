@@ -459,6 +459,24 @@ code yet. The hints: the header's four code slots (32, 39, 40, 41) as
   earlier scanner's row for table 1 exactly (docs/bpc-module.md, "Host
   callback vector"). MOD_NEXT_BALL read: the bonus multiplier's
   counter 4502h and its lamps set again for the player (the hints).
+- 2026-09-30, the other three modules, src/T002.hints .. T004.hints
+  made the same way (the header's code slots, the opcode-14h objects of
+  tables 2 and 4), each IDENTICAL: table 2 648 instructions, code at
+  00B4h-0153h, 381Dh-3DBBh, 9A10h-9D88h; table 3 399, at 00B4h-00B7h
+  and 370Dh-3CB4h (no object); table 4 1558, at 00B4h-00B7h,
+  36D1h-3C05h, 97EDh-B1E3h. Table 4's sea game calls its routines
+  through a register loaded with their offset (`MOV EDI,OFFSET`,
+  `CALL EDI`), jumps through a table of relative words (CODE:9EBE) and
+  keeps a routine pointer at the head of each of its two scripts;
+  disasm.py follows none of these, so they are `code` hints (13). A
+  search of all four rebuilt sources for a register loaded with a data
+  label and then called or jumped to finds nothing more, and every
+  relocated dword outside code that points into code is a header slot,
+  an object's method or one of table 4's two scripts. Two raw lines
+  more: the DS-prefix form of table 1 at table 3's CODE:38A4 and table
+  4's CODE:3859, and table 4's `LEA EBX,[0152h]` with a 16-bit address
+  (CODE:A989, a constant 152h). The routines named from
+  docs/bpc-module.md, which had them all.
 
 ## The loader in the runner
 
@@ -2957,10 +2975,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      begun 2026-09-30 (see "Stage 1: T001.BPC"; the header's code slots
      reached); done 2026-09-30: the opcode-14h object's methods, and
      with them every byte of code in the module (the event streams'
-     handlers are the main program's). Open: the data as `words`/names
-     where the port needs them (the event streams, slot-15 records,
-     counters; tools/event_streams.py lists them), and the other three
-     modules the same way;
+     handlers are the main program's); done 2026-09-30: the same for
+     tables 2, 3 and 4. Open: the data as `words`/names where the port
+     needs them (the event streams, slot-15 records, counters;
+     tools/event_streams.py lists them);
    - not read yet and wanted: the ball's physics and collisions
      (CODE:1352D, the map DROP_MASK writes, header slot 18), the
      flippers' movement, the drawing and scrolling; whether any of it

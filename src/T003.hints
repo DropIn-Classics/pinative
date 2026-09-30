@@ -1,0 +1,24 @@
+; SOURCE\T003.BPC, table 3's module: code and data the main program loads
+; anywhere and relocates by adding its base to every dword T003.REL lists
+; (docs/bpc-module.md), unpacked from the archive in ILLUSION.EXE by
+; tools/illfiles.py. The list says exactly where the offsets are
+; (doskit's `offrel`); the header's resource slots carry flags in their
+; top two bits. Nothing is entered at 0: the main program calls the
+; module through the header's pointers. Made as src/T001.hints.
+bin        build/files/SOURCE/T003.BPC noentry
+offrel     build/files/SOURCE/T003.REL flags=C0000000
+segment    CODE 0 CODE             ; the whole file, code and data
+
+name       CODE:0000 HEADER        ; 45 dword slots, copied relocated to the main program's CODE:F3E4 (docs/bpc-module.md)
+words      CODE:0080 1 CODE        ; slot 32
+words      CODE:009C 3 CODE        ; slots 39..41
+code       CODE:370D MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-module.md)
+code       CODE:00B4 MOD_LOADED    ; slot 39: called once the module is loaded (main program CODE:B287)
+code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D)
+code       CODE:00B6 MOD_NEXT_BALL ; slot 41: called at the next player's ball (main program CODE:2BD61)
+comment    CODE:00A8 slot 42: 0, and relocated: the module's base once loaded
+
+; A DS prefix where DS is the default (3E), EBP the index, as in
+; ILLUSION.386 and src/T001.hints; its displacement an offset, so the line
+; is DB, DD label, DB
+raw        CODE:38A4
