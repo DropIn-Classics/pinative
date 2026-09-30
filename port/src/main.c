@@ -34,8 +34,8 @@ static const GogRelease release = {
     "Pinball Illusions",                 /* GOG's folder name: check on an installation */
     NULL,                       /* game.gog */
     NULL,                       /* the Mac release's path in /Applications: not known yet */
-    NULL,                       /* GOG's product ID (goggame-ID.info): not in the Linux
-                                 * installation looked at; not known yet */
+    "1207664113",               /* GOG's product ID (goggame-ID.info; given by the user
+                                 * from a Windows installation) */
     "ILLUSION.EXE",             /* on the CD: images of other games are passed over */
 };
 
