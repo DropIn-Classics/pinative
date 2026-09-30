@@ -93,6 +93,10 @@ void FLASH_STEP(void);
 /* lights.c: CODE:29033, CODE:28F41 */
 void LIGHTS_DRAW(void);
 void DROPS_UPDATE(void);
+void DROPS_DRAW(void);
+/* ball.c: CODE:14DE2, CODE:14C46 */
+void BALLS_STEP(void);
+void BALLS_SHOW(void);
 void EVENT_QUEUE(void);
 /* play.c: CODE:B928, the game */
 void TABLE_GAME(void);

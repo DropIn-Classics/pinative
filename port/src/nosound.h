@@ -20,6 +20,12 @@ int ns_call(uint16_t cs, NsRegs *r);
  * DS its own: the port's C for it (chooser.c) */
 void ns_far_call(uint16_t sel, uint32_t off);
 
+/* the retrace the driver waits for (CODE:08F4), when it is waiting: its
+ * callback now instead of at the next picture's start.  For the table's
+ * frame step, whose retrace comes shortly after the command-0Fh callback
+ * the frame waited for (docs/HANDOFF.md, "The balls' sprites") */
+void ns_retrace(void);
+
 /* nsplay.c, with DS the driver's: CODE:1A98 and CODE:1057 */
 void MIX_UPDATE(void);
 void CHANNELS_RESET(void);

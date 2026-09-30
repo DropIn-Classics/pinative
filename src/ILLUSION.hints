@@ -977,6 +977,27 @@ name       CODE:F5C2 MOD_REQUEST   ; state+2A84h
 name       CODE:F5C6 MOD_REQ_ORDER ; state+2A88h
 name       CODE:F5C8 MOD_REQ_SLOT  ; state+2A8Ah
 name       CODE:35EF6 CD_CHANNELS  ; IOCTL output 3's block: inputs 0..3 to outputs 0..3, the volumes of 0 and 1 set by CD_VOLUME
+; the balls' sprites (2026-09-30, the code; the port against a run at
+; CODE:2A544, the four tables)
+code       CODE:14C46 BALLS_SHOW   ; of the balls on the list (state+1046h, state+0D32h of them) the lowest on the stage (largest y below 258h; with more than one ball only those with byte +0Bh 0), from the first ball's place, to state+0D5Ah (x), +0D5Ch (y); then each ball BALL_DRAW and BALL_MARK
+code       CODE:14DD6 BALL_HIDE    ; BALL_ERASE, BALL_UNMARK
+code       CODE:2690E BALL_DRAW    ; the ball [0010] at +12h, +14h by the table's routine of BALL_DRAWERS (DS video memory, FS and GS the table's data, EBP the ball's +58h, EDI 1500h); DX, SI back to +6Eh, +70h
+name       CODE:26957 BALL_DRAWERS ; four routines by TABLE_NUM: CODE:36320, 37F20, 39B20, 3B720
+name       CODE:26967 BALL_ERASERS ; four routines by TABLE_NUM: CODE:371A0, 38DA0, 3A9A0, 3C5A0
+code       CODE:26977 BALL_ERASE   ; the ball [0010] taken off at +6Eh, +70h (nothing when +70h is 0) by the table's routine of BALL_ERASERS (ES video memory, GS SPOOKY_SEL)
+code       CODE:269B0 BALL_UNMARK  ; BALL_MASK with 0 at the ball's +72h
+code       CODE:269D7 BALL_MARK    ; +72h = +14h x 150h + +12h, BALL_MASK with 80808080h there
+code       CODE:2600D BALL_MASK    ; EAX in the ball's shape into HIDELIGHTS_SEL's block (DS) at EDI / 4 by the routine of BALL_MASKS for EDI AND 3 (each 92 MOVs of AL, AX or EAX to [EDI+d])
+name       CODE:268FE BALL_MASKS
+code       CODE:36320 BALL_DRAW1   ; table 1's ball, a compiled sprite: for the pixels' bytes in each plane (map mask by x AND 3, a bit a pixel in the byte at EBP + the address / 2 tested with AH = 80h >> (x AND 7)) MOV BYTE PTR [ESI+d],colour where the bit is 0; the port runs it from the image (codeint.c); 816 instructions, as each of the four
+code       CODE:37F20 BALL_DRAW2
+code       CODE:39B20 BALL_DRAW3
+code       CODE:3B720 BALL_DRAW4
+code       CODE:371A0 BALL_ERASE1  ; table 1's: the ball's bytes put back from SPOOKY_SEL's copy (planes C4E0h apart), 512 instructions, as each of the four
+code       CODE:38DA0 BALL_ERASE2
+code       CODE:3A9A0 BALL_ERASE3
+code       CODE:3C5A0 BALL_ERASE4
+name       CODE:288DC DROP_STATES  ; 64h entries of 8 bytes: the state, the state drawn, the object (DROP_SET, DROPS_DRAW)
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)

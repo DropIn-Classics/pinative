@@ -360,17 +360,33 @@ static void far_call(uint32_t ptr)
     ns_far_call(rw(ptr + 4), rd(ptr));
 }
 
+/* CODE:08F4, the retrace come: TIMER_COUNT to the next callback's IRQs,
+ * VSYNC_CB called (DS the driver's) */
+static void RETRACE(void)
+{
+    vsync_wait = 0;
+    ww(D_TIMER_COUNT, rb(D_VSYNC2_ON) == 0xFF ? rw(D_VS2_IRQS) : rw(D_VS_IRQS));
+    far_call(D_VSYNC_CB);
+}
+
+void ns_retrace(void)
+{
+    uint32_t save = pm_ds;
+
+    if (!vsync_wait)
+        return;
+    pm_ds = timer_ds;
+    RETRACE();
+    pm_ds = save;
+}
+
 static void TIMER_IRQ(void)
 {
     uint32_t save = pm_ds;
 
     pm_ds = timer_ds;
-    if (vsync_wait) {
-        /* CODE:08F4 */
-        vsync_wait = 0;
-        ww(D_TIMER_COUNT, rb(D_VSYNC2_ON) == 0xFF ? rw(D_VS2_IRQS) : rw(D_VS_IRQS));
-        far_call(D_VSYNC_CB);
-    }
+    if (vsync_wait)
+        RETRACE();
     timer_due += 1193182.0 / rw(D_PIT_DIV) / vga_refresh_hz();
     for (; timer_due >= 1.0; timer_due -= 1.0) {
         wd(D_SAMPLE_POS, rd(D_SAMPLE_POS) + 1);

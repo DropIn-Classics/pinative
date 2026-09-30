@@ -5,6 +5,7 @@
 #include "frame.h"
 #include "game.h"
 #include "names.h"
+#include "nosound.h"
 #include "pmax.h"
 #include "pmem.h"
 #include "vga.h"
@@ -191,7 +192,20 @@ static void FRAME_STEP(void)
         while (rb(N_FRAME_DONE) != 0xFF)
             frame_wait();
     }
-    pi_stop("CODE:298C5");
+    /* CODE:298C5 */
+    BALLS_STEP();
+    {
+        uint8_t al = rb(N_FRAME_DONE);
+
+        wb(N_FRAME_DONE, 0);
+        DROPS_DRAW();
+        wb(N_FRAME_DONE, al);
+    }
+    BALLS_SHOW();
+    FLIPPERS_DRAW();
+    /* the next retrace (DRV_TICK): in the runs 1.3 ms after DRV_FRAME,
+     * while FLIPPERS_DRAW runs (docs/HANDOFF.md, "The balls' sprites") */
+    ns_retrace();
 }
 
 /* CODE:2A4F8: GAME_PHASE 1, the attract mode, a frame */
@@ -207,6 +221,10 @@ static void ATTRACT(void)
         wb(N_LAST_KEY, 0);
     }
     FRAME_STEP();
+    ATTRACT_SCROLL();
+    /* CODE:156C3, a RET */
+    FLIPPERS_STEP();
+    pi_stop("CODE:2A544");
 }
 
 void TABLE_GAME(void)

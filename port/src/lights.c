@@ -209,6 +209,84 @@ void DROPS_UPDATE(void)
     wd(N_DROPS_UPD_POS, esi);
 }
 
+/* CODE:2942C: the drop target object `obj`'s mask (MASKS_SEL's picture
+ * +3Ah, SPR_W / 8 bytes a row, SPR_H rows, shifted right by +3Eh) cleared
+ * from the level's collision map (state+28C2h, or +28AAh when +2Ah is 1,
+ * plus +26h; 2Ah bytes a line) when the byte [0020] is not 0, else set in
+ * it; each byte through the word at its place and the next.  Widths other
+ * than 30h, 20h, 18h and 10h do nothing */
+static void DROP_MASK(uint32_t obj)
+{
+    uint32_t w = rd(N_SPR_W), n, fs, esi, edi, st = rd(0x0014), k;
+    uint8_t cl;
+    int clear;
+    uint32_t h;
+
+    if (w == 0x30)
+        n = 6;
+    else if (w == 0x20)
+        n = 4;
+    else if (w == 0x18)
+        n = 3;
+    else if (w == 0x10)
+        n = 2;
+    else
+        return;                         /* CODE:297A0: EAX = SPR_W */
+    cl = (uint8_t)rd(obj + 0x3E);
+    edi = rd(st + (rd(obj + 0x2A) == 1 ? 0x28AA : 0x28C2)) + rd(obj + 0x26);
+    fs = pmax_base(rw(N_MASKS_SEL));
+    esi = lrd(fs + rd(obj + 0x3A) * 4);
+    clear = rb(0x0020) != 0;
+    for (h = rd(N_SPR_H); ; edi += 0x2A) {
+        for (k = 0; k < n; k++) {
+            uint16_t ax = (uint16_t)((uint16_t)(lrb(fs + esi++) << 8) >> (cl & 0x1F));
+
+            ax = (uint16_t)(ax << 8 | ax >> 8);
+            if (clear)
+                ww(edi + k, rw(edi + k) & (uint16_t)~ax);
+            else
+                ww(edi + k, rw(edi + k) | ax);
+        }
+        if (--h == 0)
+            break;
+    }
+}
+
+/* CODE:28EA6: from DROPS_DRAW_POS (always 0 at the end), the 64h entries
+ * of DROP_STATES (8 bytes: the state, the state drawn, the object) whose
+ * state changed: the state (low byte of [0020]) copied, the object's
+ * picture +36h x 2 (less 1 in AL for an odd state; none when +36h is 0)
+ * at +2Eh, +32h by DROP_PIC, SPR_W from +42h when it is not 0, and
+ * DROP_MASK */
+void DROPS_DRAW(void)
+{
+    uint32_t esi = rd(N_DROPS_DRAW_POS), e, obj, eax;
+
+    do {
+        uint8_t dl;
+
+        e = N_DROP_STATES + esi * 8;
+        dl = rb(e);
+        wb(0x0020, dl);
+        if (dl != rb(e + 1)) {
+            wb(e + 1, dl);
+            obj = rd(e + 2);
+            wd(N_SPR_X, rd(obj + 0x2E));
+            wd(N_SPR_Y, rd(obj + 0x32));
+            eax = rd(obj + 0x36);
+            if (eax != 0) {
+                eax <<= 1;
+                eax = (eax & ~0xFFu) | (uint8_t)((uint8_t)eax - (dl & 1));
+                DROP_PIC(eax);
+            }
+            if (rw(obj + 0x42) != 0)
+                wd(N_SPR_W, rw(obj + 0x42));
+            DROP_MASK(obj);
+        }
+    } while (++esi < 0x64);
+    wd(N_DROPS_DRAW_POS, 0);
+}
+
 /* CODE:28FF8: the light [0000]: without bit 3 of +2 its LIGHTS_ONE1 byte
  * (+1Ch) 0, with it its drop target's picture 2 x +1Ch at +14h, +18h */
 static void LIGHT_INIT(void)

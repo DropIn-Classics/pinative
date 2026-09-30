@@ -58,7 +58,10 @@ player started: src/table.c, commands 0Ch and 1, the port's MSCDEX
 taking the play and playing nothing), the game's loop and the attract
 mode's first frame step (the music's countdown and command 6, the
 dot-matrix display, the lights and drop targets that changed drawn,
-the retrace waited) up to CODE:298C5 (`Stopped before CODE:298C5`); the Info page (a table's
+the retrace waited, the ball taken off and drawn by the original's own
+sprite routines run from the image, src/codeint.c and src/ball.c, the
+drop targets that changed, the flippers, the attract scroll and the
+flippers' moves) up to CODE:2A544 (`Stopped before CODE:2A544`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -291,6 +294,14 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   MUSIC_UPDATE's countdown ran; of the lights one (off) was drawn a
   table, no drop target piece (DROPS_UPDATE's drawing not checked), and
   a frame whose drawing outlasts the retrace is not compared.
+- 2026-09-30, Linux: each of the four tables up to CODE:2A544 (dosrun
+  `-break 12B474 -mem -vram`, the same keys), the attract mode's first
+  frame: CODE differs only in FRAME_SPINS (FRAME_COUNT too until the
+  port gave the retrace at FRAME_STEP's end), TAIL and video memory
+  equal (the ball drawn), the heap blocks equal but the leftovers named
+  above (the ball's mark in the hide-lights mask equal); the driver's
+  block in SAVED_61, SAMPLE_POS and TIMER_COUNT. The ball's taking off
+  and DROP_MASK did not run there.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

@@ -3120,6 +3120,53 @@ driver's block in SAVED_61 and in its timer's state (SAMPLE_POS,
 TIMER_COUNT, VSYNC_PHASE: the port counts a picture's timer IRQs at
 once, dosrun stops right after DRV_FRAME).
 
+### The balls' sprites
+
+After FRAME_STEP's wait (CODE:298C5) come BALLS_STEP (CODE:14DE2: each
+ball on the list at state+1046h taken off, BALL_ERASE, and its mark in
+the hide-lights mask cleared, BALL_UNMARK), DROPS_DRAW (CODE:28EA6: the
+drop targets whose state changed drawn and their masks put into or
+taken out of the level's collision map, DROP_MASK), BALLS_SHOW
+(CODE:14C46: the lowest ball on the stage to state+0D5Ah/0D5Ch, then
+each ball drawn, BALL_DRAW, and marked, BALL_MARK) and FLIPPERS_DRAW
+(names in src/ILLUSION.hints, "the balls' sprites").
+
+The ball's picture is code: each table has a routine that draws it
+(BALL_DRAWERS: CODE:36320, 37F20, 39B20, 3B720, 816 instructions each)
+and one that takes it off (BALL_ERASERS: CODE:371A0, 38DA0, 3A9A0,
+3C5A0, 512 each), with the colours as immediates (`MOV BYTE PTR
+[ESI+d],colour`, where a bit of the byte at EBP, the ball's +58h, is 0;
+map mask and read map changed between the planes); the mark in the
+hide-lights mask is four more such routines (BALL_MASKS, CODE:2601D,
+26253, 2648C, 266C5, by x AND 3: 92 MOVs of AL, AX or EAX to [EDI+d]).
+These are pictures of the game, so the port does not copy them:
+port/src/codeint.c runs them from the loaded image, as the chooser's
+captions are run, knowing only the instruction forms these twelve
+routines are made of (about 50, listed from the image with capstone:
+MOV, TEST, AND, ADD, ADC, SUB, CMP, XOR, IMUL, MOVZX, ROL/ROR by 1,
+SHL/SHR, INC, DEC, PUSH/POP of 16-bit registers, OUT DX,AX, JAE, JNE,
+RET); any other stops the port.
+
+DRV_TICK's time: after the start-up (in the run of table 1 the first
+retraces after command 1 came at 14, 28 and 28 ms), the retrace comes
+1.3 ms after DRV_FRAME, while FLIPPERS_DRAW runs (`-log` at DRV_TICK,
+DRV_FRAME, CODE:298C5, 14C46, 156C4 and ATTRACT's calls, t=133.0 to
+133.2). The port's timer gives the retrace at the next picture's start
+(nosound.c counts a picture's IRQs at once), so FRAME_COUNT was one
+behind at CODE:2A544; FRAME_STEP now ends with ns_retrace(), the waiting
+retrace's callback at once. Whether the start-up's longer gaps (two
+frames without a retrace in the run) give the port's FRAME_COUNT a lead
+later is not checked yet (a comparison some frames on).
+
+Against the runs at CODE:2A544 (`-break 12B474`, after ATTRACT_SCROLL
+and FLIPPERS_STEP of the first frame), all four tables: CODE only
+FRAME_SPINS, TAIL and video memory equal (the ball drawn), the heap
+blocks equal but the known leftovers (the ball's mark in the hide-lights
+mask equal), the driver's block in SAVED_61, SAMPLE_POS and
+TIMER_COUNT. In that frame no ball was taken off (+70h 0 before the
+first drawing) and no drop target changed: BALL_ERASE's routines and
+DROP_MASK are not checked in a run yet.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3338,12 +3385,14 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      the driver's commands 0Eh, 0Fh, 0Ch and 1, MUSIC_TRACK), up to
      CODE:B976 (same section). Done 2026-09-30: the loop from CODE:B976,
      ATTRACT's start and FRAME_STEP's four routines, up to CODE:298C5
-     (see "The attract mode's frame"). Next: FRAME_STEP's rest from
-     CODE:298C5: BALLS_STEP (the balls' compiled sprites per table,
-     CODE:36320 on, which the port must read from the image as the
-     chooser's captions), DROPS_DRAW, CODE:14C46, FLIPPERS_DRAW; then
-     ATTRACT's rest (the display stream DISPLAY_RUN, ANIMS_STEP, the
-     keys) and KBD_IRQ (CODE:A076).
+     (see "The attract mode's frame"). Done 2026-09-30: FRAME_STEP's rest
+     (the balls by their own code, run from the image; DROPS_DRAW),
+     ATTRACT_SCROLL and FLIPPERS_STEP, up to CODE:2A544 (see "The balls'
+     sprites"). Next: ATTRACT's rest from CODE:2A544 (state+0E34h 0: the
+     display stream DISPLAY_RUN, ANIMS_STEP, the high-score pages; else
+     the players' scores; then the keys) and KBD_IRQ (CODE:A076); then a
+     comparison some hundred frames on (FRAME_COUNT, the balls taken
+     off).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
