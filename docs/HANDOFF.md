@@ -3372,6 +3372,39 @@ port's FRAME_COUNT had been one ahead, see "The table's keyboard
 handler"; the break lies at another place in the frame). There only
 FRAME_SPINS differs in CODE, the rest as in port/README.md.
 
+### GAME_PHASE 6, what it calls
+
+Read from the disassembly only (2026-09-30), nothing run or translated
+yet; the next session's starting point (the user chose it next).
+CODE:2B1DC: state+0D3Eh (BALL_SAVE) = word state+0E42h x FRAME_RATE,
+state+0D2Fh FFh, MUSIC_REQUEST with header slot 34's record
+(state+292Eh); then a loop of whole frames (CODE:2B21E), as the Esc
+question's: FRAME_STEP, CODE:2B49A (the game's frame step: it calls
+among others COUNTER_TIMERS, EVENT_RUN, MODE_RUN, LIGHTS_STEP,
+LIT_LIST_STEP, OBJECT_HITS, DISPLAY_RUN, ANIMS_STEP, CODE:30784 with
+DROPS_RAISE_STEP and HOLE_EJECT_STEP), CODE:1023E (the flippers'
+four FLIPPERS_MOVE and FLIPPER_SOUNDS, and CODE:10540, 1237C, 12C20,
+133BF: presumably the ball's move and collisions, not read),
+ZONES_CHECK (CODE:2C1DA), CODE:2F2AF (display, sounds), DM_CLEAR, the
+texts "PLAYER n" (CODE:2B38A; with state+0D30h set "PLAYERS n",
+CODE:2B39C, the count state+0D70h) and "BALL n" (CODE:2B3AE) by
+DEC_TEXT and DM_TEXT_DRAW, DM_SCORE_IDLE, FLASH_STEP, CODE:2B3BE (while
+state+0D30h is set, F1..F8 or keypad Enter change the player count
+state+0D70h, capped at 8 after CODE:2B480; not read further). The loop
+ends on Esc (CODE:2B345: state+0E35h 1, GAME_PHASE 1, a module request
+state+2A84h..2A8Bh) or when state+0D3Ch is 0 (then state+2A78h,
+2A75h 0, GAME_PHASE 4, play). The "calls" lists above were taken by a
+rough scan of the CALLs up to far jumps, so some belong to the routines
+next to these; check each before relying on it.
+
+Suggested order: stage 2 of CODE:1023E's callees (hints, runs with
+`-log`/`-watch` of the ball record's +12h, +14h, +1Eh, +22h while the
+ball waits and after Enter launches it, CODE:2F300), whether any uses
+the x87 (the runner does not emulate it); then the port from
+CODE:2B1DC, MUSIC_REQUEST (CODE:2F85C) first, stopping by name at each
+routine not translated, compared as before at a break in phase 6's
+first frame (F1 at the pictures of "A game's start").
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3614,9 +3647,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      KBD_IRQ (CODE:A076; see "The table's keyboard handler"). Done
      2026-09-30: Esc in the attract mode (CODE:2A8AB; see "Esc in the
      attract mode"). Done 2026-09-30: a game's start, GAME_PHASE 2
-     (CODE:2A976; see "A game's start"). Next: GAME_PHASE 6 (CODE:2B1DC,
-     the ball waiting for its launch), table 2's slot 40, and the other
-     phases as a game reaches them; the table's end after
+     (CODE:2A976; see "A game's start"). Next, chosen by the user
+     2026-09-30: GAME_PHASE 6 (CODE:2B1DC, the ball waiting for its
+     launch) with the ball's physics and collisions it needs, stage 2
+     first (see "GAME_PHASE 6, what it calls"); later table 2's slot
+     40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
