@@ -66,6 +66,18 @@ static uint32_t host_ds(void)
     return pi_image.desc[ILLUSION_CODE].base;
 }
 
+/* the cells callbacks 6 to 9 keep the file in: HOST_CALLBACKS' own, or
+ * the table's copy's (TBL_CALLBACKS, CODE:98FE), which differs in them
+ * only (and in the name its callback 0 gives a block, which the port does
+ * not keep) */
+static uint32_t cell_sel = N_HCB_FILE_SEL, cell_cursor = N_HCB_CURSOR;
+
+void hcb_use_table(int table)
+{
+    cell_sel = table ? N_TBL_HCB_FILE_SEL : N_HCB_FILE_SEL;
+    cell_cursor = table ? N_TBL_HCB_CURSOR : N_HCB_CURSOR;
+}
+
 /* CODE:6285, callback 6: the file named at DS:EBX loaded by INT 94h AH=1
  * with policy 1 (from the top) around it; its selector to HCB_FILE_SEL,
  * HCB_CURSOR 0 */
@@ -83,8 +95,8 @@ int HCB_LOAD(uint16_t ds, uint32_t ebx)
     sel = pmax_load(name, NULL);
     pmax_policy(0);
     /* AX, whatever INT 94h gave; the port's 0 when there is no file */
-    lww(host_ds() + N_HCB_FILE_SEL, sel);
-    lwd(host_ds() + N_HCB_CURSOR, 0);
+    lww(host_ds() + cell_sel, sel);
+    lwd(host_ds() + cell_cursor, 0);
     return sel == 0;
 }
 
@@ -92,22 +104,22 @@ int HCB_LOAD(uint16_t ds, uint32_t ebx)
  * (the caller's DS), the cursor moved on; CF clear */
 void HCB_READ(uint16_t ds, uint32_t edi, uint32_t ecx)
 {
-    uint32_t from = pmax_base(lrw(host_ds() + N_HCB_FILE_SEL)), cur = lrd(host_ds() + N_HCB_CURSOR);
+    uint32_t from = pmax_base(lrw(host_ds() + cell_sel)), cur = lrd(host_ds() + cell_cursor);
     uint32_t to = pmax_base(ds) + edi, i;
 
     for (i = 0; i < ecx; i++)
         lwb(to + i, lrb(from + cur + i));
-    lwd(host_ds() + N_HCB_CURSOR, cur + ecx);
+    lwd(host_ds() + cell_cursor, cur + ecx);
 }
 
 /* CODE:6318, callback 8: the file's block freed; CF clear */
 void HCB_UNLOAD(void)
 {
-    pmax_free(lrw(host_ds() + N_HCB_FILE_SEL));
+    pmax_free(lrw(host_ds() + cell_sel));
 }
 
 /* CODE:632E, callback 9: HCB_CURSOR = EDX; CF clear */
 void HCB_SEEK(uint32_t edx)
 {
-    lwd(host_ds() + N_HCB_CURSOR, edx);
+    lwd(host_ds() + cell_cursor, edx);
 }

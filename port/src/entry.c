@@ -85,9 +85,14 @@ void ENTRY(void)
     HISCORE_INIT();
     CHOOSER_LOAD();
     /* CODE:033F: a table chosen, or the end */
-    if (CHOOSER_START() < 4) {
-        VGA_INIT();
-        pi_stop("the table (CODE:A323)");
+    {
+        uint8_t al = CHOOSER_START();
+
+        if (al < 4) {
+            VGA_INIT();
+            TABLE((uint8_t)(al + 1));
+            pi_stop("the chooser again (CODE:7182)");
+        }
     }
     CD_LOCK(0);
     /* IRQ 1 unmasked: nothing in the port's memory */

@@ -351,7 +351,7 @@ code       CODE:7341               ; computed at CODE:7895: the dword at CODE:90
 stop       CODE:BA81
 
 ; code reached through pointers
-code       CODE:A39C               ; far jump at CODE:A396 through CODE:A2BB, with the selector INT 93h AH=8 gave at CODE:A381 for BX=CS (base presumably that of CODE: the code there uses CODE's variables; not checked)
+code       CODE:A39C TABLE_CS      ; far jump at CODE:A396 through CODE:A2BB, with the selector INT 93h AH=8 gave at CODE:A381 for BX=CS (base presumably that of CODE: the code there uses CODE's variables; not checked)
 words      CODE:BAD6 0A CODE       ; called at CODE:B993 by the number in CODE:CBCC while below 0Ah
 words      CODE:910E 4 CODE        ; called at CODE:919D by the byte at CODE:00A2 (four pointers up to the code at CODE:911F)
 words      CODE:27723 6 CODE       ; called by the word at [[CODE:0000]+4] (CODE:27833, 2786E, 278C2); six by the three parallel tables of data pointers after it (CODE:2773B, 27753, 2776B, 18h apart)
@@ -734,6 +734,45 @@ comment    CODE:BAFE GAME_PHASE 0: waits for the retrace (CODE:3D372) until port
 comment    CODE:BB0A after the text '9090', no reference found: a routine at CODE:BB0E in the style of CODE:BAFE (the retrace, CODE:1023E, then port 60h): keys 1/2 (scan codes 2, 3) move the word CODE:DBFE by -1/+1, keys 3/4 the word CODE:DC00 (state+10BEh..10C2h, read nowhere else; at 23Ah or more CODE:DBFC gets F001h), the screen start line CODE:A2B9 to [DC00h]-100 through CODE:9311, and the dword at DS:72h to [DC00h]*150h+[DBFEh], the form CODE:269D7 gives a ball's +72h ([CODE:0010]+72h). A debug tool that moved a point over the table and scrolled with it, presumably; dead in this release
 comment    CODE:B9B9 handed with command 0Fh at CODE:9BAF (ECX from CODE:9B8E: DDDDh, E898h, EEEEh or F258h, set at CODE:9725..9882): sets CODE:BAD1 to FFh, the CRT start address from CODE:BAD2 (+54h while the word at CODE:D884 is not 0) and, when CODE:00A2 is 3, the attribute controller's pel panning (4 or 6 by the sign of CODE:D884): presumably the screen's scroll per frame, not checked
 ds         CODE:B9C3-BA7A CODE     ; DS from CODE:A10B
+; the table's start, CODE:A323 to CODE:B048 (2026-09-30, the code and a run
+; stopped at CODE:A3F0, table 1)
+code       CODE:A323 TABLE         ; AL the table 1..4 (ENTRY's AL + 1): DS and CS get aliases (INT 93h AH=8; run: 04h, 0Ch, the CS one with limit 200000h) and it goes on through TABLE_JUMP; CF when a load failed
+name       CODE:A320 TABLE_OLD_DS  ; the caller's DS (run: 1Ch)
+name       CODE:A322 TABLE_ARG     ; AL at TABLE
+name       CODE:A10B TABLE_DS      ; DS's alias, DS while the table runs
+name       CODE:A113 TABLE_BASE    ; its linear base (INT 93h AH=0Bh; run: 100F30h, CODE's)
+name       CODE:A117 TABLE_VIDEO_SEL ; INT 93h AH=5 (run: 48h)
+name       CODE:A2BB TABLE_JUMP    ; a far pointer: CODE:A39C and CS's alias
+name       CODE:A2C1 TABLE_BACK    ; a far pointer: CODE:A4A9 and TABLE_OLD_CS
+name       CODE:A2C5 TABLE_OLD_CS  ; the caller's CS (run: 14h)
+name       CODE:A311 TABLE_NUM     ; the table 1..4 (TABLE_DIGITS)
+code       CODE:A593 BLOCKS_INIT   ; BLOCKS_END = BLOCKS, its C8h bytes cleared; ES, FS, GS 0. The list of selectors freed at the table's end (CODE:A4E1 frees four others; presumably, not followed)
+name       CODE:A121 BLOCKS_END
+name       CODE:A125 BLOCKS
+code       CODE:A5BF ALLOCS_INIT   ; the same for ALLOCS_END, ALLOCS (the joined resources' allocations, presumably: docs/bpc-module.md, "Module entry and lifetime")
+name       CODE:A1ED ALLOCS_END
+name       CODE:A1F1 ALLOCS
+code       CODE:A03B TBL_KBD_INSTALL ; IRQ 1's vector kept in TBL_KBD_OLD (INT 93h AH=3 BL=1; run: 0030:00004152), KBD_IRQ set (AH=4), KEY_RELEASED FFh
+name       CODE:A017 TBL_KBD_OLD
+name       CODE:BADE TABLE_CHECK   ; the dword at CODE:90A3 less the byte sum of INTRO_MODE up to INTRO_SCRIPT (CODE:A48F; run: 2A976h), a jump target presumably, as the chooser's (not followed)
+code       CODE:A48F BYTE_SUB      ; EDI less the ECX bytes at ESI
+code       CODE:A2C8 TABLE_DIGITS  ; AL + '0' ('1'..'4', else CF) into the table's file names (CODE:BBAD, 98DD, 98F1, 27927, 28CE9, 28E31, 28E4B, B1A3), AL - 1 to the word CODE:CC22, AL to TABLE_NUM
+code       CODE:A5EB TABLE_LOAD    ; CODE:A624, then TABLE_SOUND_START
+code       CODE:A624 STATE_21E6_INIT ; the 258h words at state+21E6h: 0, 2Ah, 54h, ... (42 x the index; what they index not followed)
+code       CODE:A5FB TABLE_SOUND_START ; the word CODE:A2B9 (the screen's start line, see CODE:BB0A) and CODE:BAD2 0, TABLE_SOUND
+code       CODE:9AB9 TABLE_SOUND   ; SOUND_START's driver start again, with the table's own cells: the driver named in TBL_DRIVER_CFG (INT 94h AH=5, AH=1), TBL_CALLBACKS_CS, command 0 (FS:EDI TBL_CALLBACKS, ES:EBX TBL_DRIVER_CFG; its CF not looked at), command 11h (JINGLE_END_CB), command 4 for slots 0 and 1 (MUSIC_MOD_NAME, MUSIC2_MOD_NAME; not slot 1 on table 4), command 8 (order 1 of slot 0)
+name       CODE:98A0 TBL_DRIVER_ENTRY ; a far pointer: 0 and the alias of TBL_DRIVER_SEL (run: 34h)
+name       CODE:98A6 TBL_DRIVER_SEL ; run: 2Ch
+name       CODE:98A8 TBL_DRIVER_CFG ; the configuration header (20h bytes)
+name       CODE:98D5 MUSIC_MOD_NAME ; "data\s00n\music.mod"
+name       CODE:98E9 MUSIC2_MOD_NAME ; "data\s00n\music2.mod"
+code       CODE:994A TBL_CALLBACKS_CS ; each selector word of TBL_CALLBACKS set to CS
+name       CODE:98FE TBL_CALLBACKS ; HOST_CALLBACKS again (CODE:995E ...), the file callbacks with their cells at TBL_HCB_CURSOR and TBL_HCB_FILE_SEL and DS from TABLE_DS
+name       CODE:9944 TBL_HCB_CURSOR
+name       CODE:9948 TBL_HCB_FILE_SEL
+name       CODE:9CD4 JINGLE_END_CB
+code       CODE:B048 TABLE_LOAD2   ; "Hidelights mask" (INT 92h AH=0Ah, 33450h bytes), then the module and the rest (not read yet)
+
 dptr       CODE:02D1 CODE	; MOV 86Ch: a pointer (read after a jump)
 dptr       CODE:02F8 CODE	; MOV 86Ch: passed to the INT
 dptr       CODE:0305 CODE	; MOV 7E2h: passed to the INT

@@ -2765,6 +2765,38 @@ text, the names and the scores (1.000.000.000 down to 50.000.000) of
 Law 'N Justice; the greetings text. Not checked: the other three tables'
 Info pages, a text longer than the page.
 
+### The table's start
+
+TABLE (CODE:A323; names in src/ILLUSION.hints, "the table's start"), AL
+the table 1..4: DS and CS get aliases (INT 93h AH=8; in the run DS 04h,
+CS 0Ch with limit 200000h, the far jump through TABLE_JUMP to TABLE_CS),
+TABLE_VIDEO_SEL, the two lists BLOCKS and ALLOCS cleared, TBL_KBD_INSTALL
+(IRQ 1's old vector 0030:00004152, KBD_IRQ set, IRQ 1 still masked),
+TABLE_CHECK (the dword at CODE:90A3 less the byte sum of INTRO_MODE up
+to INTRO_SCRIPT: 2A976h, presumably a jump target as in the chooser's
+start; not followed), the state pointer [14h] = CB3Eh, TABLE_DIGITS
+(the table's digit into eight file names), TABLE_LOAD (state+21E6h's
+258h words 0, 2Ah, ...; TABLE_SOUND: the driver started again as
+SOUND_START does, with a second copy of the host callbacks at
+TBL_CALLBACKS, whose file callbacks keep their cells at 9944h/9948h;
+command 11h hands it JINGLE_END_CB; music.mod and music2.mod loaded,
+order 1 of slot 0 played), then TABLE_LOAD2 (CODE:B048), the game
+(CODE:B928, IRQ 1 unmasked around it) and the end (CODE:A448 on).
+
+The run (2026-09-30, Linux, NOSOUND.SDR as in "The driver's timer",
+Enter at 112 and 115, table 1): CODE:A323 at t=115.78, TABLE_LOAD2
+(CODE:A3F0, `-break 10B320`) at 121.00, the game (CODE:B928, `-break
+10C858`) at 132.55; no pictures counted in between (the frames stay
+5866), so nothing there hangs on the retrace. The port (port/src/table.c)
+against the run at CODE:A3F0 (DK_KEYS "5637:1C 5646:9C 5815:1C
+5824:9C"): CODE only FRAME_SPINS, TAIL and video memory equal; of the 55
+heap blocks (the driver's, its buffers and the two modules' samples and
+patterns) all equal but the driver's SAVED_61 (port 61h at command 0):
+00h in the run, 30h in the port. dosrun makes bits 4 and 5 of port 61h
+from the emulated clock (the refresh toggle, timer 2's output), so the
+value hangs on the CPU time, which the port does not model; the driver
+only writes it back at its end.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -2960,7 +2992,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      GREETINGS_PAGE (see "The Info and greetings pages"): the chooser
      is whole in the port. Next: the table (CODE:A323, then CODE:7182
      and the chooser again), which wants stage 1 of `SOURCE\T001.BPC`
-     first (item 5 below).
+     first (item 5 below). Done 2026-09-30: TABLE up to TABLE_LOAD2
+     (CODE:B048; see "The table's start"). Next: TABLE_LOAD2, then the
+     game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

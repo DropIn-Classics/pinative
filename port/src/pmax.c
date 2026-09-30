@@ -26,9 +26,16 @@ uint16_t pmax_video_sel(void)
     return 0x48;
 }
 
+static uint16_t code_sel = 0x14;
+
 uint16_t pmax_code_sel(void)
 {
-    return 0x14;
+    return code_sel;
+}
+
+void pmax_set_code_sel(uint16_t sel)
+{
+    code_sel = sel;
 }
 
 /* ---- the configuration file */

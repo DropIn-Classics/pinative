@@ -35,8 +35,10 @@ palettes and changes, the captions (their generated routines run by
 reading their bytes) and the keys, up to the table menu's start
 (CODE:505C), the table menu and the chooser's end (the driver's
 commands 5 and 0Bh, everything freed): Esc ends the program with the
-original's goodbye text, a table chosen stops the port before the table
-(`Stopped before the table (CODE:A323)`); the Info page (a table's
+original's goodbye text; a table chosen is started (src/table.c: the
+selector aliases, the keyboard handler set, the driver started again
+with the table's two modules, command 11h) up to TABLE_LOAD2
+(`Stopped before TABLE_LOAD2 (CODE:B048)`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -186,6 +188,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   VSYNC_COUNT (the original's CPU time in CUBE_DRAW_MIX, not modelled;
   docs/HANDOFF.md, "The Info and greetings pages"), TAIL and video
   memory equal.
+- 2026-09-30, Linux: table 1 up to TABLE_LOAD2 (dosrun `-break 10B320
+  -mem -vram`, CODE:A3F0, Enter at 112 and 115; DK_KEYS "5637:1C 5646:9C
+  5815:1C 5824:9C"): CODE differs only in FRAME_SPINS, TAIL and video
+  memory equal, 55 of 55 heap blocks equal but the driver's SAVED_61
+  (port 61h, which dosrun makes from the emulated clock; docs/HANDOFF.md,
+  "The table's start").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

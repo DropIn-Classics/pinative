@@ -14,7 +14,7 @@ VERSION=${PORT_VERSION:-$(git describe --tags --exact-match 2>/dev/null || true)
 if [ -n "$VERSION" ]; then
     CFLAGS="$CFLAGS -DPORT_VERSION=\"$VERSION\""
 fi
-GAME="src/main.c src/archive.c src/image.c src/pmax.c src/entry.c src/setup.c src/video.c src/cd.c src/sound.c src/intro.c src/hostcb.c src/nosound.c src/nsplay.c src/chooser.c"
+GAME="src/main.c src/archive.c src/image.c src/pmax.c src/entry.c src/setup.c src/video.c src/cd.c src/sound.c src/intro.c src/hostcb.c src/nosound.c src/nsplay.c src/chooser.c src/table.c"
 RUNTIME="$RT/sys.c $RT/cdimage.c $RT/textmode.c $RT/pad.c $RT/sha256.c $RT/pmem.c $RT/vga.c $RT/frame.c $RT/modplay.c $RT/audiofx.c $RT/fli.c $RT/shot.c"
 
 mkdir -p build

@@ -52,5 +52,10 @@ int HCB_LOAD(uint16_t ds, uint32_t ebx);
 void HCB_READ(uint16_t ds, uint32_t edi, uint32_t ecx);
 void HCB_UNLOAD(void);
 void HCB_SEEK(uint32_t edx);
+/* 1: callbacks 6 to 9 keep the file in the table's cells */
+void hcb_use_table(int table);
+
+/* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
+int TABLE(uint8_t al);
 
 #endif

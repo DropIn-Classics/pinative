@@ -615,6 +615,15 @@ static int CMD_POSITION(NsRegs *r)
     return 0;
 }
 
+/* CODE:0CFB: command 11h, the far pointer ES:EDX that command 6 calls
+ * once a jingle has ended */
+static int CMD_SET_END_CB(NsRegs *r)
+{
+    wd(D_CMD11_PTR, r->edx);
+    ww(D_CMD11_PTR + 4, r->es);
+    return 0;                   /* CODE:0975 */
+}
+
 /* CODE:0D9F */
 static int CMD_MIX(NsRegs *r)
 {
@@ -703,6 +712,9 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 0x0F:
         cf = CMD_VSYNC2(r);
+        break;
+    case 0x11:
+        cf = CMD_SET_END_CB(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

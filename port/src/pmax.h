@@ -22,8 +22,11 @@ uint16_t pmax_country(void);
 uint16_t pmax_rm_seg(void);
 /* INT 93h AH=5: the selector of video memory (48h in the runs) */
 uint16_t pmax_video_sel(void);
-/* the program's CS (14h in the runs; its DS is PI_SEL_CODE) */
+/* the program's CS (14h in the runs; its DS is PI_SEL_CODE); the table
+ * runs on an alias of it (TABLE, CODE:A323: 0Ch in the runs), which it
+ * sets here */
 uint16_t pmax_code_sel(void);
+void pmax_set_code_sel(uint16_t sel);
 
 /* INT 94h AH=8: the configuration file.  The port reads the player's file
  * at `path` (NULL or missing: none, the options all 0 and the header all
