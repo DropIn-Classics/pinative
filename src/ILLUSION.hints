@@ -522,7 +522,7 @@ name       CODE:D984 KEY_DOWN     ; 256 bytes, FFh while the key is down: the sc
 name       CODE:DA84 KEY_TOGGLE    ; the same index, the byte inverted on each press
 name       CODE:A016 LAST_KEY      ; the last scan code pressed (without 80h); also stored at CODE:CC2F
 name       CODE:A01D KEY_E0        ; FFh after an E0h prefix
-name       CODE:A2C7 KEY_RELEASED  ; FFh after a release: a press of Space (39h) or Alt (38h, E0 38h) counts only then (no typematic repeat for them, presumably)
+name       CODE:A2C7 KEY_RELEASED  ; FFh after a release: a press of Space (39h) or Alt (38h, E0 38h) counts only then (no typematic repeat for them, presumably); a press dropped so leaves KEY_E0 as it is, so after a dropped E0 38h (Right Alt) the next key counts as an E0 key (from the code, not seen in a run)
 ; reads of KEY_DOWN through the record at [CODE:0014] (CB3Eh in the runs:
 ; KEY_DOWN is its field E46h); the field offsets stay numbers
 comment    CODE:144BA Space (KEY_DOWN+39h) pushes the word at [ESI+0D48h] up by 258h a frame to 3E8h, then clears the key; down by C8h without it: presumably a nudge (upward), not checked

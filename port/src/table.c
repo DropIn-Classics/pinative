@@ -20,11 +20,40 @@
 #include "pmem.h"
 #include "vga.h"
 
-/* CODE:A076, IRQ 1's handler while the table runs: not translated yet */
-static void KBD_IRQ(unsigned char ah)
+/* CODE:A076, IRQ 1's handler while the table runs (DS from TABLE_DS,
+ * CODE's base; port 61h's acknowledge and the PIC's EOI leave nothing in
+ * memory): E0h sets KEY_E0; a press sets KEY_DOWN (+80h after E0h) FFh,
+ * inverts KEY_TOGGLE, goes to LAST_KEY and CODE:CC2F and KEY_RELEASED
+ * 0, a release clears KEY_DOWN and sets KEY_RELEASED FFh.  A press of
+ * Space or Alt (39h, 38h) while KEY_RELEASED is 0 is dropped, KEY_E0
+ * left as it is (after E0 38h, Right Alt, the next key then counts as
+ * an E0 key, as in the original) */
+static void KBD_IRQ(unsigned char al)
 {
-    (void)ah;
-    pi_stop("KBD_IRQ (CODE:A076)");
+    uint32_t save = pm_ds, ebx = 0;
+
+    pm_ds = PI_IMAGE_BASE;
+    if (!(al & 0x80) && (al == 0x39 || al == 0x38) && rb(N_KEY_RELEASED) == 0)
+        goto out;
+    if (al == 0xE0) {
+        wb(N_KEY_E0, 0xFF);
+        goto out;
+    }
+    if (rb(N_KEY_E0) == 0xFF)
+        ebx = 0x80;
+    wb(N_KEY_E0, 0);
+    if (!(al & 0x80)) {
+        wb(N_LAST_KEY, al);
+        wb(0xCC2F, al);
+        wb(N_KEY_DOWN + al + ebx, 0xFF);
+        wb(N_KEY_TOGGLE + al + ebx, (uint8_t)~rb(N_KEY_TOGGLE + al + ebx));
+        wb(N_KEY_RELEASED, 0);
+    } else {
+        wb(N_KEY_DOWN + (al & 0x7F) + ebx, 0);
+        wb(N_KEY_RELEASED, 0xFF);
+    }
+out:
+    pm_ds = save;
 }
 
 /* CODE:A593, CODE:A5BF: a list's end pointer to its start, its C8h bytes

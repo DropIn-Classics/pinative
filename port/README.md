@@ -68,7 +68,9 @@ opcodes that clear the display, wait, loop and set the top colours,
 opcode 3's text in the display's fonts) to the attract record's end,
 the high-score pages (CODE:2A6FA: an entry a page, its score drawn from
 packed BCD, src/dotmatrix.c) and the attract record again, round and
-round with no key; the port stops there only when the window is closed
+round with no key; the table's keyboard handler (KBD_IRQ, src/table.c),
+so F1..F8 or keypad Enter start a game (`Stopped before CODE:2A976`)
+and Esc stops at CODE:2A8AB; with no key the port stops there only when the window is closed
 (`DK_FRAMES` for the headless build: `Stopped before FRAME_STEP (the
 window closed; N table frames)`); the
 Info page (a table's
@@ -355,6 +357,14 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   not seen. A headless run with `DK_FRAMES=9000` ended at the window's
   close after 3098 table frames, a screenshot showed "2 ANY
   500,000,000".
+- 2026-09-30, Linux: table 1, F1 in the attract mode (dosrun `-key 150
+  3B`, the port's DK_KEYS `7087:3B 7096:BB`), at GAME_PHASE 2's routine
+  CODE:2A976 (`-break 12B8A6 -mem -vram`): CODE differs only in
+  FRAME_SPINS and FRAME_COUNT (the port one ahead; with the key at
+  picture 7086 the scroll was a line behind), TAIL and video memory
+  equal, the heap blocks equal but the leftovers named above; the same
+  with keypad Enter (`E01C`, `7087:E0 7087:1C 7096:E0 7096:9C`). The
+  dropped Space or Alt press (KEY_RELEASED 0) was not tried.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

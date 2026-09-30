@@ -3300,6 +3300,29 @@ wait stops the port when the window closes (as the chooser's FRAME_WAIT
 does), so `DK_FRAMES` ends a headless run: 9000 pictures, 3098 table
 frames, 1.5 s for 7200 pictures.
 
+### The table's keyboard handler
+
+KBD_IRQ (CODE:A076) keeps KEY_DOWN (FFh while down, +80h after E0h),
+KEY_TOGGLE (inverted on each press), LAST_KEY and CODE:CC2F (the last
+key pressed) and KEY_RELEASED (0 after a press, FFh after a release);
+a press of Space or Alt (39h, 38h) while KEY_RELEASED is 0 is dropped
+before the E0h handling, so KEY_E0 stays as it was: after a dropped
+Right Alt (E0 38h) the next key would count as an E0 key (from the
+code; not tried). The port hands it each byte as frame.c gives them
+(src/table.c).
+
+Against runs (table 1) with F1 and with keypad Enter at t=150 (dosrun
+`-key 150 3B`, `E01C`), at GAME_PHASE 2's routine CODE:2A976
+(`-break 12B8A6`): with the key at picture 7087 of the port only
+FRAME_SPINS and FRAME_COUNT differ (4A2h in the run, 4A3h in the port,
+one ahead as before), TAIL, video memory and the heap blocks equal but
+the known leftovers; at picture 7086 FRAME_COUNT is equal but the
+attract scroll a line behind (ATTRACT_LINE, SCROLL_LINE), so a key
+belongs at the port's picture whose FRAME_COUNT is one ahead of the
+run's there. With these keys the port's picture is FRAME_COUNT + 5900
+(7087 and 4A3h) and table frame + 5902 (table frame 1298 at picture
+7200).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3538,10 +3561,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      text drawing (CODE:27783, DM_TEXT_DRAW in dotmatrix.c), to the
      attract record's end (same section). Done 2026-09-30: the
      high-score pages, CODE:2A6FA (see "The high-score pages"): with no
-     key the attract mode goes round in the port. Next: KBD_IRQ
-     (CODE:A076), so that keys reach ATTRACT_KEYS; then Esc there
-     (CODE:2A8AB) and a game's start, GAME_PHASE 2 (CODE:2A976); the
-     players' scores of ATTRACT (state+0E34h set, CODE:2A557).
+     key the attract mode goes round in the port. Done 2026-09-30:
+     KBD_IRQ (CODE:A076; see "The table's keyboard handler"). Next:
+     Esc in the attract mode (CODE:2A8AB) and a game's start,
+     GAME_PHASE 2 (CODE:2A976); the players' scores of ATTRACT
+     (state+0E34h set, CODE:2A557).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
