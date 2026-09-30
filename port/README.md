@@ -69,8 +69,10 @@ opcode 3's text in the display's fonts) to the attract record's end,
 the high-score pages (CODE:2A6FA: an entry a page, its score drawn from
 packed BCD, src/dotmatrix.c) and the attract record again, round and
 round with no key; the table's keyboard handler (KBD_IRQ, src/table.c),
-so F1..F8 or keypad Enter start a game (`Stopped before CODE:2A976`)
-and Esc stops at CODE:2A8AB; with no key the port stops there only when the window is closed
+so F1..F8 or keypad Enter start a game (`Stopped before CODE:2A976`);
+Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
+the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
+key back to the attract mode; with no key the port stops there only when the window is closed
 (`DK_FRAMES` for the headless build: `Stopped before FRAME_STEP (the
 window closed; N table frames)`); the
 Info page (a table's
@@ -365,6 +367,17 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   equal, the heap blocks equal but the leftovers named above; the same
   with keypad Enter (`E01C`, `7087:E0 7087:1C 7096:E0 7096:9C`). The
   dropped Space or Alt press (KEY_RELEASED 0) was not tried.
+- 2026-09-30, Linux: table 1, Esc at t=150 (the port's picture 7087)
+  and Y at 152 (7157; `-key 152 15`), at the main loop's end, CODE:BA7C
+  (`-break 10C9AC -mem -vram`): CODE differs only in FRAME_SPINS, TAIL,
+  video memory and the heap blocks equal but the leftovers named above.
+  Esc and N at the same times, at the attract record queued again
+  (`-break 12B5F1#2`, a scratch stop in the port): CODE differs only in
+  FRAME_SPINS and FRAME_COUNT. With Space instead of N the nudge cells
+  differ (state+0D44h, 0D48h and what follows from them): the run's key
+  came during the question frame's drawing, after its FLIPPERS_STEP, the
+  port's comes at the frame's wait (docs/HANDOFF.md, "Esc in the attract
+  mode").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

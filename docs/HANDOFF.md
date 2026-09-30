@@ -3323,6 +3323,31 @@ run's there. With these keys the port's picture is FRAME_COUNT + 5900
 (7087 and 4A3h) and table frame + 5902 (table frame 1298 at picture
 7200).
 
+### Esc in the attract mode
+
+ATTRACT_KEYS with Esc (KEY_DOWN+1) goes to CODE:2A8AB instead of its
+F-keys, and returns from ATTRACT from there: Esc's and Y's KEY_DOWN and
+LAST_KEY cleared, then whole frames (FRAME_STEP, ATTRACT_SCROLL,
+FLIPPERS_STEP, the display cleared and "REALLY QUIT TABLE?" drawn; no
+DISPLAY_RUN, so the display stream waits) until Y (KEY_DOWN+15h):
+QUIT_TABLE FFh, which ends the main loop (CODE:BA7C, a RET to TABLE at
+CODE:A3FF); or any other key pressed (LAST_KEY): the display cleared,
+state+0E35h 1, the attract record queued again the next frame.
+
+Runs (table 1, Esc at t=150, the port's picture 7087): Y at 152 against
+the port's 7157, at CODE:BA7C (`-break 10C9AC`): only FRAME_SPINS
+differs (FRAME_COUNT equal at this break); N at 152, at CODE:2A6C1's
+second call: FRAME_SPINS and FRAME_COUNT (one ahead). With Space
+instead of N (`-key 152 39`) the run had state+0D48h 258h and 0D44h
+FF38h, the port 0 and 0: FLIPPERS_STEP makes four moves a frame (+258h
+a move while Space is down, to 3E8h, the key then cleared; -C8h after),
+so the run's nudge was one frame's, its Space came after the question
+frame's FLIPPERS_STEP (in its drawing) and before the LAST_KEY test;
+the port's keys come at the frame's wait, before FLIPPERS_STEP, so its
+nudge ran a frame earlier and had run out by the break. A key's place
+within a frame is not modelled (as FRAME_COUNT's tick); keys without an
+effect in FLIPPERS_STEP compare equal.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3562,10 +3587,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      attract record's end (same section). Done 2026-09-30: the
      high-score pages, CODE:2A6FA (see "The high-score pages"): with no
      key the attract mode goes round in the port. Done 2026-09-30:
-     KBD_IRQ (CODE:A076; see "The table's keyboard handler"). Next:
-     Esc in the attract mode (CODE:2A8AB) and a game's start,
-     GAME_PHASE 2 (CODE:2A976); the players' scores of ATTRACT
-     (state+0E34h set, CODE:2A557).
+     KBD_IRQ (CODE:A076; see "The table's keyboard handler"). Done
+     2026-09-30: Esc in the attract mode (CODE:2A8AB; see "Esc in the
+     attract mode"). Next: a game's start, GAME_PHASE 2 (CODE:2A976),
+     and the other phases as a game reaches them; the table's end after
+     Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
+     players' scores of ATTRACT (state+0E34h set, CODE:2A557).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

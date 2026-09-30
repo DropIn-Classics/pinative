@@ -224,6 +224,38 @@ static void FRAME_STEP(void)
     ns_retrace();
 }
 
+/* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
+ * +15h, and LAST_KEY cleared): frames with "REALLY QUIT TABLE?"
+ * (CODE:2A93E) on the display and no display stream, until Y (QUIT_TABLE,
+ * state+8Dh, FFh) or another key (the display cleared, state+0E35h 1:
+ * the attract record queued again) */
+static void ATTRACT_QUIT(void)
+{
+    uint32_t st = rd(0x0014);
+
+    wb(st + 0x0E47, 0);
+    wb(st + 0x0E5B, 0);
+    wb(N_LAST_KEY, 0);
+    for (;;) {
+        FRAME_STEP();
+        ATTRACT_SCROLL();
+        /* CODE:156C3, a RET */
+        FLIPPERS_STEP();
+        DM_CLEAR();
+        wd(0x0000, 0x2A93E);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+        if (rb(st + 0x0E5B) != 0) {
+            wb(st + 0x8D, 0xFF);
+            return;
+        }
+        if (rb(N_LAST_KEY) != 0)
+            break;
+    }
+    DM_CLEAR();
+    wb(rd(0x0014) + 0x0E35, 1);
+}
+
 /* CODE:2A7FD: Esc (state+0E47h) to CODE:2A8AB; else the first of the
  * keys F8..F1 (state+0E88h down to +0E81h) set, or keypad Enter
  * (state+0EE2h) as F1: cleared, GAME_PHASE 2 and its number (1..8) added
@@ -233,8 +265,10 @@ static void ATTRACT_KEYS(void)
     uint32_t st = rd(0x0014);
     uint16_t si;
 
-    if (rb(st + 0x0E47) != 0)
-        pi_stop("CODE:2A8AB");
+    if (rb(st + 0x0E47) != 0) {
+        ATTRACT_QUIT();
+        return;
+    }
     wd(0x0020, 7);
     wd(0x0000, st + 0x0E81);
     for (si = 7; ; si--) {
