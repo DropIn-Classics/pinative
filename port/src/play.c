@@ -39,11 +39,59 @@ static void SCREEN_START(void)
     vga_outw(0x3D4, (uint16_t)(0x0D | bx << 8));
 }
 
+/* CODE:29813: the next CRT start (CRT_NEXT) from the line in [0020] */
+static void CRT_NEXT_SET(void)
+{
+    ww(N_CRT_NEXT, (uint16_t)(rw(0x0020) * 0x54 + 0x1500));
+}
+
+/* CODE:30114: the attract mode's scroll a line on (ATTRACT_DIR 0: down,
+ * to SCROLL_MAX, then turning; FFh: up, to 0, then turning) into
+ * ATTRACT_LINE and SCROLL_LINE, then the CRT start of that line plus
+ * SCROLL_ADD (and [0024]'s low word SCROLL_X) */
+static void ATTRACT_SCROLL(void)
+{
+    uint32_t st = rd(0x0014), v;
+
+    v = (rd(0x0020) & 0xFFFF0000u) | rw(st + 0x9A);
+    wd(0x0020, v);
+    if (rb(st + 0x98) != 0) {
+        v = (v & 0xFFFF0000u) | (uint16_t)(v - 1);
+        wd(0x0020, v);
+        if ((int16_t)v < 0) {
+            wd(0x0020, 0);
+            wb(st + 0x98, 0);
+        }
+        v = rd(0x0020);
+        if ((uint16_t)v >= rw(st + 0x0D54)) {
+            v = (v & 0xFFFF0000u) | rw(st + 0x0D54);
+            wd(0x0020, v);
+        }
+    } else {
+        v = (v & 0xFFFF0000u) | (uint16_t)(v + 1);
+        wd(0x0020, v);
+        if ((uint16_t)v >= rw(st + 0x0D54)) {
+            v = (v & 0xFFFF0000u) | rw(st + 0x0D54);
+            wd(0x0020, v);
+            wb(st + 0x98, 0xFF);
+        }
+    }
+    v = rd(0x0020);
+    ww(st + 0x9A, (uint16_t)v);
+    ww(st + 0x0D58, (uint16_t)v);
+    /* CODE:302C7 */
+    wd(0x0020, (v & 0xFFFF0000u) | (uint16_t)(v + rw(st + 0x0D4C)));
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | rw(st + 0x0D4A));
+    CRT_NEXT_SET();
+}
+
 void TABLE_GAME(void)
 {
     DISPLAY_RESET();
     LIGHTS_RESET();
     DM_CLEAR();
     SCREEN_START();
-    pi_stop("CODE:30114");
+    ATTRACT_SCROLL();
+    FLIPPERS_DRAW();
+    pi_stop("CODE:1048B");
 }

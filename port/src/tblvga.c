@@ -97,7 +97,7 @@ static void TBL_SPLIT_SET(uint16_t cx)
 static void mode_cells(uint16_t d890, uint16_t d892, uint32_t b8e, uint32_t b922, uint16_t rate)
 {
     ww(N_TBL_D890, d890);
-    ww(N_TBL_D892, d892);
+    ww(N_SCROLL_MAX, d892);
     wd(N_VSYNC_START_ARG, b8e);
     wd(N_TBL_B922, b922);
     ww(N_FRAME_RATE, rate);

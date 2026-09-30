@@ -269,3 +269,109 @@ void FLIPPER_RENDER(void)
         ww(p + 0x1A, keep);
     }
 }
+
+/* CODE:1637B: +6 plus +1Ah, around 0..77h (+0Ah not looked at: the
+ * negative +1Ah of a flipper turning the other way does it) */
+static uint32_t FLIP_ANGLE2(uint32_t p)
+{
+    uint16_t cx = (uint16_t)(rw(p + 6) + rw(p + 0x1A));
+
+    if ((int16_t)cx >= 0x78)
+        cx = (uint16_t)(cx - 0x78);
+    if ((int16_t)cx < 0)
+        cx = (uint16_t)(cx + 0x78);
+    return cx;
+}
+
+/* the box of the angle FLIP_ANGLE2 gives (as flip_box), the angle's kept
+ * pixels' offset in the gfx block (the word +30h by |+1Ah|) to *src */
+static uint32_t flip_box2(uint32_t p, uint32_t *rows, uint32_t *src)
+{
+    int32_t n = (int16_t)rw(p + 0x1A);
+    uint32_t sh = N_FLIP_SHAPES + FLIP_ANGLE2(p) * 4;
+    uint16_t x = (uint16_t)(rw(p + 2) - rb(sh));
+    uint32_t y = (uint32_t)rw(p + 4) - rb(sh + 1);
+
+    if (n < 0)
+        n = -n;
+    *src = rw(p + 0x30 + 2 * (uint32_t)n);
+    *rows = (uint32_t)rb(sh + 2) + 2;
+    return y * 0x54 + (x >> 2);
+}
+
+/* the columns of one plane (CODE:157EA; CODE:15CED with `restore`): a
+ * column's first byte (the row where it first changed, or row 0's pixel)
+ * is how many rows are passed over; from there up to 55 rows while the
+ * kept pixel is not 0, the pixel drawn (the drawing addresses with SI and
+ * DI, 16 bits) or the stage's pixel from SPOOKY_SEL put back */
+static void flip_columns(uint32_t blk, uint32_t src, uint32_t di, int restore, uint32_t spooky)
+{
+    uint32_t col;
+
+    for (col = 0; col < 16; col++, src++, di++) {
+        uint32_t skip = lrb(blk + src), s, d, r;
+
+        if (!skip)
+            continue;
+        s = src + skip * 16;
+        d = di + skip * 0x54;
+        for (r = 0; r < 55; r++) {
+            uint8_t al;
+
+            if (restore) {
+                if (!lrb(blk + s + r * 16))
+                    break;
+                vga_write((uint16_t)(d + 0x1500 + r * 0x54), lrb(spooky + d + r * 0x54));
+            } else {
+                al = lrb(blk + (uint16_t)(s + r * 16));
+                if (!al)
+                    break;
+                vga_write((uint16_t)((uint16_t)d + 0x1500 + r * 0x54), al);
+            }
+        }
+    }
+}
+
+/* CODE:1572D (CODE:1578B), CODE:15C1A (CODE:15C78): the flipper's kept
+ * pixels at its angle drawn into video memory, or the stage put back
+ * under them, plane by plane (map mask 1, 2, 4, 8) */
+static void flip_blit(uint32_t p, int restore)
+{
+    uint32_t rows, src, di = flip_box2(p, &rows, &src);
+    uint32_t blk = pmax_base(rw(p + 0x1F2)), spooky = pmax_base(rw(N_SPOOKY_SEL));
+    uint8_t plane;
+
+    for (plane = 0; plane < 4; plane++, spooky += 0xC4E0) {
+        MAP_MASK((uint8_t)(1 << plane));
+        flip_columns(blk, src, di, restore, spooky);
+        src += rows * 16;
+    }
+}
+
+/* CODE:156C4: each flipper (four; type 3 passed over) whose angle's
+ * number +1Ah is not the one drawn (+1F4h): the old one put back, the new
+ * one drawn; or drawn again when +1F6h asks for it */
+void FLIPPERS_DRAW(void)
+{
+    uint32_t p = rd(rd(0x0014) + 0x28FE);
+    int k;
+
+    for (k = 0; k < 4; k++, p += 0x1F7) {
+        uint16_t now;
+
+        if (rb(p) == 3)
+            continue;
+        now = rw(p + 0x1A);
+        if (rw(p + 0x1F4) != now) {
+            ww(p + 0x1A, rw(p + 0x1F4));
+            flip_blit(p, 1);
+            ww(p + 0x1A, now);
+            ww(p + 0x1F4, now);
+        } else if (rb(p + 0x1F6)) {
+            wb(p + 0x1F6, 0);
+        } else {
+            continue;
+        }
+        flip_blit(p, 0);
+    }
+}

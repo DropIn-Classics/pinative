@@ -819,7 +819,7 @@ code       CODE:9444 VGA360_REGS   ; sequencer 4 = 6, map mask 0Fh, Misc A7h (th
 code       CODE:3D320 TBL_SPLIT_SET ; the line compare from CX less 1, CH bit 0 to CR 7 bit 4, bit 1 to CR 9 bit 6 (as SPLIT_SET, which clears the latter)
 name       CODE:911E MODE_SVGA800_FLAG ; 1 by MODE_SVGA800, 0 by the others
 name       CODE:D890 TBL_D890      ; a word each mode sets (7Fh VGA 360, 53h VGA 320, B3h SVGA 640), not followed
-name       CODE:D892 TBL_D892      ; the same (11Ah, 188h, 98h)
+name       CODE:D892 SCROLL_MAX    ; state+0D54h: the last line the attract scroll goes to (11Ah, 188h, 98h by the mode: the stage's 600 lines less the lines shown, presumably)
 name       CODE:9B8E VSYNC_START_ARG ; the dword command 0Fh gets in ECX (CODE:B9B9)
 name       CODE:B922 TBL_B922      ; a dword each mode sets (2, VGA 320 0), not followed
 code       CODE:9392 STAGE_BITS    ; AL: the bit 7 - DL of the eight bytes at GS:ESI, 30h apart, the first one's to bit 0
@@ -851,6 +851,18 @@ name       CODE:28C01 SPR_PLANES   ; the planes' offsets in SPOOKY_SEL: 0, 24EA0
 name       CODE:29426 SPR_PLANE
 name       CODE:29427 SPR_PLANE0
 name       CODE:29428 SPR_CARRY
+code       CODE:30114 ATTRACT_SCROLL ; the attract mode's scroll a line on: ATTRACT_LINE (state+9Ah) down to SCROLL_MAX, then back up to 0 (ATTRACT_DIR, state+98h, 0 down, FFh up), to it and SCROLL_LINE (state+0D58h); CRT_NEXT_SET for it plus SCROLL_ADD (state+0D4Ch); [CODE:0024]'s low word SCROLL_X (state+0D4Ah). Work cells CODE:0020, 0024
+name       CODE:CBD8 ATTRACT_LINE
+name       CODE:CBD6 ATTRACT_DIR
+name       CODE:D896 SCROLL_LINE
+name       CODE:D88A SCROLL_ADD    ; added to the line for the CRT start (not followed)
+name       CODE:D888 SCROLL_X      ; (the name a guess: the word before SCROLL_ADD; not followed)
+code       CODE:29813 CRT_NEXT_SET ; CRT_NEXT = [CODE:0020]'s word x 54h + 1500h
+name       CODE:BAD2 CRT_NEXT      ; the CRT start address the driver's command-0Fh routine (CODE:B9B9) sets at the retrace
+code       CODE:156C4 FLIPPERS_DRAW ; each flipper (type 3 passed over) whose angle's number +1Ah differs from the one drawn (+1F4h): the old one put back (FLIP_ERASE), the new drawn (FLIP_BLIT), +1F4h updated; or drawn again when byte +1F6h asks (cleared)
+code       CODE:1572D FLIP_BLIT    ; the kept pixels of the angle (+30h by |+1Ah|, FLIP_ANGLE2's box) drawn column by column (CODE:1578B, 157EA: a column's first byte is the rows passed over, then up to 55 rows until a 0; 16-bit SI and DI addressing), map mask 1, 2, 4, 8
+code       CODE:15C1A FLIP_ERASE   ; the same rows put back from SPOOKY_SEL (CODE:15C78, 15CED)
+code       CODE:1637B FLIP_ANGLE2  ; CX: +6 plus +1Ah around 0..77h (without +0Ah's sign)
 name       CODE:B14E MULTIBALL_COUNTS ; two dwords a table (see MULTIBALL_CAP)
 name       CODE:B13E MULTIBALL_MAX ; four dwords by OPT_MULTIBALL: 6, 3, 4, 5
 code       CODE:BA9B TOP_COLOURS_SET ; TOP_COLOURS's twelve bytes, shifted right 2, to the DAC from colour FCh

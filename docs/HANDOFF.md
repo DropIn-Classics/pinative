@@ -2973,6 +2973,22 @@ Against the runs of all four tables at CODE:30114 (`-break 131044`):
 CODE only FRAME_SPINS, TAIL and video memory equal, the heap blocks
 equal but the known leftovers.
 
+Then ATTRACT_SCROLL (CODE:30114: the attract mode's scroll a line on,
+between 0 and SCROLL_MAX, which is TBL_D892 renamed; the CRT start for
+the retrace routine in CRT_NEXT) and FLIPPERS_DRAW (CODE:156C4): each
+flipper whose angle changed is put back from "Spooky" and drawn anew
+from the pixels FLIPPER_RENDER kept, a column at a time: a column's
+first byte says how many rows to pass over, then rows are drawn until a
+kept pixel is 0 (at most 55). That byte is FLIP_DIFF's row number, or,
+where the column changed in row 0 already, that row's pixel, which is
+then taken as a row count too (presumably a slip; its effect not
+looked at). The drawing routine addresses with SI and DI (16 bits), the
+putting back with ESI and EDI. At the game's start each flipper is
+drawn once (about 1750 bytes of video memory a table); the putting back
+is not reached there. Against the runs at CODE:1048B (`-break 1113BB`),
+all four tables: CODE only FRAME_SPINS, TAIL and video memory equal,
+the heap blocks equal but the known leftovers.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3183,7 +3199,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      driver's command at CODE:9B92, GAME_PHASE 1), then the main loop
      from CODE:B976 with KBD_IRQ (CODE:A076) for the keys. Done
      2026-09-30: the start up to CODE:30114 (see "The game's start").
-     Next: CODE:30114, 156C4, 1048B, LIGHTS_STEP, 2ED15, A654, 9B92.
+     Done 2026-09-30: ATTRACT_SCROLL and FLIPPERS_DRAW, up to
+     CODE:1048B (same section). Next: CODE:1048B, LIGHTS_STEP, 2ED15,
+     A654 (the palette's fade-in), 9B92 (the driver's commands).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

@@ -76,8 +76,9 @@ int FLIPDAT_LOAD(void);
 /* CODE:B0E3: 1 (CF) when OPT_MULTIBALL is not 0..3 */
 int MULTIBALL_CAP(void);
 
-/* flipper.c: CODE:1527F */
+/* flipper.c: CODE:1527F, CODE:156C4 */
 void FLIPPER_RENDER(void);
+void FLIPPERS_DRAW(void);
 
 /* lights.c: CODE:29AF9 */
 void LIGHTS_RESET(void);
