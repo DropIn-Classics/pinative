@@ -3452,6 +3452,55 @@ BALL_BOUNCE, BALLS_MOVE), each compared at a break in phase 6's first
 frame; the ball-ball part of BALLS_MOVE and the flipper kinds want a
 closer reading first (one ball in phase 6 does not reach the first).
 
+### GAME_PHASE 6 in the port
+
+BALL_WAIT (CODE:2B1DC; names in src/ILLUSION.hints, "GAME_PHASE 6")
+and what it calls are in the port (src/play.c, src/phys.c), translated
+cell by cell as the code keeps its work cells CODE:0000..003C. On the
+way:
+
+- The ring BALL_SAMPLE takes has 17 lines, not 16 (RING_MASKS and the
+  stores up to CODE:26009); the hints said 16 until this change.
+- Zone type 0 (CODE:2C59C) is what ends the wait: the ball's first entry
+  clears state+0D3Ch and 0D3Dh (and the skill shot's state+0D2Fh, after
+  queueing header slot 27's or 28's stream), so BALL_WAIT goes to
+  GAME_PHASE 4. On table 1 the zone is met at t=155.53, 2.29 s after
+  Enter; on table 4 after 0.47 s.
+- MUSIC_REQUEST's module request (FFFEh) makes MUSIC_UPDATE call the
+  driver's command 2 twice (pause, resume) around command 8. Command 2
+  saves the PIC's mask it reads; the run had FCh (IRQ 0 and 1 open).
+  The port now keeps the master mask (nosound.c, pic_in21/pic_out21):
+  BAh at the start as dosrun answered at command 0, ORed/ANDed where the
+  game (ENTRY, the chooser's and the intro's keyboard, TABLE around the
+  game) and the driver (TIMER_START's CODE:10FC, TIMER_STOP, PORTS_RESTORE)
+  write port 21h. What the mask held before ENTRY is not known.
+- The run is slower than the port in this phase: about 170,500
+  instructions a frame, two pictures at dosrun's 6,000,000 a second,
+  where the attract mode's frames fit in one. So the driver's sample
+  clock drifts (TICKS +83 in the run, +70 in the port over 98 frames)
+  and a key's picture in the port no longer follows from its time in
+  the run by the attract mode's rate: Enter at t=153.24 was found at
+  the port's picture 7201 by trying 7199..7203 (only 7201 compared
+  equal). The game's state does not depend on it (CODE equal).
+
+Compared (port/README.md, "Checked"): table 1 at the loop's start after
+1, 99 and 129 frames (Enter after 113) and at CODE:2B76E; tables 3 and 4
+at CODE:2B76E. Every path the port stops at by name was not reached:
+the flipper's mask in BALL_SAMPLE (a ball in a flipper's box on its
+level), SURFACE_HANDLERS 1..4 (the flippers' kinds), BALL_BOUNCE's
+bumper and slingshot kicks, BALLS_MOVE's second ball, SLINGS_STEP's
+picture (CODE:28E7B), a hole in HOLE_EJECT_STEP, zone type 4, a zone
+object's light record (+0Ah: CODE:2ECCE and 2FD11) and RECORD_DISPATCH,
+MUSIC_REQUEST's words below FFFEh, DROPS_QUEUE_STEP's kinds above 1.
+
+Next: GAME_PHASE 4, play (CODE:2B76E), where the flippers meet the ball
+(their masks and surfaces, the flipper kinds of CODE:11AE9, read in
+"The balls' physics" only roughly), the bumpers and slingshots, the
+objects of OBJECT_HITS, the events (EVENT_RUN, MODE_RUN, CODE:2B4B9's
+list) and a lost ball (phases 5, 7, 8). Keys for play: the flippers
+are Left/Right Shift or Ctrl (state+2A7Bh/2A7Ch, CODE:14757); a run's key
+at a picture has to be searched as above while frames are slow.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3698,7 +3747,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-09-30: GAME_PHASE 6 (CODE:2B1DC, the ball waiting for its
      launch) with the ball's physics and collisions it needs, stage 2
      first (see "GAME_PHASE 6, what it calls"; stage 2 of the physics
-     done 2026-09-30, see "The balls' physics"); later table 2's slot
+     done 2026-09-30, see "The balls' physics"; done 2026-09-30 in the
+     port up to GAME_PHASE 4, CODE:2B76E, see "GAME_PHASE 6 in the
+     port"; next GAME_PHASE 4, play, same section); later table 2's slot
      40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).

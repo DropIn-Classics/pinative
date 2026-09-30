@@ -487,6 +487,590 @@ static void GAME_START(void)
     ww(st + 0x8E, 6);
 }
 
+/* ---- the ball waiting for its launch (GAME_PHASE 6) ---- */
+
+/* CODE:2F85C: the music record at [0000]: its track (+8) to MUSIC_NEXT
+ * and flags (+0Ah) to state+59h (with bit 1 while LOST_BALL_RUNOUT);
+ * its word +2 not negative: the module request (order +4, slot +6, the
+ * word to MOD_REQUEST); FFFFh or FFFEh: the flags and track kept in
+ * state+5Ah, 2A82h first */
+static void MUSIC_REQUEST(void)
+{
+    uint32_t st = rd(0x0014), r = rd(0x0000);
+    uint16_t di;
+
+    if (rb(N_LOST_BALL_RUNOUT) == 0) {
+        ww(st + 0x2A80, rw(r + 8));
+        wb(st + 0x59, rb(r + 0x0A));
+    } else {
+        wb(st + 0x59, (uint8_t)(rb(r + 0x0A) | 2));
+    }
+    di = rw(r + 2);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | di);
+    if (di & 0x8000) {
+        uint16_t k = (uint16_t)~di;
+
+        wb(st + 0x5A, rb(st + 0x59));
+        ww(st + 0x2A82, rw(st + 0x2A80));
+        if (k > 1)
+            pi_stop("MUSIC_REQUEST: a word +2 below FFFEh (CODE:2F906)");
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(0x2F91C + 2u * k));
+    }
+    ww(st + 0x2A88, rw(r + 4));
+    ww(st + 0x2A8A, rw(r + 6));
+    ww(st + 0x2A84, di);
+}
+
+/* CODE:301C9: the scroll in play: SCROLL_LINE (state+0D58h) toward the
+ * ball's line (state+0D5Ch, from BALLS_SHOW) less state+0D52h, by the
+ * distance / state+0E3Ch (halved going up near the top and going down),
+ * between 0 and SCROLL_MAX; to ATTRACT_LINE and the next CRT start */
+static void PLAY_SCROLL(void)
+{
+    uint32_t st = rd(0x0014), e;
+    uint16_t bp = rw(st + 0x0D58), di, q, r;
+    int32_t n;
+
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | bp);
+    di = (uint16_t)(rw(st + 0x0D5C) - bp - rw(st + 0x0D52));
+    n = (int16_t)di;
+    if ((int16_t)rw(st + 0x0E3C) == 0)
+        pi_stop("PLAY_SCROLL: IDIV by 0 (CODE:301F3)");
+    q = (uint16_t)(n / (int16_t)rw(st + 0x0E3C));
+    r = (uint16_t)(n % (int16_t)rw(st + 0x0E3C));
+    e = (uint32_t)r << 16 | q;
+    wd(0x0020, e);
+    if ((int16_t)q < 0) {
+        if ((int16_t)bp <= 0x20) {
+            e = (e & 0xFFFF0000u) | (uint16_t)((int16_t)q >> 1);
+            wd(0x0020, e);
+        }
+        ww(st + 0x0D58, (uint16_t)(rw(st + 0x0D58) + (uint16_t)e));
+        if ((int16_t)rw(st + 0x0D58) < 0)
+            ww(st + 0x0D58, 0);
+    } else {
+        di = (uint16_t)(rw(st + 0x0D54) - bp);
+        wd(0x0028, (rd(0x0028) & 0xFFFF0000u) | di);
+        if (di <= 0xFFCE) {
+            e = (e & 0xFFFF0000u) | (uint16_t)((int16_t)q >> 1);
+            wd(0x0020, e);
+            ww(st + 0x0D58, (uint16_t)(rw(st + 0x0D58) + (uint16_t)e));
+            di = rw(st + 0x0D54);
+            wd(0x0028, (rd(0x0028) & 0xFFFF0000u) | di);
+            if (di <= rw(st + 0x0D58))
+                ww(st + 0x0D58, di);
+        }
+    }
+    /* CODE:302A7 */
+    e = (rd(0x0020) & 0xFFFF0000u) | rw(st + 0x0D58);
+    ww(st + 0x9A, (uint16_t)e);
+    wd(0x0020, (e & 0xFFFF0000u) | (uint16_t)(e + rw(st + 0x0D4C)));
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | rw(st + 0x0D4A));
+    CRT_NEXT_SET();
+}
+
+/* CODE:3086D: the next of the drop targets' queue (state+2A60h, down
+ * from CODE:F920; a word, the kind, and the target): kind 1 DROP_SET
+ * with the target's +0Bh */
+static void DROPS_QUEUE_STEP(void)
+{
+    uint32_t st = rd(0x0014), q = rd(st + 0x2A60);
+    uint16_t k;
+
+    wd(0x0004, q);
+    if (q == 0xF920)
+        return;
+    k = rw(q);
+    wd(0x0000, rd(q + 2));
+    wd(0x0004, q + 6);
+    wd(st + 0x2A60, q + 6);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(0x308C7 + sx16(k) * 2));
+    if (k == 0)
+        return;
+    if (k != 1)
+        pi_stop("DROPS_QUEUE_STEP: a kind above 1 (CODE:308C0)");
+    wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | rb(rd(0x0000) + 0x0B));
+    DROP_SET();
+}
+
+/* CODE:308E7: the slingshots' records (state+28DAh: word offsets from
+ * it, 0 ends): a byte +0 FFh (a kick) set to 2, a count above 0 down;
+ * at 0 their picture +16h drawn (CODE:28E7B) */
+static void SLINGS_STEP(void)
+{
+    uint32_t st = rd(0x0014), base = rd(st + 0x28DA), r;
+    uint16_t bx;
+    uint8_t bl;
+
+    wd(0x0010, base);
+    wd(0x003C, base);
+    for (;;) {
+        wd(0x0000, base);
+        bx = rw(rd(0x0010));
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | bx);
+        wd(0x0010, rd(0x0010) + 2);
+        if (bx == 0)
+            return;
+        r = base + sx16(bx);
+        wd(0x0000, r);
+        bl = rb(r);
+        wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | bl);
+        if (bl == 0)
+            continue;
+        if (bl & 0x80) {
+            wb(r, 2);
+        } else {
+            wb(r, (uint8_t)(bl - 1));
+            if (bl != 1)
+                continue;
+            wd(0x0020, 0);
+            wb(r, 0);
+        }
+        /* CODE:3096E */
+        wd(0x0024, rd(r + 0x16));
+        if (rd(r + 0x16) == 0)
+            continue;
+        pi_stop("SLINGS_STEP: a slingshot's picture (CODE:28E7B)");
+    }
+}
+
+/* CODE:30996: a hole ejecting, else the next hole from the stack
+ * state+2A64h (only the empty cases translated) */
+static void HOLE_EJECT_STEP(void)
+{
+    uint32_t st = rd(0x0014), h = rd(st + 0x2A68);
+
+    wd(0x0020, h);
+    if (h != 0)
+        pi_stop("HOLE_EJECT_STEP: a hole ejecting (CODE:309BB)");
+    h = rd(st + 0x2A64);
+    wd(0x0004, h);
+    if (h != 0xFA48)
+        pi_stop("HOLE_EJECT_STEP: a hole on the stack (CODE:30BF0)");
+}
+
+/* CODE:30799: a bank of drop targets raised: with none waiting (state+
+ * 2AD8h 0) the next from the stack state+2AD0h (up to CODE:FA24) and 64h
+ * frames; when they run out each target of the bank (a chain by +1Eh)
+ * up (+0Bh 0) and queued for DROP_SET (kind 1 on state+2A60h) */
+static void DROPS_RAISE_STEP(void)
+{
+    uint32_t st = rd(0x0014), p, t, q;
+
+    if (rw(st + 0x2AD8) == 0) {
+        p = rd(st + 0x2AD0);
+        wd(0x0000, p);
+        if (p == 0xFA24)
+            return;
+        ww(st + 0x2AD8, 0x64);
+        wd(st + 0x2AD4, rd(p));
+        wd(0x0000, p + 4);
+        wd(st + 0x2AD0, p + 4);
+        return;
+    }
+    ww(st + 0x2AD8, (uint16_t)(rw(st + 0x2AD8) - 1));
+    if (rw(st + 0x2AD8) != 0)
+        return;
+    wd(0x000C, rd(st + 0x2AD4));
+    q = rd(st + 0x2A60);
+    wd(0x0008, q);
+    t = rd(rd(0x000C));
+    wd(0x0000, t);
+    for (;;) {
+        wb(t + 0x0B, 0);
+        q -= 4;
+        wd(q, t);
+        q -= 2;
+        wd(0x0008, q);
+        ww(q, 1);
+        wd(0x0020, rd(t + 0x1E));
+        if (rd(t + 0x1E) == 0)
+            break;
+        t = rd(t + 0x1E);
+        wd(0x0000, t);
+    }
+    wd(st + 0x2A60, q);
+}
+
+/* CODE:2FBBF: a take's points: the 12-digit packed-BCD number [000C]
+ * points past added to the player's +10h (the bonus), the one 8 bytes
+ * before it to the player's +8 (the score); [000C] 14 back after */
+static void TAKE_PAY(void)
+{
+    uint32_t keep10 = rd(0x0010), keep0 = rd(0x0000), pl;
+    int k;
+
+    wb(N_DISPLAY_BUSY, 0xFF);
+    pl = rd(rd(0x0014) + 0x0D76);
+    wd(0x0010, pl);
+    wd(0x0000, pl + 0x10);
+    for (k = 0; k < 2; k++) {
+        uint32_t src = rd(0x000C), dst = rd(0x0000);
+        int cf = 0, i;
+
+        for (i = 0; i < 4; i++)
+            adc_daa(dst - 4 + (uint32_t)i, src - 4 + (uint32_t)i, &cf);
+        for (i = 0; i < 2; i++)
+            adc_daa(dst - 8 + (uint32_t)i, src - 8 + (uint32_t)i, &cf);
+        wd(0x000C, rd(0x000C) - 6);
+        wd(0x0000, rd(0x0000) - 6);
+        if (k == 0) {
+            wd(0x000C, rd(0x000C) - 2);
+            wd(0x0000, rd(0x0000) - 2);
+        }
+    }
+    wd(0x0000, keep0);
+    wd(0x0010, keep10);
+}
+
+/* CODE:2C3E7: the zone record the ball is inside ([0010]+68h) left: its
+ * byte +0 0 */
+static void ZONE_LEAVE(void)
+{
+    uint32_t b = rd(0x0010), z = rd(b + 0x68);
+
+    wd(0x0020, z);
+    if (z == 0)
+        return;
+    wd(0x0000, z);
+    wb(z, 0);
+    wd(b + 0x68, 0);
+}
+
+/* CODE:2C4DF (2C65E for type 0): the zone object's pay, [0004] the
+ * object: a light record at +0Ah (not translated), else the points at
+ * +1Eh (TAKE_PAY); the record +2 (RECORD_DISPATCH, not translated) and
+ * the event stream +6 */
+static void zone_pay(void)
+{
+    uint32_t r = rd(rd(0x0004) + 0x0A);
+
+    wd(0x0020, r);
+    wd(0x0008, r);
+    if (r != 0)
+        pi_stop("zone_pay: a light record at +0Ah (CODE:2C4DF)");
+    wd(0x000C, rd(0x0004) + 0x1E);
+    TAKE_PAY();
+    r = rd(rd(0x0004) + 2);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        pi_stop("zone_pay: RECORD_DISPATCH (CODE:2C578)");
+    }
+    r = rd(rd(0x0004) + 6);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        EVENT_QUEUE();
+    }
+}
+
+/* CODE:2C4B5: zone type 1: on entry (the object's byte +0 0) the ball's
+ * number into it and the object to the ball's +68h, then its pay */
+static void ZONE_TYPE1(void)
+{
+    uint32_t o = rd(rd(0x0000) + 0x0A), b = rd(0x0010);
+
+    wd(0x0004, o);
+    wd(b + 0x68, o);
+    if (rb(o) != 0)
+        return;
+    wb(o, rb(b + 0x0A));
+    zone_pay();
+}
+
+/* CODE:2C59C: zone type 0, the end of the plunger lane (presumably): on
+ * entry (the object's byte +0 not the ball's number) while the skill
+ * shot is armed (state+0D2Fh) header slot 27's event stream (state+2912h)
+ * when state+0E38h equals the balls per game (state+0D36h), else slot
+ * 28's (2916h); then the tilt count, the skill shot, state+0D3Ch and
+ * 0D3Dh (the ball no longer waits) and the ball's +0Bh cleared, the
+ * ball's number into the object, its pay; ZONE_LEAVE in any case */
+static void ZONE_TYPE0(void)
+{
+    uint32_t o = rd(rd(0x0000) + 0x0A), b = rd(0x0010), st = rd(0x0014);
+
+    wd(0x0004, o);
+    wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | rb(b + 0x0A));
+    if (rb(b + 0x0A) != rb(o)) {
+        if (rb(st + 0x0D2F) != 0) {
+            wd(0x0000, rd(st + 0x2912));
+            wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | rw(st + 0x0E38));
+            if (rw(st + 0x0E38) != rw(st + 0x0D36))
+                wd(0x0000, rd(st + 0x2916));
+            EVENT_QUEUE();
+            wd(0x0004, o);
+        }
+        /* CODE:2C61F */
+        st = rd(0x0014);
+        ww(st + 0x2A78, 0);
+        wb(st + 0x0D2F, 0);
+        b = rd(0x0010);
+        wb(o, rb(b + 0x0A));
+        wb(st + 0x0D3C, 0);
+        wb(st + 0x0D3D, 0);
+        wb(b + 0x0B, 0);
+        zone_pay();
+    }
+    ZONE_LEAVE();                                       /* CODE:2C713 */
+}
+
+static void zone_handler(uint16_t type)
+{
+    static char why[48];
+
+    switch (type) {
+    case 0:
+        ZONE_TYPE0();
+        break;
+    case 1:
+        ZONE_TYPE1();
+        break;
+    case 2:
+        ZONE_LEAVE();
+        BALL_BUNDLE2();
+        break;
+    case 3:
+        ZONE_LEAVE();
+        BALL_BUNDLE1();
+        break;
+    default:
+        snprintf(why, sizeof why, "ZONES_CHECK: zone type %u", (unsigned)type);
+        pi_stop(why);
+    }
+}
+
+/* the object of the zone at [0000] left by the ball in [0038]'s low
+ * byte: the ball's number cleared from its byte +0 (types 0, 1) */
+static void zone_unmark(uint32_t z)
+{
+    uint32_t o;
+
+    if (rw(z + 8) > 1)
+        return;
+    o = rd(z + 0x0A);
+    wd(0x0004, o);
+    if ((uint8_t)rd(0x0038) == rb(o))
+        wb(o, 0);
+}
+
+/* CODE:2C1DA: each ball in play's centre (+12h, +14h plus 8) against
+ * the zones at its +64h (0Eh bytes: x0, y0, x1, y1, the type, the
+ * object; a negative x0 ends them): the first one it is inside handled
+ * by its type; the ball's marks taken off the objects of the others */
+static void ZONES_CHECK(void)
+{
+    uint32_t st = rd(0x0014), b, z;
+    uint16_t n = rw(st + 0x0D32);
+
+    wd(0x0008, st + 0x1046);
+    ww(st + 0x0D34, n);
+    if (n == 0)
+        return;
+    do {
+        b = rd(rd(0x0008));
+        wd(0x0010, b);
+        wd(0x0008, rd(0x0008) + 4);
+        if (rb(b + 9) != 0) {
+            ZONE_LEAVE();
+            goto next;
+        }
+        wd(0x0020, (sx16(rw(b + 0x12)) & 0xFFFF0000u) | (uint16_t)(rw(b + 0x12) + 8));
+        wd(0x0024, (sx16(rw(b + 0x14)) & 0xFFFF0000u) | (uint16_t)(rw(b + 0x14) + 8));
+        wd(0x0000, rd(b + 0x64));
+        wd(0x0038, (rd(0x0038) & 0xFFFFFF00u) | rb(b + 0x0A));
+        for (;;) {                                      /* CODE:2C258 */
+            uint16_t x = (uint16_t)rd(0x0020), y = (uint16_t)rd(0x0024);
+
+            z = rd(0x0000);
+            wd(0x0028, (rd(0x0028) & 0xFFFF0000u) | rw(z));
+            if (rw(z) & 0x8000) {
+                ZONE_LEAVE();
+                goto next;
+            }
+            wd(0x002C, sx16(rw(z + 2)));
+            wd(0x0030, sx16(rw(z + 4)));
+            wd(0x0034, sx16(rw(z + 6)));
+            if (x >= rw(z) && y >= rw(z + 2) && x <= rw(z + 4) && y <= rw(z + 6))
+                break;
+            zone_unmark(z);                             /* CODE:2C3A6 */
+            wd(0x0000, z + 0x0E);
+        }
+        /* inside: the type's handler (CODE:2C3DD), then the rest of the
+         * zones only unmarked */
+        {
+            uint16_t type = rw(z + 8);
+            uint32_t keep8 = rd(0x0008);
+
+            wd(0x0028, (rd(0x0028) & 0xFFFF0000u) | rw(0x2C3DD + sx16(type) * 2));
+            zone_handler(type);
+            wd(0x0000, z);
+            wd(0x0008, keep8);
+            wd(0x0038, (rd(0x0038) & 0xFFFFFF00u) | rb(rd(0x0010) + 0x0A));
+        }
+        for (;;) {                                      /* CODE:2C31C */
+            z = rd(0x0000) + 0x0E;
+            wd(0x0000, z);
+            if (rw(z) & 0x8000)
+                break;
+            if (rw(z + 8) == 4) {
+                uint32_t o = rd(z + 0x0A);
+
+                wd(0x0004, o);
+                if ((uint8_t)rd(0x0038) == rb(o + 1))
+                    wb(o + 1, 0);
+            } else {
+                zone_unmark(z);
+            }
+        }
+next:
+        st = rd(0x0014);
+        n = (uint16_t)(rw(st + 0x0D34) - 1);
+        ww(st + 0x0D34, n);
+    } while (n != 0);
+}
+
+/* CODE:2F2AF: a ball to serve (state+0D3Ah) while none waits (state+
+ * 0D3Ch): on the table (state+0D32h) and waiting, the sound record
+ * CODE:1009A; with state+0D3Dh set or Enter (KEY_DOWN+1Ch) the waiting
+ * ball's speed up by 1770h (the plunger, CODE:2F300) */
+static void SERVE(void)
+{
+    uint32_t st = rd(0x0014), p, b;
+    uint8_t n;
+
+    if (rb(st + 0x0D3D) == 0) {
+        if (rw(st + 0x0D3A) != 0 && rb(st + 0x0D3C) == 0) {
+            ww(st + 0x0D32, (uint16_t)(rw(st + 0x0D32) + 1));
+            ww(st + 0x0D3A, (uint16_t)(rw(st + 0x0D3A) - 1));
+            wb(st + 0x0D3D, 0xFF);
+            wb(st + 0x0D3C, 0xFF);
+            wd(0x0000, 0x1009A);
+            SFX_PLAY();
+            return;
+        }
+        if (rb(st + 0x0E62) == 0)
+            return;
+        wb(st + 0x0E62, 0);
+    }
+    /* CODE:2F31C */
+    p = rd(st + 0x2906);
+    wd(0x0000, p);
+    n = rb(p);
+    wd(0x0020, n);
+    if (n == 0)
+        return;
+    wb(p, 0);
+    b = rd(st + (uint32_t)n * 4 + 0x1076);
+    wd(0x0000, b);
+    ww(b + 0x10, (uint16_t)(rw(b + 0x10) - 0x1770));
+}
+
+/* CODE:2B3BE: while the players can still be chosen (state+0D30h), F1..F8
+ * set the count state+0D70h to 1..8, keypad Enter adds one; at most 8 */
+static void PLAYERS_KEYS(void)
+{
+    uint32_t st = rd(0x0014), keys = st + 0x0E81;
+    uint16_t si;
+
+    if (rb(st + 0x0D30) != 0) {
+        wd(0x0020, 7);
+        wd(0x0000, keys);
+        for (si = 7; ; ) {
+            if (rb(keys + sx16(si)) != 0) {
+                wb(keys + sx16(si), 0);
+                si = (uint16_t)(si + 1);
+                wd(0x0020, si);
+                ww(st + 0x0D70, si);
+                break;
+            }
+            wb(keys + sx16(si), 0);
+            if (si == 0) {
+                wd(0x0020, 0);
+                if (rb(st + 0x0EE2) != 0) {
+                    wb(st + 0x0EE2, 0);
+                    wd(0x0020, 1);
+                    ww(st + 0x0D70, (uint16_t)(rw(st + 0x0D70) + 1));
+                }
+                break;
+            }
+            si--;
+            wd(0x0020, si);
+        }
+    }
+    if (rw(st + 0x0D70) > 8)
+        ww(st + 0x0D70, 8);
+}
+
+/* a number into a text record's digits and the record drawn: [0020]'s
+ * low word `n` by DEC_TEXT ending at `end`, then the record `rec` */
+static void number_text(uint16_t n, uint32_t end, uint32_t rec)
+{
+    wd(0x0000, end);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | n);
+    DEC_TEXT();
+    wd(0x0000, rec);
+    DM_TEXT_DRAW();
+}
+
+/* CODE:2B1DC: GAME_PHASE 6, the ball waiting for its launch: the ball
+ * save (SERVE_SECONDS x FRAME_RATE), header slot 34's music record; then
+ * frames of the physics, the zones, the serve and "PLAYER n" (or
+ * "PLAYERS n" while they can be chosen) "BALL n" until the ball leaves
+ * (state+0D3Ch 0: GAME_PHASE 4) or Esc (GAME_PHASE 1, the attract
+ * mode's music) */
+static void BALL_WAIT(void)
+{
+    uint32_t st = rd(0x0014), e;
+
+    e = (uint32_t)rw(st + 0x0E42) * rw(st + 0x50);
+    wd(0x0020, e);
+    ww(st + 0x0D3E, (uint16_t)e);
+    wb(st + 0x0D2F, 0xFF);
+    wd(0x0000, rd(st + 0x292E));
+    MUSIC_REQUEST();
+    for (;;) {
+        FRAME_STEP();
+        /* CODE:2B49A (156C3, 14DE1, 14C45 are RETs) */
+        PLAY_SCROLL();
+        LIGHTS_STEP();
+        DROPS_QUEUE_STEP();
+        SLINGS_STEP();
+        HOLE_EJECT_STEP();
+        DROPS_RAISE_STEP();
+        BALLS_PHYSICS();
+        ZONES_CHECK();
+        SERVE();
+        DM_CLEAR();
+        st = rd(0x0014);
+        if (rb(st + 0x0D30) == 0)
+            number_text((uint16_t)(rw(st + 0x0D72) + 1), 0x2B39A, 0x2B38A);
+        else
+            number_text(rw(st + 0x0D70), 0x2B3AD, 0x2B39C);
+        st = rd(0x0014);
+        number_text((uint16_t)(rw(st + 0x0D38) + 1), 0x2B3BC, 0x2B3AE);
+        DM_SCORE_IDLE();
+        FLASH_STEP();
+        PLAYERS_KEYS();
+        st = rd(0x0014);
+        if (rb(st + 0x0E47) != 0) {
+            /* CODE:2B345 */
+            wb(st + 0x0E47, 0);
+            wb(st + 0x0E35, 1);
+            ww(st + 0x8E, 1);
+            ww(st + 0x2A88, 1);
+            ww(st + 0x2A8A, 0);
+            ww(st + 0x2A84, 0xFFFE);
+            return;
+        }
+        if (rb(st + 0x0D3C) == 0)
+            break;
+    }
+    ww(st + 0x2A78, 0);
+    wb(st + 0x2A75, 0);
+    ww(st + 0x8E, 4);
+}
+
 /* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
  * +15h, and LAST_KEY cleared): frames with "REALLY QUIT TABLE?"
  * (CODE:2A93E) on the display and no display stream, until Y (QUIT_TABLE,
@@ -671,6 +1255,10 @@ void TABLE_GAME(void)
         }
         if (ph == 2) {
             GAME_START();
+            continue;
+        }
+        if (ph == 6) {
+            BALL_WAIT();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));

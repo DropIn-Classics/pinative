@@ -9,7 +9,7 @@
 #include "pmem.h"
 
 /* ADC AL,src and DAA on the byte at DS:`dst`; *cf carries */
-static void adc_daa(uint32_t dst, uint32_t src, int *cf)
+void adc_daa(uint32_t dst, uint32_t src, int *cf)
 {
     uint8_t a = rb(dst), b = rb(src), al;
     unsigned sum = (unsigned)a + b + (unsigned)*cf;

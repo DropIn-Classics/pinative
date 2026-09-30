@@ -59,8 +59,11 @@ void HCB_SEEK(uint32_t edx);
 /* 1: callbacks 6 to 9 keep the file in the table's cells */
 void hcb_use_table(int table);
 
-/* tblinit.c: CODE:29A5A, the ball at [0010] put at the plunger */
+/* tblinit.c: CODE:29A5A, the ball at [0010] put at the plunger;
+ * CODE:2C414, 2C467, the level's six pointers into it */
 void BALL_PLACE(void);
+void BALL_BUNDLE1(void);
+void BALL_BUNDLE2(void);
 
 /* dotmatrix.c: CODE:2833E, 1 (CF) when a block or file failed; CODE:2FBA8 */
 int DM_LOAD(void);
@@ -76,6 +79,8 @@ void DM_SCORE_IDLE(void);
 /* module.c: CODE:B22D, 1 (CF) when a file failed; CODE:30368, host
  * vector +18h */
 int TABLE_MODULE(void);
+/* ADC AL,[src] and DAA into the byte at `dst`, *cf the carry */
+void adc_daa(uint32_t dst, uint32_t src, int *cf);
 void DEC_TEXT(void);
 
 /* tblvga.c: CODE:911F */
@@ -94,8 +99,12 @@ int MULTIBALL_CAP(void);
 /* flipper.c: CODE:1527F, CODE:156C4 */
 void FLIPPER_RENDER(void);
 void FLIPPERS_DRAW(void);
-/* CODE:1048B */
+/* CODE:1048B; CODE:144AD, CODE:104A5 */
 void FLIPPERS_STEP(void);
+void FLIPPERS_MOVE(void);
+void FLIPPER_SOUNDS(void);
+/* phys.c: CODE:1023E */
+void BALLS_PHYSICS(void);
 
 /* lights.c: CODE:29AF9, CODE:2EF7A, CODE:2ED15, CODE:2FE8E */
 void LIGHTS_RESET(void);

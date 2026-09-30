@@ -41,6 +41,16 @@ static void ball_bundle(uint32_t from, uint8_t level)
     wb(ball + 8, level);
 }
 
+void BALL_BUNDLE1(void)
+{
+    ball_bundle(0x28A6, 0);
+}
+
+void BALL_BUNDLE2(void)
+{
+    ball_bundle(0x28BE, 0xFF);
+}
+
 /* CODE:29A5A: the ball at [0010] put at the plunger: its words +12h, +14h
  * to 11Ch, 1FEh (plus their low three bits) and shifted by 0Ah into +1Eh,
  * +22h, the high bytes of its words +0Eh, +10h to 2, byte +1 0, the

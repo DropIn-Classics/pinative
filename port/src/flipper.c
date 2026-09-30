@@ -507,7 +507,7 @@ static void nudge_press(uint32_t st, int bit)
 
 /* CODE:144AD: the nudges, the flipper keys, each flipper's move and the
  * tilt count */
-static void FLIPPERS_MOVE(void)
+void FLIPPERS_MOVE(void)
 {
     uint32_t st = rd(0x0014), p;
     uint16_t di;
@@ -630,7 +630,7 @@ static void FLIPPERS_MOVE(void)
 
 /* CODE:104A5: a flipper's sound when state+2A7Dh (left) or 2A7Eh (right)
  * changed: FLIP_UP_SFX when it went to FFh, FLIP_DOWN_SFX to 0 */
-static void FLIPPER_SOUNDS(void)
+void FLIPPER_SOUNDS(void)
 {
     uint32_t st = rd(0x0014);
     int k;

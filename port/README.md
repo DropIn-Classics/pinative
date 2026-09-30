@@ -70,9 +70,17 @@ the high-score pages (CODE:2A6FA: an entry a page, its score drawn from
 packed BCD, src/dotmatrix.c) and the attract record again, round and
 round with no key; the table's keyboard handler (KBD_IRQ, src/table.c),
 so F1..F8 or keypad Enter start a game (GAME_PHASE 2, CODE:2A976: the
-players, balls, lights, counters, records and drop targets reset; then
-`Stopped before CODE:2B1DC`, GAME_PHASE 6, on table 2 at its module's
-slot 40, `GAME_START: the module's slot 40 is not a RET`);
+players, balls, lights, counters, records and drop targets reset; on
+table 2 `GAME_START: the module's slot 40 is not a RET`), the ball
+waiting for its launch (GAME_PHASE 6, CODE:2B1DC, src/play.c: the ball
+save, the music request, the scroll in play, the drop targets' and
+slingshots' steps, the balls' physics in src/phys.c: each ball's edge
+sampled against the level's map, the surface's normal and number, the
+bounce with its friction, the move and the slope; the zones of types
+0 to 3 with their points, the serve and Enter's plunger, "PLAYER n BALL
+n") up to `Stopped before CODE:2B76E` when the ball leaves the lane
+(GAME_PHASE 4); the driver's command 2 (the pause toggle) with the
+PIC's mask the port now keeps for it;
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
 key back to the attract mode; with no key the port stops there only when the window is closed
@@ -390,6 +398,27 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   the leftovers named above. The resets ran on a table fresh from the
   attract mode, so most of what they write was already so; a second
   game (after a game over) not tried.
+- 2026-09-30, Linux: GAME_PHASE 6 on table 1 (dosrun `-key 150 3B`,
+  the port's F1 at picture 7087 as before): at the frame loop's start
+  CODE:2B21E (`-break 12C14E#N`, a scratch stop in the port, since
+  removed) after 1, 99 and, with Enter (dosrun `-key 153.24 1C`, the
+  port's DK_KEYS `7201:1C 7210:9C`), 129 frames, and at GAME_PHASE 4's
+  routine CODE:2B76E (`-break 12C69E`, t=155.53, where the port stops):
+  CODE differs only in FRAME_SPINS, TAIL and video memory equal, the
+  heap blocks equal but the leftovers named above and the driver's
+  sample clock. Tables 3 and 4 (F1 at 7102 and 7143, Enter 114 pictures
+  later; dosrun Enter at 153.24): the same at CODE:2B76E. Table 2 still
+  stops in GAME_START. The driver's command 2 (called twice by
+  MUSIC_UPDATE at the phase's start): PAUSED, PAUSE_IMR1 (FCh) and
+  PAUSE_IMR2 equal. The driver's clock drifts in this phase: a frame
+  of the run takes about 170,500 instructions (16,708,861 for 98
+  frames), 28.4 ms at dosrun's 6,000,000 a second, two pictures, where
+  the port does a frame a picture; TICKS went up 83 in the run and 70
+  in the port over those frames, so the module's position differs too
+  (not audible: NOSOUND). Not reached here: a flipper's mask, the
+  flippers' surfaces, bumpers' and slingshots' kicks, two balls, zone
+  type 4, a light record in a zone, RECORD_DISPATCH (the port stops by
+  name at each).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
