@@ -7,11 +7,51 @@
 #include <stdio.h>
 #include "game.h"
 #include "names.h"
+#include "pmax.h"
 #include "pmem.h"
 
 static uint32_t sx16(uint16_t v)
 {
     return (uint32_t)(int32_t)(int16_t)v;
+}
+
+/* CODE:2F9CF, display opcode 1 (an animation record, five words): the
+ * record to state+2A50h, the words to its +6..+0Eh (the first shifted
+ * right by 4 and doubled), +12h from +22h, +10h and +16h 0 */
+static void OP_ANIM(void)
+{
+    uint32_t p = rd(0x0004), a = rd(p + 2), ecx;
+
+    wd(0x0000, a);
+    wd(rd(0x0014) + 0x2A50, a);
+    ecx = sx16(rw(p + 6));
+    wd(0x0024, sx16(rw(p + 8)));
+    wd(0x0028, sx16(rw(p + 10)));
+    wd(0x002C, sx16(rw(p + 12)));
+    wd(0x0030, sx16(rw(p + 14)));
+    ecx = (ecx & 0xFFFF0000u) | (uint16_t)((uint16_t)ecx >> 4 << 1);
+    wd(0x0020, ecx);
+    a = rd(0x0000);
+    ww(a + 6, (uint16_t)ecx);
+    ww(a + 8, (uint16_t)rd(0x0024));
+    ww(a + 10, (uint16_t)rd(0x0028));
+    ww(a + 12, (uint16_t)rd(0x002C));
+    ww(a + 14, (uint16_t)rd(0x0030));
+    ww(a + 0x12, rw(a + 0x22));
+    wb(a + 0x10, 0);
+    wd(a + 0x16, 0);
+}
+
+/* CODE:2FB6F, display opcode 7 (a word): a wait of the word times
+ * FRAME_RATE (state+50h) frames, state+2A3Eh, and state+2A3Ch FFh */
+static void OP_WAIT(void)
+{
+    uint32_t st = rd(0x0014);
+    uint32_t edi = (uint32_t)rw(rd(0x0004) + 2) * rw(st + 0x50);
+
+    wd(0x0020, edi);
+    ww(st + 0x2A3E, (uint16_t)edi);
+    wb(st + 0x2A3C, 0xFF);
 }
 
 /* a display opcode's routine by its address */
@@ -20,6 +60,18 @@ static void display_op(uint32_t a)
     static char name[16];
 
     switch (a) {
+    case 0x2F9CF:
+        OP_ANIM();
+        break;
+    case 0x2FB6F:
+        OP_WAIT();
+        break;
+    case 0x2FA55:               /* opcode 11h, a RET */
+    case 0x2FBA4:               /* opcodes 4, 15h, 16h, 17h, RETs */
+    case 0x2FBA5:
+    case 0x2FBA6:
+    case 0x2FBA7:
+        break;
     default:
         snprintf(name, sizeof name, "CODE:%X", (unsigned)a);
         pi_stop(name);
@@ -235,6 +287,121 @@ out:
     wd(0x0004, save4);
 }
 
+/* CODE:27C2A: the animation `ebp`'s next frame into DM_ANIM's block (a
+ * new start, +16h 0, takes frame +24h, or 1 when that is not below the
+ * frame count, the first dword of DM_ANIMS_SEL; its header words width,
+ * height, count to +1Ah, +1Eh, +22h and +12h): from x +6 x 4, 0A0h bytes a
+ * line, each data byte up to 4 a pixel of colour FCh + byte, above 4
+ * that many less 4 pixels passed over; the data's end back */
+static uint32_t ANIM_FRAME(uint32_t ebp)
+{
+    uint32_t fs = pmax_base(rw(N_DM_ANIMS_SEL)), es, edi, ebx, ecx, edx;
+
+    if (rd(ebp + 0x16) == 0) {
+        /* CODE:27C98 */
+        ebx = rd(ebp + 0x24);
+        if (ebx >= lrd(fs))
+            ebx = 1;
+        ebx = lrd(fs + ebx * 4);
+        wd(ebp + 0x16, ebx + 6);
+        wd(ebp + 0x1A, lrw(fs + ebx));
+        wd(ebp + 0x1E, lrw(fs + ebx + 2));
+        ww(ebp + 0x22, lrw(fs + ebx + 4));
+        ww(ebp + 0x12, lrw(fs + ebx + 4));
+    }
+    es = pmax_base(rw(N_DM_ANIM));
+    edi = (uint32_t)rw(ebp + 6) << 2;
+    ebx = rd(ebp + 0x16);
+    ecx = rd(ebp + 0x1E);
+    do {
+        edx = rd(ebp + 0x1A);
+        do {
+            uint8_t al = lrb(fs + ebx++);
+
+            if (al <= 4) {
+                lwb(es + edi++, (uint8_t)(al + 0xFC));
+                edx--;
+            } else {
+                edi += (uint32_t)(al - 4);
+                edx -= (uint32_t)(al - 4);
+            }
+        } while (edx != 0);
+        edi = edi - rd(ebp + 0x1A) + 0xA0;
+    } while (--ecx != 0);
+    wd(0x0004, ebx);
+    return ebx;
+}
+
+/* CODE:27ABD: from the animation [0020] along the list (+0 the next,
+ * [0008] the one before): one waiting (+10h, from +11h after each frame)
+ * ends the call; else its next frame (ANIM_FRAME, the data's position to
+ * +16h), and after +12h frames (from +22h) it starts again while +0Eh
+ * counts down, else it leaves the list (+0 cleared; state+2A50h/2A54h,
+ * the list's head and last, mended).  The background animation
+ * (ANIMS_BG_ONLY) starts again for ever */
+static void anims_play(uint32_t st)
+{
+    uint32_t ebp;
+
+    wd(0x0000, rd(0x0020));
+    ebp = rd(0x0000);
+    for (;;) {
+        if (rb(ebp + 0x10) != 0) {
+            wb(ebp + 0x10, (uint8_t)(rb(ebp + 0x10) - 1));
+            return;
+        }
+        wb(ebp + 0x10, rb(ebp + 0x11));
+        wd(0x0020, rd(ebp + 0x16));
+        wd(ebp + 0x16, ANIM_FRAME(ebp));
+        if (rb(N_ANIMS_BG_ONLY) != 0) {
+            ww(ebp + 0x12, (uint16_t)(rw(ebp + 0x12) - 1));
+            if (rw(ebp + 0x12) == 0) {
+                ww(ebp + 0x12, rw(ebp + 0x22));
+                wd(ebp + 0x16, 0);
+            }
+            return;
+        }
+        /* CODE:27B39 */
+        ww(ebp + 0x12, (uint16_t)(rw(ebp + 0x12) - 1));
+        if (rw(ebp + 0x12) == 0) {
+            int leave = 1;
+
+            if (rw(ebp + 0x0E) != 0) {
+                uint32_t old16 = rd(ebp + 0x16);
+
+                ww(ebp + 0x0E, (uint16_t)(rw(ebp + 0x0E) - 1));
+                ww(ebp + 0x12, rw(ebp + 0x22));
+                wd(ebp + 0x16, 0);
+                leave = old16 == 0;
+            }
+            if (leave) {
+                /* CODE:27B6F */
+                wd(0x0020, rd(ebp));
+                if (rd(0x0020) != 0) {
+                    if (rd(0x0008) != 0)
+                        wd(rd(0x0008), rd(0x0020));
+                    else
+                        wd(st + 0x2A50, rd(0x0020));
+                } else if (rd(0x0008) != 0) {
+                    wd(rd(0x0008), 0);
+                    wd(st + 0x2A54, rd(0x0008));
+                } else {
+                    wd(st + 0x2A50, rd(0x0008));
+                    wd(st + 0x2A54, rd(0x0008));
+                }
+                wd(ebp, 0);
+            }
+        }
+        /* CODE:27BF2 */
+        wd(0x0008, rd(0x0000));
+        wd(0x0020, rd(ebp));
+        if (rd(0x0020) == 0)
+            return;
+        wd(0x0000, rd(0x0020));
+        ebp = rd(0x0000);
+    }
+}
+
 /* CODE:27A0E: ANIMS_BG_ONLY 0, [0008] 0; with no animation (state+2A50h)
  * ANIMS_BG_ONLY FFh and, while no record runs (the low word of
  * state+2A2Eh) and there is a background animation (state+2A5Ch), that
@@ -249,13 +416,25 @@ void ANIMS_STEP(void)
     wb(N_ANIMS_BG_ONLY, 0);
     wd(0x0008, 0);
     wd(0x0020, rd(st + 0x2A50));
-    if (rd(0x0020) != 0)
-        pi_stop("CODE:27A7F");
+    if (rd(0x0020) != 0) {
+        /* CODE:27A7F: the background animation set back to its start */
+        wd(0x0024, rd(st + 0x2A5C));
+        if (rd(0x0024) != 0) {
+            wd(0x0000, rd(0x0024));
+            ebx = rd(0x0000);
+            ww(ebx + 0x12, rw(ebx + 0x22));
+            wd(ebx + 0x16, 0);
+        }
+        anims_play(st);
+        return;
+    }
     wb(N_ANIMS_BG_ONLY, 0xFF);
     if (rw(st + 0x2A2E) == 0) {
         wd(0x0020, rd(st + 0x2A5C));
-        if (rd(0x0020) != 0)
-            pi_stop("CODE:27ABD");
+        if (rd(0x0020) != 0) {
+            anims_play(st);
+            return;
+        }
     }
     /* CODE:27A62 */
     ebx = rd(st + 0x2A5C);

@@ -3212,6 +3212,18 @@ taken off and drawn again: BALL_ERASE's routines ran), the heap blocks
 equal but the known leftovers, the driver's block in SAVED_61,
 SAMPLE_POS and TIMER_COUNT.
 
+Opcode 1 (OP_ANIM) makes its record state+2A50h's animation, opcode 7
+(OP_WAIT) a wait of its word times FRAME_RATE frames; opcodes 4, 11h,
+15h, 16h and 17h are bare RETs. ANIMS_STEP then plays the animations on
+the list from state+2A50h (CODE:27ABD): one frame each a call by
+ANIM_FRAME (CODE:27C2A) into DM_ANIM's block, 160 bytes a line, its
+frames one after the other in DM_ANIMS_SEL. Against the runs at opcode
+2 (CODE:2F7A5, `-break 1306D5`), all four tables: TAIL and video
+memory equal, the same heap blocks equal as at CODE:2F9CF, CODE but
+FRAME_SPINS and FRAME_COUNT: the port's 26h, the run's 25h. The port's
+lead is presumably the start-up's longer gaps between retraces (see
+"The balls' sprites"); not looked into yet.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3440,7 +3452,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      opcodes as the attract stream reaches them (opcode 1 first, the
      animations of ANIMS_STEP with it), the high-score pages
      (CODE:2A6FA), KBD_IRQ (CODE:A076); a comparison some hundred frames
-     on (FRAME_COUNT against the run's start-up gaps).
+     on (FRAME_COUNT against the run's start-up gaps). Done
+     2026-09-30: display opcodes 1 and 7, the RET opcodes and
+     ANIMS_STEP's animation path, up to opcode 2 (CODE:2F7A5; see "The
+     attract mode's display"). Next: FRAME_COUNT, one ahead there.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

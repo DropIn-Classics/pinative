@@ -62,9 +62,10 @@ the retrace waited, the ball taken off and drawn by the original's own
 sprite routines run from the image, src/codeint.c and src/ball.c, the
 drop targets that changed, the flippers, the attract scroll and the
 flippers' moves; the display's queue and streams, src/display.c, the
-attract mode's display record queued, its keys) up to the second
-frame's first display opcode, CODE:2F9CF (`Stopped before
-CODE:2F9CF`); the Info page (a table's
+attract mode's display record queued, its keys; display opcodes 1
+and 7, the animation played into the dot-matrix display's buffer) up
+to display opcode 2, CODE:2F7A5 (`Stopped before CODE:2F7A5`); the
+Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -312,6 +313,14 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   heap blocks equal but the leftovers named above; the driver's block in
   SAVED_61, SAMPLE_POS and TIMER_COUNT. No key pressed: ATTRACT_KEYS'
   paths with a key not checked.
+- 2026-09-30, Linux: each of the four tables up to display opcode 2,
+  CODE:2F7A5 (dosrun `-break 1306D5 -mem -vram`, the same keys), after
+  opcodes 1 and 7 and the animation's frames: CODE differs in
+  FRAME_SPINS and FRAME_COUNT (the port's 26h, the run's 25h: see
+  docs/HANDOFF.md, "The attract mode's display"), TAIL and video memory
+  equal, the heap blocks equal but the leftovers named above (the same
+  blocks as at CODE:2F9CF). Whether ANIMS_STEP's paths for a list of
+  more than one animation and for taking one off ran is not looked at.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
