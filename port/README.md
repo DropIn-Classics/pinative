@@ -39,8 +39,10 @@ original's goodbye text; a table chosen is started (src/table.c: the
 selector aliases, the keyboard handler set, the driver started again
 with the table's two modules, command 11h) and TABLE_LOAD2's first
 blocks (the hide-lights mask, vm_data.mgl, the dot-matrix display's
-areas, fonts and animations: src/dotmatrix.c) up to the module
-(`Stopped before CODE:B22D`); the Info page (a table's
+areas, fonts and animations: src/dotmatrix.c) and the table's code
+module (src/module.c: SOURCE\T00n.BPC loaded and relocated, the
+resources its header names, the options applied) up to CODE:911F
+(`Stopped before CODE:911F`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -207,6 +209,17 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   does not clear ("Hidelights mask" 217 bytes, "Temp Text area" 14):
   free memory that already differed at CODE:A3F0, written by neither
   since (docs/HANDOFF.md, "The dot-matrix display's blocks").
+- 2026-09-30, Linux: each of the four tables up to CODE:911F (dosrun
+  `-break 10A04F -mem -vram`; Enter at 112 and 115, Down at 114 for
+  table 2, 113 and 114 for 3, 113, 113.5 and 114 for 4; the port's
+  DK_KEYS Enter at 5637 and 5815, Down at 5696, 5740, 5780 as many as
+  needed, each released 9 pictures later; a Down at 5666 was lost): CODE
+  differs only in FRAME_SPINS, TAIL and video memory equal; of the used
+  heap blocks (61, 82, 61, 59) all equal but the driver's SAVED_61, the
+  leftovers in the blocks taken with AH=0Ah and not cleared (see above)
+  and, on table 2, 3 bytes at +2088h of a block of the driver's (host
+  callback 0), which differ already at CODE:A3F0 (docs/HANDOFF.md, "The
+  module's load").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

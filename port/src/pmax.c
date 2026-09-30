@@ -251,6 +251,11 @@ uint32_t pmax_alloc_linear(uint32_t size)
     return at;
 }
 
+uint32_t pmax_alloc_linear_here(uint32_t size)
+{
+    return block_alloc(size, NULL);
+}
+
 void pmax_free_linear(uint32_t base)
 {
     int k;

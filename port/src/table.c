@@ -6,9 +6,9 @@
  * kept in memory differ).  It loads the table (TABLE_LOAD: the driver
  * started again with the table's music; TABLE_LOAD2: the module and the
  * rest), runs the game with IRQ 1 unmasked (CODE:B928) and frees it all.
- * Translated so far: TABLE_LOAD2 up to the module (CODE:B22D;
- * docs/HANDOFF.md, "The table's start", "The dot-matrix display's
- * blocks").
+ * Translated so far: TABLE_LOAD2 up to CODE:911F, the module loaded
+ * (docs/HANDOFF.md, "The table's start", "The dot-matrix display's
+ * blocks", "The module's load").
  */
 #include <string.h>
 
@@ -185,9 +185,9 @@ static int TABLE_LOAD2(void)
         return 1;
     if (rb(N_TABLE_NUM) != 3 && VM_DATA_LOAD())
         return 1;
-    if (DM_LOAD())
+    if (DM_LOAD() || TABLE_MODULE())
         return 1;
-    pi_stop("CODE:B22D");
+    pi_stop("CODE:911F");
     return 1;
 }
 

@@ -771,7 +771,7 @@ name       CODE:98FE TBL_CALLBACKS ; HOST_CALLBACKS again (CODE:995E ...), the f
 name       CODE:9944 TBL_HCB_CURSOR
 name       CODE:9948 TBL_HCB_FILE_SEL
 name       CODE:9CD4 JINGLE_END_CB
-code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, CODE:B22D (the module), CODE:911F, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), CODE:BA9B, CODE:B797, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
+code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, TABLE_MODULE, CODE:911F, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), CODE:BA9B, CODE:B797, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
 name       CODE:A11B HIDELIGHTS_SEL ; "Hidelights mask": 33450h bytes by INT 92h AH=0Ah, the selector stored whether or not it failed
 code       CODE:B1D0 VM_DATA_LOAD  ; VM_DATA_NAME ("VideoMode data") by INT 94h AH=1 into VM_DATA_SEL and VM_DATA_SIZE; its CF
 name       CODE:B195 VM_DATA_SEL
@@ -805,6 +805,36 @@ code       CODE:278D8 DM_ANIMS_LOAD ; DM_ANIMS_NAME ("Manglade Anims") by INT 94
 name       CODE:278D2 DM_ANIMS_SEL
 name       CODE:278D4 DM_ANIMS_SIZE
 name       CODE:2791F DM_ANIMS_NAME ; "data\s00n\anims\allanims.mgl"
+; the table's module (2026-09-30, the code and docs/bpc-module.md; the
+; port against a run at CODE:911F, table 1)
+code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)
+name       CODE:CC22 TABLE_INDEX   ; the table 0..3 (TABLE_DIGITS), read as a word here and as a byte by HISCORES_GET
+name       CODE:DBF5 TBL_DBF5      ; a byte cleared by TABLE_MODULE (who reads it not followed)
+name       CODE:BBA3 MODULE_NAME   ; "source\t00n.bpc", later ".rel"
+name       CODE:BBAF MODULE_EXT    ; its extension, "bpc" or "rel"
+code       CODE:B3F5 MODULE_LOAD   ; MODULE_NAME ("table bin file", INT 94h AH=1) into MODULE_SEL, MODULE_SIZE, MODULE_BASE; ".rel" ("... relocation table") with policy 1 into MODULE_REL_SEL, RELOCATE; the header's 2Dh dwords (read through MODULE_SEL) to MODULE_HEADER, one with bit 31 set a resource's name loaded ("DATALOAD", its selector added to BLOCKS; bit 30 too: two names joined, CODE:B5B6) and replaced by its DS offset, in the header and by REL_REPLACE in the module. CF with AL 1..4 on a failed file; after a resource's failure the RET takes the pushed dword (not followed)
+name       CODE:A10D MODULE_SEL
+name       CODE:A10F MODULE_SIZE
+name       CODE:A11D MODULE_BASE   ; the module's DS offset (INT 93h AH=0Bh less TABLE_BASE)
+name       CODE:B725 MODULE_REL_SEL
+name       CODE:F3E4 MODULE_HEADER ; the relocated header, 2Dh dwords (docs/bpc-module.md)
+code       CODE:B743 RELOCATE      ; FS:ESI ECX dwords, each an offset in the module whose dword gets EBX (MODULE_BASE) added; FS, ESI, EBX, ECX kept in REL_SEL .. REL_COUNT for REL_REPLACE
+name       CODE:B735 REL_SEL
+name       CODE:B737 REL_START
+name       CODE:B73B REL_BASE
+name       CODE:B73F REL_COUNT
+code       CODE:B768 REL_REPLACE   ; each relocated dword equal to EDX set to EAX
+name       CODE:B5B2 DATALOAD2_KEY ; the header's value for two joined files (bits 31, 30 cleared), what REL_REPLACE replaces
+name       CODE:B721 DATALOAD2_TEMP1 ; the first file's selector ("TEMP DATALOAD 1", policy 1), freed after
+name       CODE:B723 DATALOAD2_TEMP2 ; the second's ("TEMP DATALOAD 2")
+code       CODE:B366 HISCORES_GET  ; the table's 32h bytes of HISCORES (TABLE_INDEX) to TABLE_HISCORES; CF when its first byte is 0
+code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94h AH=6 EDX 9Dh (the options saved, presumably; not followed)
+name       CODE:D83A TABLE_HISCORES
+code       CODE:30368 DEC_TEXT     ; host vector +18h (see the comment there)
+name       CODE:30581 DEC_BCD      ; the BCD word DEC_TEXT adds up
+name       CODE:30585 DEC_ONES     ; BCD words 1..15
+name       CODE:305A5 DEC_SIXTEENS ; BCD words 16..240
+name       CODE:305C5 DEC_256S     ; BCD words 256..3840
 code       CODE:2837D DM_FREE      ; CODE:27136 (the five fonts, DM_TEXT, DM_TEXT_TEMP freed) and CODE:2793C (DM_ANIMS_SEL, DM_ANIM, DM_ANIM_TEMP freed)
 
 dptr       CODE:02D1 CODE	; MOV 86Ch: a pointer (read after a jump)

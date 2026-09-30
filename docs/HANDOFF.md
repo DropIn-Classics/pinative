@@ -2839,6 +2839,40 @@ Found on the way: `port/build/game` moves into the data folder on the
 port's first start since the doskit update (see "Start here"); the runs
 now take `-game game`.
 
+### The module's load
+
+TABLE_MODULE (CODE:B22D; names in src/ILLUSION.hints, "the table's
+module") makes the module's name `source\t00n.bpc` with DEC_TEXT (host
+vector +18h: the low three nibbles of [CODE:0020] as up to three
+decimal digits) and MODULE_LOAD (CODE:B3F5) does what
+docs/bpc-module.md describes: the module, its `.rel` from the top of
+the heap, each dword the `.rel` names given the module's DS offset, the
+header's 2Dh dwords to MODULE_HEADER (CODE:F3E4). A header dword with
+bit 31 set is a resource: the file its (relocated) pointer names
+("DATALOAD", the selector added to BLOCKS), or with bit 30 too, two
+files named one after the other, read from the top and joined into a
+block of INT 92h AH=9 ("DATALOAD 2", its linear address added to
+ALLOCS). Either way every relocated dword equal to the pointer becomes
+the loaded block's DS offset (REL_REPLACE). Then OPTIONS_APPLY,
+BALLS_ON_TABLE 1, the module's slot 39 (a RET; the port checks that the
+byte is C3h) and HISCORES_GET (the table's 32h bytes of HISCORES).
+
+INT 92h AH=9 allocates by the policy set (0 here), from the bottom: in
+the run of table 1 the two joined blocks lay at 2E5920h and 300910h,
+where the port's first fit put them (pmax_alloc_linear_here; AH=6
+always takes the top).
+
+Runs 2026-09-30 of all four tables to CODE:911F (keys in port/README.md,
+"Checked"; Up in the table menu does not wrap to table 4): the port
+equal but for FRAME_SPINS, SAVED_61 and the leftovers in "Hidelights
+mask" and a "Temp" area (see "The dot-matrix display's blocks").
+Table 2 has 3 more bytes that differ, at +2088h of a block of 2090h
+bytes that host callback 0 ("Used by MS32") gave the driver in
+TABLE_SOUND: 47h 62h .. 04h in the run, 0 in the port, the same at
+CODE:A3F0 already, so before TABLE_LOAD2. Whether the driver wrote them
+or they are a leftover (the block's asked size would tell) is not
+followed; table 1 has no such difference.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3037,8 +3071,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      first (item 5 below). Done 2026-09-30: TABLE up to TABLE_LOAD2
      (CODE:B048; see "The table's start"). Done 2026-09-30: TABLE_LOAD2
      up to the module, CODE:B22D (see "The dot-matrix display's
-     blocks"). Next: CODE:B22D (the module, OPTIONS_APPLY), the rest of
-     TABLE_LOAD2, then the game at CODE:B928.
+     blocks"). Done 2026-09-30: the module's load, up to CODE:911F on
+     all four tables (see "The module's load"). Next: the rest of
+     TABLE_LOAD2 (CODE:911F, CODE:BA9B, CODE:B797, CODE:28C45,
+     CODE:15030, MULTIBALL_CAP), then the game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

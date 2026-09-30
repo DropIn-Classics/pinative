@@ -58,6 +58,10 @@ uint16_t pmax_alloc_top(uint32_t size);
  * when there is no room.  INT 92h AH=2 frees it by that address. */
 uint32_t pmax_alloc_linear(uint32_t size);
 void pmax_free_linear(uint32_t base);
+/* INT 92h AH=9 (a name in ESI, which goes only into pMAX's header): the
+ * same by the policy set, not from the top (the module's "DATALOAD 2",
+ * docs/HANDOFF.md, "The module's load") */
+uint32_t pmax_alloc_linear_here(uint32_t size);
 /* INT 92h AH=8: the allocation policy (0 from the bottom of the heap, 1
  * from its top, 2 DOS memory); pmax_load and pmax_alloc follow it.  INT
  * 92h AH=0Ah (a block with a name) is pmax_alloc: the name goes only into

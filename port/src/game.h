@@ -58,6 +58,11 @@ void hcb_use_table(int table);
 /* dotmatrix.c: CODE:2833E; 1 (CF) when a block or file failed */
 int DM_LOAD(void);
 
+/* module.c: CODE:B22D, 1 (CF) when a file failed; CODE:30368, host
+ * vector +18h */
+int TABLE_MODULE(void);
+void DEC_TEXT(void);
+
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 
