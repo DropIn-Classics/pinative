@@ -199,7 +199,9 @@ static int TABLE_LOAD2(void)
     }
     TOP_COLOURS_SET();
     BALLS_INIT();
-    pi_stop("CODE:28C45");
+    if (LIGHTS_LOAD() || FLIPDAT_LOAD())
+        return 1;
+    pi_stop("MULTIBALL_CAP");
     return 1;
 }
 

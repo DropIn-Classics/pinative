@@ -1,8 +1,11 @@
 /* tblinit.c - TABLE_LOAD2's last steps: the top four colours, the balls'
- * records and the flippers' start (BALLS_INIT, CODE:B797).
+ * records and the flippers' start (BALLS_INIT, CODE:B797), the lights'
+ * and drop targets' files (LIGHTS_LOAD, CODE:28C45), the flippers' data
+ * and blocks (FLIPDAT_LOAD, CODE:15030).
  */
 #include "game.h"
 #include "names.h"
+#include "pmax.h"
 #include "pmem.h"
 #include "vga.h"
 
@@ -126,4 +129,133 @@ void BALLS_INIT(void)
             ww(p + 0x1A, 0xFFFF);
         }
     }
+}
+
+/* a file loaded as the INT 94h AH=1 stubs do, its name at DS:`name`: its
+ * selector to the word `sel`, its size to the dword `size`; 1 (CF) when
+ * it is not there */
+static int load(uint32_t name, uint32_t sel, uint32_t size)
+{
+    uint32_t n = 0;
+    uint16_t s = pmax_load_ds(name, &n);
+
+    ww(sel, s);
+    wd(size, n);
+    return !s;
+}
+
+/* CODE:28D64: drops.mgl; masks.mgl but on table 2 (its failure passed
+ * over) */
+static int DROPS_LOAD(void)
+{
+    if (load(N_DROPS_NAME, N_DROPS_SEL, N_DROPS_SIZE))
+        return 1;
+    if (rb(N_TABLE_NUM) != 2)
+        load(N_MASKS_NAME, N_MASKS_SEL, N_MASKS_SIZE);
+    return 0;
+}
+
+/* CODE:28C45 */
+int LIGHTS_LOAD(void)
+{
+    uint32_t base = pmax_base(rw(N_HIDELIGHTS_SEL)), i;
+
+    for (i = 0; i < 0xFF; i++) {
+        wb(N_LIGHTS_ONE1 + i, 1);
+        wb(N_LIGHTS_ONE2 + i, 1);
+    }
+    for (i = 0; i < 0x31380; i++)
+        lwb(base + i, 0);
+    if (load(N_LIGHTS_NAME, N_LIGHTS_SEL, N_LIGHTS_SIZE))
+        return 1;
+    wd(N_LIGHTS_POS, 0);
+    return DROPS_LOAD();
+}
+
+/* a block's selector added to BLOCKS */
+static void blocks_add(uint16_t sel)
+{
+    uint32_t p = rd(N_BLOCKS_END);
+
+    ww(p, sel);
+    wd(N_BLOCKS_END, p + 2);
+}
+
+/* CODE:150B0: for each flipper record (four; type 3 passed over), from
+ * its angle +6 to +8 (by 1, or -1 when +0Ah is not 0, around 0..77h) a
+ * rectangle of 4 words per angle into +F2h upwards (or +1EAh downwards):
+ * x +2 less FLIP_SHAPES's x and 10h, y +4 less its y and 10h, +F0h, the
+ * bottom (y less its y, plus its height); then two blocks of (the
+ * heights' sum + 32h) x 40h bytes, cleared: "flipper gfx data" (its
+ * selector to +1F2h) and "flipper mask data" (its DS offset to +28h, its
+ * size to +2Ch), both added to BLOCKS */
+static void FLIPPER_BLOCKS(void)
+{
+    uint32_t p = rd(rd(0x0014) + 0x28FE), n, at, i;
+    int k;
+
+    for (k = 0; k < 4; k++, p += 0x1F7) {
+        uint32_t edx, di;
+        uint16_t bx = 0;
+        int step = 1;
+        uint16_t sel;
+
+        if (rb(p) == 3)
+            continue;
+        edx = rw(p + 6);
+        di = p + 0xF2;
+        if (rw(p + 0x0A) != 0) {
+            di = p + 0x1EA;
+            step = -1;
+        }
+        for (;;) {
+            uint32_t sh = N_FLIP_SHAPES + edx * 4;
+            uint16_t y = (uint16_t)(rw(p + 4) - rb(sh + 1));
+
+            bx = (uint16_t)(bx + rb(sh + 2));
+            ww(di, (uint16_t)(rw(p + 2) - rb(sh) - 0x10));
+            ww(di + 2, (uint16_t)(y - 0x10));
+            ww(di + 4, rw(p + 0xF0));
+            ww(di + 6, (uint16_t)(y + rb(sh + 2)));
+            di += (uint32_t)(step * 8);
+            if ((uint16_t)edx == rw(p + 8))
+                break;
+            edx += (uint32_t)step;
+            if ((int16_t)edx >= 0x78)
+                edx = 0;
+            if ((int16_t)edx < 0)
+                edx = 0x77;
+        }
+        n = ((uint32_t)bx + 0x32) * 0x40;
+        sel = pmax_alloc(n);
+        ww(N_FLIP_BLOCK_SEL, sel);
+        blocks_add(sel);
+        ww(p + 0x1F2, sel);
+        at = pmax_base(sel);
+        for (i = 0; i < n; i++)
+            lwb(at + i, 0);
+        wd(p + 0x2C, n);
+        sel = pmax_alloc(n);
+        ww(N_FLIP_BLOCK_SEL, sel);
+        blocks_add(sel);
+        wd(p + 0x28, pmax_base(sel) - rd(N_TABLE_BASE));
+        at = pmax_base(sel);
+        for (i = 0; i < rd(p + 0x2C); i++)
+            lwb(at + i, 0);
+    }
+}
+
+/* CODE:15030: 1 (CF) when flipdat1.m is not there */
+int FLIPDAT_LOAD(void)
+{
+    uint16_t sel = pmax_load_ds(N_FLIPDAT_NAME, NULL);
+
+    if (!sel)
+        return 1;
+    ww(N_FLIPDAT_SEL, sel);
+    blocks_add(sel);
+    /* CODE:150A5 */
+    FLIPPER_BLOCKS();
+    pi_stop("FLIPPER_RENDER (CODE:1527F)");
+    return 1;
 }

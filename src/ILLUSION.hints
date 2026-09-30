@@ -771,7 +771,7 @@ name       CODE:98FE TBL_CALLBACKS ; HOST_CALLBACKS again (CODE:995E ...), the f
 name       CODE:9944 TBL_HCB_CURSOR
 name       CODE:9948 TBL_HCB_FILE_SEL
 name       CODE:9CD4 JINGLE_END_CB
-code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, TABLE_MODULE, TBL_VGA_INIT, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), TOP_COLOURS_SET, BALLS_INIT, CODE:28C45, CODE:15030, MULTIBALL_CAP; CF when one failed
+code       CODE:B048 TABLE_LOAD2   ; HIDELIGHTS_SEL, VM_DATA_LOAD (not on table 3), DM_LOAD, TABLE_MODULE, TBL_VGA_INIT, on OPT_RESOLUTION 3 two attribute registers (30h 61h, 33h 4), TOP_COLOURS_SET, BALLS_INIT, LIGHTS_LOAD, FLIPDAT_LOAD, MULTIBALL_CAP; CF when one failed
 name       CODE:A11B HIDELIGHTS_SEL ; "Hidelights mask": 33450h bytes by INT 92h AH=0Ah, the selector stored whether or not it failed
 code       CODE:B1D0 VM_DATA_LOAD  ; VM_DATA_NAME ("VideoMode data") by INT 94h AH=1 into VM_DATA_SEL and VM_DATA_SIZE; its CF
 name       CODE:B195 VM_DATA_SEL
@@ -836,6 +836,28 @@ name       CODE:BA8F TOP_COLOURS2
 code       CODE:B797 BALLS_INIT    ; the 13 ball records at state+10AEh (76h bytes): BALL_BUNDLE1, SLOPE_X and SLOPE_Y to +3Ch, +3Eh; then each listed at state+1046h and state+107Ah, numbered 1..13 in +0Ah, BALL_PLACE; state+0E34h, 0E35h 0, the dword state+0D76h 0D7Ah; the flipper records of header slot 22 (1F7h bytes, type 0 ends, 3 passed over): the steps from +6 to +8 (by 1, -1 when +0Ah is 1, around 0..77h) into +14h as steps x 40h - 1 and +12h 0, or for -1 +12h = +14h = steps x -40h and +1Ah FFFFh. Uses CODE:0000, 0004, 0010, 0020, 0038, 003C as work cells
 code       CODE:2C414 BALL_BUNDLE1 ; state+28A6h's six pointers (MODULE_HEADER slots 0-5) into the ball at [CODE:0010]'s +50h..+64h, its byte +8 0
 code       CODE:2C467 BALL_BUNDLE2 ; the same from state+28BEh (slots 6-11), byte +8 FFh
+code       CODE:28C45 LIGHTS_LOAD  ; LIGHTS_ONE1 and LIGHTS_ONE2 (FFh bytes each) all 1, HIDELIGHTS_SEL's first 31380h bytes 0, LIGHTS_NAME ("Lights") into LIGHTS_SEL, LIGHTS_SIZE (CF), LIGHTS_POS 0, DROPS_LOAD's CF
+name       CODE:283BE LIGHTS_ONE1  ; FFh bytes set to 1 (who reads them not followed)
+name       CODE:284BD LIGHTS_ONE2  ; the same
+name       CODE:28C19 LIGHTS_SEL
+name       CODE:28C1B LIGHTS_SIZE
+name       CODE:28C15 LIGHTS_POS   ; a dword cleared after the load (not followed)
+name       CODE:28CE1 LIGHTS_NAME  ; "data\s00n\masks\lights.mgl" (the name after it, table 3's light2.mgl, not used here)
+code       CODE:28D64 DROPS_LOAD   ; DROPS_NAME ("Droptargets (Gfx)") into DROPS_SEL, DROPS_SIZE (CF); but on table 2 MASKS_NAME ("Droptargets (masks)") into MASKS_SEL, MASKS_SIZE, whose failure gives CF clear
+name       CODE:28C25 DROPS_SEL
+name       CODE:28C27 DROPS_SIZE
+name       CODE:28C2B MASKS_SEL
+name       CODE:28C2D MASKS_SIZE
+name       CODE:28E29 DROPS_NAME   ; "data\s00n\masks\drops.mgl"
+name       CODE:28E43 MASKS_NAME   ; "data\s00n\masks\masks.mgl"
+code       CODE:15030 FLIPDAT_LOAD ; FLIPDAT_NAME ("flipdat") by INT 94h AH=1 into FLIPDAT_SEL, added to BLOCKS (CF when it fails), FLIPPERS_PREP, CODE:156C3 (a RET)
+name       CODE:1502E FLIPDAT_SEL
+name       CODE:1503A FLIPDAT_NAME ; "data\misc\flipdat1.m"
+code       CODE:150A5 FLIPPERS_PREP ; FLIPPER_BLOCKS, FLIPPER_RENDER
+code       CODE:150B0 FLIPPER_BLOCKS ; for the four flipper records of header slot 22 (type 3 passed over): per angle from +6 to +8 (step 1, or -1 when +0Ah is not 0, around 0..77h) four words into +F2h up (or +1EAh down): x +2 less FLIP_SHAPES's x and 10h, y +4 less its y and 10h, +F0h, y less its y plus its height; then (the heights' sum + 32h) x 40h bytes twice by INT 92h AH=0Ah, cleared and added to BLOCKS: "flipper gfx data" (selector to +1F2h), "flipper mask data" (DS offset to +28h, size to +2Ch)
+name       CODE:14E4E FLIP_SHAPES  ; 78h entries of 4 bytes by angle: x, y, height, and a fourth (not followed)
+name       CODE:15279 FLIP_BLOCK_SEL ; the last block's selector
+code       CODE:1527F FLIPPER_RENDER ; each flipper drawn at each angle through video memory into its blocks (not read yet)
 code       CODE:29A5A BALL_PLACE   ; the ball at [CODE:0010] to 11Ch, 1FEh (+12h, +14h, keeping their low three bits) and shifted by 0Ah into +1Eh, +22h (the second from EDI whose high word the first left: MOV DI), the high bytes of +0Eh, +10h 2, byte +1 0, BALL_BUNDLE2
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)

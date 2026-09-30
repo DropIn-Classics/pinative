@@ -69,6 +69,9 @@ void TBL_VGA_INIT(void);
 /* tblinit.c: CODE:BA9B, CODE:B797 */
 void TOP_COLOURS_SET(void);
 void BALLS_INIT(void);
+/* CODE:28C45, CODE:15030: 1 (CF) when a file failed */
+int LIGHTS_LOAD(void);
+int FLIPDAT_LOAD(void);
 
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);

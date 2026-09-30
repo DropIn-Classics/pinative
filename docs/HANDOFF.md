@@ -2925,6 +2925,18 @@ followed). The flipper records of header slot 22 get their step counts
 Against the runs of all four tables at CODE:28C45 (`-break 129B75`):
 CODE only FRAME_SPINS, TAIL equal, the heap blocks as at CODE:BA9B.
 
+Then LIGHTS_LOAD (CODE:28C45) sets two tables of FFh bytes to 1, clears
+the first 31380h bytes of "Hidelights mask" (so from here on only its
+last bytes are leftovers) and loads `masks\lights.mgl`, `drops.mgl`
+and, but on table 2, `masks.mgl`. FLIPDAT_LOAD (CODE:15030) loads
+`data\misc\flipdat1.m` and FLIPPER_BLOCKS (CODE:150B0) makes, for each
+flipper record, a rectangle of four words per angle it can take (from
+FLIP_SHAPES, CODE:14E4E, 4 bytes an angle) and two cleared blocks sized
+by the heights' sum, for FLIPPER_RENDER to draw into. Against the runs
+of all four tables at CODE:1527F (`-break 1161AF`): CODE only
+FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but the
+known leftovers.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3127,9 +3139,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      all four tables (see "The module's load"). Done 2026-09-30:
      TBL_VGA_INIT, up to CODE:BA9B (see "The table's display"). Done
      2026-09-30: TOP_COLOURS_SET and BALLS_INIT, up to CODE:28C45 (see
-     "The balls' and flippers' start"). Next: the rest of TABLE_LOAD2
-     (CODE:28C45 the lights, CODE:15030 the flipper data,
-     MULTIBALL_CAP), then the game at CODE:B928.
+     "The balls' and flippers' start"). Done 2026-09-30: LIGHTS_LOAD
+     and FLIPDAT_LOAD up to FLIPPER_RENDER (CODE:1527F; same section).
+     Next: FLIPPER_RENDER (each flipper drawn at each angle through
+     video memory, CODE:1527F and the routines it calls, about 550
+     lines), MULTIBALL_CAP, then the game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit
