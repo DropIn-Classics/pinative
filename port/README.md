@@ -49,6 +49,14 @@ Print Screen writes the picture shown into the next free
 headless build writes the pictures `DK_SHOTS` names, as
 `DK_SHOTS="150:build/a.png 299:build/b.png"`.
 
+The runtime is in the doskit submodule: after a clone or a pull,
+`git submodule update --init` (the build fails with files not found
+otherwise). Any `ILLUSION.CFG` the game's set-up wrote will do for
+`-cfg`, whatever driver it names: the port always loads NOSOUND.SDR
+(only dosrun's comparison runs need a file naming it). Without `-cfg`
+the port stops at SOUND_SETUP; a file with an SVGA mode stops it at
+SVGA_CHECK.
+
 ## Checked
 
 - 2026-09-29, Linux (gcc 14.2): the memory `-entry -mem` writes against
@@ -108,4 +116,7 @@ headless build writes the pictures `DK_SHOTS` names, as
   stands in the sample clock (SAMPLE_POS, TIMER_COUNT, MIX_POS,
   MIX_LEN, the channels' positions). The keys and the window's
   pictures not checked.
-- Not built with MSVC (build.bat changed alike) or on macOS since.
+- 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
+  intro seen playing to its end in the window, with the user's
+  Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
+- Not built on macOS since.
