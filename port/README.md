@@ -70,6 +70,10 @@ Both scripts define `PORT_VERSION` (a string) for the compiler when
 there is a version: the environment's `PORT_VERSION`, else the tag of the
 commit built; the workflow sets it for a tag's build. Without one it
 stays undefined; nothing in the port reads it yet.
+`PORT_UPDATE_URL` likewise, from the environment only: where a release
+looks for newer ones (doskit/runtime/update.h); the workflow sets it to
+the latest release's `latest.json`. Nothing reads it yet either: the
+port has no setup screen of its own to ask on (RELEASE.md point 7).
 
 The runtime is in the doskit submodule: after a clone or a pull,
 `git submodule update --init` (the build fails with files not found

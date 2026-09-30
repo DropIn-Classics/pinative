@@ -125,6 +125,20 @@ is marked there as to be checked again in the hints.
   macOS notes: 140.23, 143.05, 146.05, "ran out about 147", 155.95).
   Whether the Mac run had the save at 150 too (launch + 610 frames at
   70 Hz + three pauses of 1.3 s is about 150.9) was not checked there.
+- doskit from 2026-09-30 on (merge b985c4d): the data folder is always
+  the user's (`~/.local/share/pinative`, `%LOCALAPPDATA%\Pinball
+  Illusions`, `~/Library/Application Support/Pinball Illusions`), never
+  beside the program; the port moves a `game` folder from beside it
+  there on its first start (`sys_data_migrate`), so `port/build/game`
+  moves too. Checked on Linux with a copy and `DK_DATA_DIR`: moved,
+  found, the run went to ENTRY. Not checked on Windows or the Mac.
+- RELEASE.md point 7 (newer releases made known, asked once on the
+  setup screen, `update.h`) is not in the port: the port has no setup
+  screen of its own yet, the game's SETSOUND is not the place. The
+  build scripts link `update.c` and pass `PORT_UPDATE_URL`, the
+  workflow makes `latest.json`; the question and the notice are to be
+  added before a first release, and README.txt's "New versions"
+  section with them.
 
 ## The game's files
 

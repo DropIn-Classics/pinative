@@ -41,6 +41,9 @@ static const GogRelease release = {
     "ILLUSION.EXE",             /* on the CD: images of other games are passed over */
 };
 
+/* what earlier versions wrote beside the program (sys_data_migrate) */
+static const char *const old_files[] = { "game", NULL };
+
 static uint8_t pixels[TM_WIDTH * TM_HEIGHT];
 static uint32_t palette[256];
 
@@ -114,6 +117,7 @@ int main(int argc, char **argv)
         }
     }
     sys_set_app("Pinball Illusions", "pinative");
+    sys_data_migrate(old_files);
     if (!plat_init("Pinball Illusions"))
         return 1;
     if (!get_game(given, gog, game, sizeof game)) {
