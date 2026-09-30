@@ -92,6 +92,10 @@ static void display_op(uint32_t a)
     case 0x2FB6F:
         OP_WAIT();
         break;
+    case 0x2FB17:               /* opcode 3, a text record */
+        wd(0x0000, rd(rd(0x0004) + 2));
+        DM_TEXT_DRAW();
+        break;
     case 0x2F7A5:               /* opcode 2 */
         DM_CLEAR();
         break;

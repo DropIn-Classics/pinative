@@ -3244,6 +3244,23 @@ What reads it: display opcode 1Ah (a text's blinking) and TAKE_HANDLERS'
 handler 1Ah (a random award by its low byte); a frame's difference in
 either is not a difference of the game's.
 
+Opcode 3 draws a text record (CODE:27783; words x, y, font, alignment,
+then the text, 0-ended) into DM_TEXT, A0h bytes a line: alignment 0
+from x/2, 2 centred there (the widths summed first with the font's
+tables at CODE:2773B, 27753, 2776B), 1 ending at x from the line below,
+drawn from the last character back; another alignment draws nothing
+(CF). Each font's routine (the dwords at CODE:27723: 27338, 2737D,
+273C2, 27407, 2744C twice) sets the map, glyph and width tables, the
+font's selector (DM_FONTS), its line length and rows in
+CODE:27321..27333 and draws one character (CODE:27289): its width from
+the map (CODE:2726D, halved), its glyph from the character less 20h, a
+space moving by the word before the glyph table. A character missing
+from the width map leaves DL as the last one set it (CF not tested);
+the port carries DL the same way and stops where none set it yet. The
+attract record (table 1, run to CODE:2A6FA) drew 11 texts; the first,
+in the 5-row font, is equal in DM_TEXT on all four tables one frame
+later (`-break 130A47#2`, the port stopped there by a scratch build).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3478,8 +3495,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      attract mode's display"). Done 2026-09-30: FRAME_COUNT's one ahead
      there is the runner's timing (same section). Done 2026-09-30:
      display opcodes 2, 0Ah, 0Dh, 0Fh, 13h, 14h, 18h and 19h (only 2
-     run), up to opcode 3 (CODE:2FB17). Next: opcode 3's text drawing,
-     CODE:27783 (the table module's host vector +14h too).
+     run), up to opcode 3 (CODE:2FB17). Done 2026-09-30: opcode 3's
+     text drawing (CODE:27783, DM_TEXT_DRAW in dotmatrix.c), to the
+     attract record's end (same section). Next: the high-score pages,
+     CODE:2A6FA.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

@@ -64,6 +64,7 @@ int DM_LOAD(void);
 void DM_CLEAR(void);
 void DM_TEXT_CLEAR(void);
 void DM_ANIM_CLEAR(void);
+int DM_TEXT_DRAW(void);
 
 /* module.c: CODE:B22D, 1 (CF) when a file failed; CODE:30368, host
  * vector +18h */

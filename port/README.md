@@ -64,8 +64,9 @@ drop targets that changed, the flippers, the attract scroll and the
 flippers' moves; the display's queue and streams, src/display.c, the
 attract mode's display record queued, its keys; display opcodes 1
 and 7, the animation played into the dot-matrix display's buffer, the
-opcodes that clear the display, wait, loop and set the top colours) up
-to display opcode 3, CODE:2FB17 (`Stopped before CODE:2FB17`); the
+opcodes that clear the display, wait, loop and set the top colours,
+opcode 3's text in the display's fonts) to the attract record's end and
+the high-score pages, CODE:2A6FA (`Stopped before CODE:2A6FA`); the
 Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
@@ -328,6 +329,16 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   opcode 2: as at CODE:2F7A5 (FRAME_COUNT the port's 227h, the run's
   226h). Of the opcodes added with it only 2 ran there (dosrun `-log`,
   tables 1 and 4): 0Ah, 0Dh, 0Fh, 13h, 14h, 18h and 19h are not run yet.
+- 2026-09-30, Linux: each of the four tables at the second display
+  opcode 3 (dosrun `-break 130A47#2 -mem -vram`, the port stopped there
+  by a scratch build, the same keys), one frame after the first text:
+  CODE differs only in FRAME_SPINS and FRAME_COUNT (timing), TAIL and
+  video memory equal, the heap blocks equal but the leftovers named
+  above (DM_TEXT equal, 357 bytes set, the 5-row font). Up to the
+  high-score pages, CODE:2A6FA (dosrun `-break 12B62A`), the same, with
+  11 texts drawn in the run; DM_TEXT is cleared again there, so of the
+  texts only the first is compared byte for byte. Which of the fonts
+  and alignments ran is not looked at.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
