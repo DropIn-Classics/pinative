@@ -3405,6 +3405,53 @@ CODE:2B1DC, MUSIC_REQUEST (CODE:2F85C) first, stopping by name at each
 routine not translated, compared as before at a break in phase 6's
 first frame (F1 at the pictures of "A game's start").
 
+### The balls' physics
+
+Stage 2 of CODE:1023E, now BALLS_PHYSICS (2026-09-30; names and a
+record layout in src/ILLUSION.hints, "the balls' physics"). Read from
+the code: four passes a frame; in each, every ball in play is sampled
+(BALL_SAMPLE: a ring of 16 x 16 pixels, the edge of the ball, against a
+flipper's mask when the ball is in that flipper's box for its angle,
+else against the level's map, a bit a pixel, 2Ah bytes a line), and on
+a hit BALL_COLLIDE averages the angles of the hit samples into the
+normal (+28h, 800h a turn), looks up the surface's number (+32h) under
+the contact point and takes that surface's four words and handler
+(flippers 1..4, the level change 0Ah/0Bh, bumpers 10h..15h, slingshots
+16h..1Fh; 20h and up an object for OBJECT_HITS through +6Ch); then
+BALL_BOUNCE turns the speed into the normal's frame, reverses and
+scales the part along the normal, adds a bumper's or slingshot's kick
+(with points, the event stream and a sound), applies friction across it
+and turns it back. After each pass FLIPPERS_MOVE and BALLS_MOVE twice
+(the place from the speed scaled by 50 / FRAME_RATE, the slope map and
+SLOPE_X/SLOPE_Y into the speed, the balls against each other). So a
+frame has four flipper moves and eight ball moves; the waiting ball in
+GAME_PHASE 6 goes through all of it too.
+
+No x87 instruction is in the program's listing (a search of
+build/ILLUSION.ASM for the F-mnemonics found none), so the runner's
+missing x87 is no obstacle here.
+
+The run (2026-09-30, Linux; NOSOUND as in "The driver's timer": `-put
+'\ILLUSION.CFG' build/pm/nosound.cfg -key 112 enter -key 115 enter
+-key 150 f1 -key 153 enter`): GAME_PHASE 1 at t=133.01, 2 and 6 at
+150.01, 4 at 154.59, 7 at 156.04. With `-watch` on ball record 0
+(state+10AEh, linear 10EB1Ch): +32h cleared by CODE:10546 and written
+by CODE:11674 (0Dh from t=157.81), +28h written by CODE:11457 from
+t=150.30 (while the ball waits), +6Ch set to FFFFh by CODE:1029B once a
+frame. The watch shows the low byte only; the other claims in the hints
+(the bounce's arithmetic, the bumpers, BALLS_MOVE's pairs, the flipper
+kinds at CODE:11AE9) are from reading and not run. The same keys with
+the state's own configuration (not NOSOUND) or with `-cue` left table 1
+at "Loading" up to t=165 in the screenshots and GAME_PHASE unwritten;
+not looked into.
+
+Next for the port: GAME_PHASE 6 from CODE:2B1DC as suggested above,
+with BALLS_PHYSICS's routines translated in the order they are called
+(BALL_SAMPLE and MAP_SAMPLE, BALL_COLLIDE with the surface handlers,
+BALL_BOUNCE, BALLS_MOVE), each compared at a break in phase 6's first
+frame; the ball-ball part of BALLS_MOVE and the flipper kinds want a
+closer reading first (one ball in phase 6 does not reach the first).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3650,7 +3697,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (CODE:2A976; see "A game's start"). Next, chosen by the user
      2026-09-30: GAME_PHASE 6 (CODE:2B1DC, the ball waiting for its
      launch) with the ball's physics and collisions it needs, stage 2
-     first (see "GAME_PHASE 6, what it calls"); later table 2's slot
+     first (see "GAME_PHASE 6, what it calls"; stage 2 of the physics
+     done 2026-09-30, see "The balls' physics"); later table 2's slot
      40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).
@@ -3677,7 +3725,7 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      tables 2, 3 and 4. Open: the data as `words`/names where the port
      needs them (the event streams, slot-15 records, counters;
      tools/event_streams.py lists them);
-   - not read yet and wanted: the ball's physics and collisions
-     (CODE:1352D, the map DROP_MASK writes, header slot 18), the
-     flippers' movement, the drawing and scrolling; whether any of it
-     uses the x87, which the runner does not emulate.
+   - the ball's physics and collisions (CODE:1352D, the map DROP_MASK
+     writes, header slot 18): read 2026-09-30 but for the ball-ball
+     cases and the flipper kinds (see "The balls' physics"; no x87 in
+     the program). Not read yet: the drawing and scrolling in play.
