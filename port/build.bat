@@ -25,6 +25,10 @@ if %errorlevel% neq 0 (
 set RT=..\doskit\runtime
 if not exist build\obj\headless mkdir build\obj\headless
 set CFLAGS=/nologo /W4 /O2 /MT /D_CRT_SECURE_NO_WARNINGS /I%RT% /Isrc
+rem the release's version: %PORT_VERSION%, else the tag of the commit built;
+rem none, and PORT_VERSION stays undefined
+if not defined PORT_VERSION for /f "usebackq delims=" %%v in (`git describe --tags --exact-match 2^>nul`) do set PORT_VERSION=%%v
+if defined PORT_VERSION set CFLAGS=%CFLAGS% /DPORT_VERSION=\"%PORT_VERSION%\"
 set GAME=src\main.c src\archive.c src\image.c src\pmax.c src\entry.c src\setup.c src\video.c src\cd.c src\sound.c src\intro.c src\hostcb.c src\nosound.c src\nsplay.c src\chooser.c
 set RUNTIME=%RT%\sys.c %RT%\cdimage.c %RT%\textmode.c %RT%\pad.c %RT%\sha256.c %RT%\pmem.c %RT%\vga.c %RT%\frame.c %RT%\modplay.c %RT%\audiofx.c %RT%\fli.c %RT%\shot.c
 

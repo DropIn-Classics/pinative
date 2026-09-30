@@ -64,6 +64,11 @@ Print Screen writes the picture shown into the next free
 headless build writes the pictures `DK_SHOTS` names, as
 `DK_SHOTS="150:build/a.png 299:build/b.png"`.
 
+Both scripts define `PORT_VERSION` (a string) for the compiler when
+there is a version: the environment's `PORT_VERSION`, else the tag of the
+commit built; the workflow sets it for a tag's build. Without one it
+stays undefined; nothing in the port reads it yet.
+
 The runtime is in the doskit submodule: after a clone or a pull,
 `git submodule update --init` (the build fails with files not found
 otherwise). Any `ILLUSION.CFG` the game's set-up wrote will do for
@@ -71,6 +76,16 @@ otherwise). Any `ILLUSION.CFG` the game's set-up wrote will do for
 (only dosrun's comparison runs need a file naming it). Without `-cfg`
 the port stops at SOUND_SETUP; a file with an SVGA mode stops it at
 SVGA_CHECK.
+
+## Releases
+
+`.github/workflows/build.yml` (doskit's template's since doskit e06b74d)
+builds the packages doskit/docs/RELEASE.md prescribes; a pushed tag
+`vX.Y` makes a release of them. `dist/README.txt` is the players' README
+in each package, filled in for the chooser the port reaches so far.
+
+No release made yet; no package started from a download. The new
+workflow not run yet (the macOS app, its static SDL2, the checks).
 
 ## Checked
 
