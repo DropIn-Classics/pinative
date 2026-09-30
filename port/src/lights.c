@@ -352,7 +352,57 @@ void LIGHTS_RESET(void)
     wd(st + 0x1822, st + 0x1826);
 }
 
-/* CODE:28FBA: the light [0000] on: without bit 3 of +2 its LIGHTS_ONE1
+/* CODE:29BE1: at the next ball, as LIGHTS_RESET, but in a group with bit
+ * 2 of its byte +4 a light is not LIGHT_INIT'ed and keeps its byte in
+ * state+16B2h and its +5; [0004] the group */
+void LIGHTS_BALL_RESET(void)
+{
+    uint32_t st = rd(0x0014), g;
+
+    wd(0x000C, rd(st + 0x28DE));
+    wd(st + 0x16AE, rd(0x000C));
+    ww(st + 0x16AC, 0xFFFF);
+    wd(0x0038, 0);
+    for (;;) {
+        g = rd(rd(0x000C));
+        wd(0x0020, g);
+        wd(0x000C, rd(0x000C) + 4);
+        if (!g)
+            break;
+        wd(0x0004, g);
+        wb(g + 4, (uint8_t)(rb(g + 4) & 6));
+        wd(0x0000, rd(g));
+        for (;;) {
+            uint32_t b, next;
+
+            if (!(rb(rd(0x0004) + 4) & 4)) {
+                if (!(rb(rd(0x0000) + 2) & 4))
+                    LIGHT_INIT();
+                /* CODE:29C66 */
+                wb(rd(0x0014) + (uint32_t)(int32_t)(int16_t)rw(0x0038) + 0x16B2, 0);
+                wb(rd(0x0000) + 5, 0);
+            }
+            /* CODE:29C88 */
+            b = rd(0x0000);
+            wb(b + 3, 0);
+            wb(b + 4, 0);
+            wb(b, 0);
+            wb(b + 1, 0xFF);
+            wb(b + 2, (uint8_t)(rb(b + 2) & 0xFC));
+            ww(0x0038, (uint16_t)(rw(0x0038) + 1));
+            next = rd(b + 0x10);
+            wd(0x0020, next);
+            if (!next)
+                break;
+            wd(0x0000, next);
+        }
+    }
+    st = rd(0x0014);
+    wd(st + 0x17B8, st + 0x17BC);
+    wd(st + 0x1822, st + 0x1826);
+}
+
+/* CODE:28FBA:the light [0000] on: without bit 3 of +2 its LIGHTS_ONE1
  * byte FFh; with it the drop target's picture 2 x +1Ch - 1 (DROP_PIC) */
 static void LIGHT_ON(void)
 {

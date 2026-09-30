@@ -12,7 +12,7 @@ segment    CODE 0 CODE             ; the whole file, code and data
 name       CODE:0000 HEADER        ; 45 dword slots, copied relocated to the main program's CODE:F3E4 (docs/bpc-module.md)
 words      CODE:0080 1 CODE        ; slot 32
 words      CODE:009C 3 CODE        ; slots 39..41
-code       CODE:370D MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-module.md)
+code       CODE:370D MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-module.md): the audio record to host +04h; the player's bonus shown over eight rounds of "BONUS" (every other round the multiplier's text record, by the player's word +12h n - 2), the combos (a word per player at 494Ch, each 1,000,000 in the total; "n COMBO(S)"), then "TOTAL BONUS" and the total (the number ending at state+2AC8h) or "NO BONUS"; in C in port/src/modcode.c, one routine for the four tables (docs/HANDOFF.md, "GAME_PHASE 5 in the port"); run 2026-09-30 with a poked bonus, multiplier and combos: equal to the port's
 code       CODE:00B4 MOD_LOADED    ; slot 39: called once the module is loaded (main program CODE:B287)
 code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D)
 code       CODE:00B6 MOD_NEXT_BALL ; slot 41: called at the next player's ball (main program CODE:2BD61)

@@ -30,6 +30,20 @@ void adc_daa(uint32_t dst, uint32_t src, int *cf)
     *cf = c;
 }
 
+/* the game's 12-digit packed-BCD add: the number whose end is DS:`src`
+ * added to the one whose end is DS:`dst` (the low four bytes before the
+ * end, then the two high bytes 8 before it, as the original's code does
+ * it); the work cells that held the two ends are left to the caller */
+void bcd12_add(uint32_t dst, uint32_t src)
+{
+    int cf = 0, i;
+
+    for (i = 0; i < 4; i++)
+        adc_daa(dst - 4 + (uint32_t)i, src - 4 + (uint32_t)i, &cf);
+    for (i = 0; i < 2; i++)
+        adc_daa(dst - 8 + (uint32_t)i, src - 8 + (uint32_t)i, &cf);
+}
+
 /* one nibble's step of DEC_TEXT: `table`'s BCD word n - 1 (for the
  * nibble n, 1..15) added to DEC_BCD, the work cells left as the original
  * leaves them */

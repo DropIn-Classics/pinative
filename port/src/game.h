@@ -81,6 +81,7 @@ void DM_SCORE_IDLE(void);
 int TABLE_MODULE(void);
 /* ADC AL,[src] and DAA into the byte at `dst`, *cf the carry */
 void adc_daa(uint32_t dst, uint32_t src, int *cf);
+void bcd12_add(uint32_t dst, uint32_t src);
 void DEC_TEXT(void);
 
 /* tblvga.c: CODE:911F */
@@ -108,6 +109,8 @@ void BALLS_PHYSICS(void);
 
 /* lights.c: CODE:29AF9, CODE:2EF7A, CODE:2ED15, CODE:2FE8E */
 void LIGHTS_RESET(void);
+/* lights.c: CODE:29BE1 */
+void LIGHTS_BALL_RESET(void);
 void LIGHTS_STEP(void);
 void FLASH_STEP(void);
 /* lights.c: CODE:29033, CODE:28F41 */
@@ -127,6 +130,11 @@ void ANIMS_STEP(void);
 void TABLE_GAME(void);
 void MUSIC_REQUEST(void);
 void TAKE_PAY(void);
+/* play.c: CODE:2C037, host vector +0Ch */
+void FRAMES_WAIT(void);
+/* modcode.c: the table module's routine at DS:`at` (a slot of its
+ * header), in C per table; a RET returns, another stops the port */
+void MOD_CALL(uint32_t at);
 /* play.c: CODE:28E5D */
 void DROP_SET(void);
 /* events.c: CODE:2E82F, 2D080, 2CD3C, 2E8CD, 2EAC9, 2CB69, 2CBCF, 2C7FC */

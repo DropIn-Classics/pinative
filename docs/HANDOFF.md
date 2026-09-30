@@ -3569,7 +3569,82 @@ src/T001.hints, CODE:37AD there) through state+2926h with the host
 vector CODE:2CD10 in [CODE:0010]; after the next ball's resets the
 module's slot 41 (state+294Ah). That is the first of the modules' own
 code the port meets in play (slot 40 is a RET but on table 2): it has to
-be translated per table, T001..T004, from their hints.
+be translated per table, T001..T004, from their hints. (Done the same
+day, see "GAME_PHASE 5 in the port"; BONUS_ADD is at CODE:2BD95, the
+hints' name, not 2BD8C.)
+
+### GAME_PHASE 5 in the port
+
+BALL_END (CODE:2BBC6, GAME_PHASE 5) and what it calls are in the port
+(src/play.c, src/lights.c; names added to src/ILLUSION.hints 2026-09-30):
+BONUS_ADD, FRAMES_WAIT (CODE:2C037, host vector +0Ch), the next ball's
+resets LIGHTS_BALL_RESET (CODE:29BE1), RECORDS_BALL_RESET (29CE3),
+COUNTERS_BALL_RESET (2A113), DROPS_UP_BALL, BONUS_CLEAR, and the table
+modules' code in the new src/modcode.c: MOD_CALL takes a module routine
+by its address (a RET returns; one not translated stops the port as
+"table n's module at CODE:X"), the host vector's entries are called by
+the address in [[CODE:0010]+n] (so table 4's own copy at 9874h would
+work too), and slot 32 (MOD_BALL_BONUS) and table 1's slot 41
+(MOD_NEXT_BALL) are translated. A 12-digit BCD add shared by the new
+code is `bcd12_add` (src/module.c).
+
+What was learned on the way (from the listings; the runs below agree):
+
+- The four MOD_BALL_BONUS are one routine; with the addresses masked
+  they differ only in (1) table 2 has no combos (its count is the
+  constant 0, so "n COMBOS" never shows), (2) table 3 picks the
+  multiplier's text record by the player's word +12h minus 2, the
+  others by its half minus 1, (3) which work cells table 4 stores in
+  between (the same values in the end). Each combo is worth 1,000,000
+  in the total (the number 1 after the four '0's, C3D5Eh on table 1, is
+  added once a combo); the run with a bonus of 12,345, multiplier 4 and
+  3 combos paid 3,049,380 on tables 1 and 4.
+- The player record's bonus is the 12-digit number ending at +10h
+  (bytes +8..+0Fh), the score the one ending at +8; BONUS_ADD adds the
+  bonus once, or the multiplier (word +12h) times when that is above 1,
+  into the number ending at state+2AD0h; the module copies it to
+  state+2AC0h..2AC7h (the total, "ending at state+2AC8h") and adds the
+  combos there, and BONUS_ADD pays the total into the score.
+- Table 1's slot 41 relights, with a multiplier n, n/2 lamps of the
+  chain at 942Eh; an odd n never ends its loop (n - 2 each step, tested
+  for 0). The port stops by name there instead of hanging. The
+  multiplier is cleared by BONUS_CLEAR just before, unless held (the
+  player's byte +14h), so the loop runs only for a held multiplier.
+- Header slot 25's first light state (state+290Ah) gets byte +5 FFh at
+  the next ball while the player still has an extra ball (its second is
+  the ball save's lamp).
+- Times in the runs: from the lost ball to the next ball's wait 2.66 s
+  with no bonus (t=171.28 to 173.94; "NO BONUS" is shown for 96h
+  fiftieths, 3 s, by FRAMES_WAIT), 5.15 s with the poked bonus, 3.97 s
+  with two players (BONUS_ADD's own 1.5 s wait on top).
+- The runs need the argument `C:\ILLUSION.CFG` to compare with the
+  port's memory: without it CFG_NAME holds `ILLUSION.CFG` and 14 bytes of
+  CODE differ.
+- The heap blocks were compared by a scratch script (not in the
+  repository) that walks the run's chain from 1473B0h and reads each
+  used block at the same linear address in the port's dump (the port
+  keeps no block headers).
+
+Compared (port/README.md, "Checked"): at the second ball's wait
+(CODE:2B1DC, second hit) on table 1 without a bonus, with two players,
+and on tables 1, 3 and 4 with a bonus, multiplier and combos poked at
+CODE:2BBC6 (and written by a scratch hook in the port, since removed):
+equal but FRAME_SPINS and the known heap leftovers. `-cover` of those
+runs: not run were the extra ball (GAME_PHASE 8), its lamp, game over
+(CODE:2BD79), in the two-player run the wrap to the next ball (the
+one-player runs took it), a record's lamp in
+RECORDS_BALL_RESET, table 1's slot 41 with a multiplier left, the
+leading-zero skip's end in the combos' digits, and on the two-player
+run COUNTERS_BALL_RESET's carry-over add (it ran on tables 1 and 3);
+slot 17's lists had entries only on table 4. The tilt's path through
+BONUS_ADD and FRAMES_WAIT's key did not run either. Table 2 still stops
+in GAME_START; its slot 41 is not translated (it stops by name).
+
+With Enter every 500 pictures, a whole game on table 1 now plays its
+three balls and stops at game over: `Stopped before CODE:2AA90`
+(GAME_PHASE 3). Next: GAME_PHASE 3 (CODE:2AA90, "GAME OVER", the high
+scores, then GAME_PHASE 1) and GAME_PHASE 8 (CODE:2BB3E, the extra
+ball).
 
 ## Next
 
@@ -3821,8 +3896,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      port up to GAME_PHASE 4, CODE:2B76E, see "GAME_PHASE 6 in the
      port"; GAME_PHASE 4 begun 2026-09-30, see "GAME_PHASE 4 in the port":
      up to the first GAME_PHASE 5 on tables 1, 3 and 4, with the
-     flippers' masks and surfaces and GAME_PHASE 7; next GAME_PHASE 5,
-     BONUS_ADD and the modules' slot 32, same section); later table 2's slot
+     flippers' masks and surfaces and GAME_PHASE 7; GAME_PHASE 5 done
+     2026-09-30, see "GAME_PHASE 5 in the port"; next GAME_PHASE 3, game
+     over, and 8, the extra ball, same section); later table 2's slot
      40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).

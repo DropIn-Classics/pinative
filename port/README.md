@@ -83,9 +83,12 @@ the event streams with the opcodes met so far, the lit records' timers
 and lamps, the counters' and objects' timers, the ball save's lamp, the
 M key, the flippers' masks and surfaces in src/phys.c, a zone's light
 flashed, a module's note through the driver's command 7), a lost ball
-served again under the ball save (GAME_PHASE 7, "DON'T MOVE") up to
-`Stopped before CODE:2BBC6` at the first lost ball without it (GAME_PHASE
-5, the bonus); the driver's command 2 (the pause toggle) with the
+served again under the ball save (GAME_PHASE 7, "DON'T MOVE"), a lost
+ball without it (GAME_PHASE 5, CODE:2BBC6: the bonus with its
+multiplier, the table module's bonus display, slot 32, and table 1's
+slot 41 in C in src/modcode.c, the score paid, the next player or ball
+and its resets) up to `Stopped before CODE:2AA90` at game over
+(GAME_PHASE 3); the driver's command 2 (the pause toggle) with the
 PIC's mask the port now keeps for it;
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
@@ -449,6 +452,23 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   not pressed: flipper kinds 1, 2, 3, 5 and 6, the pushes of a turning
   flipper and event opcodes 1, 0Dh, 0Eh and 19h did not run (dosrun
   `-cover`), nor the pause, Esc in play or the tilt.
+- 2026-09-30, Linux: GAME_PHASE 5 (dosrun with the argument
+  `C:\ILLUSION.CFG`, keys as for GAME_PHASE 4), at the second ball's
+  wait (`-break 12C10C#2`, CODE:2B1DC): table 1 with no bonus (t=173.94),
+  table 1 with two players (`-key 150 3C`, the port's F2 at 7087;
+  t=175.24), and tables 1, 3 and 4 with the player's bonus 12,345,
+  multiplier 4 and 3 combos poked at CODE:2BBC6 (`-poke 12CAF6 10E7F0
+  0000000045230100`, `10E7FA 0400` and the module's combo word, written
+  by a scratch hook in the port, since removed; t=176.43, 170.70,
+  170.24): CODE differs only in FRAME_SPINS, TAIL and video memory
+  equal, the heap blocks equal but the leftovers of the GAME_PHASE 5
+  comparison above (compared at the run's block addresses by a scratch
+  script). Not run (dosrun `-cover`): the extra ball, game over, the
+  tilt's bonus, a key ending FRAMES_WAIT, table 1's slot 41 with a held
+  multiplier, a record's lamp at the next ball. Table 2 not reached (it
+  stops in GAME_START). A whole game on table 1 with Enter every 500
+  pictures now plays its three balls to `Stopped before CODE:2AA90`
+  (not compared).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

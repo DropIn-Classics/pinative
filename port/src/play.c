@@ -330,11 +330,36 @@ static void RECORDS_RESET(void)
     STREAMS_RESET();
 }
 
+/* CODE:2A0C2 (and CODE:2A2BD alike): header slot 17's lists
+ * (state+28EAh) of 8-byte entries, to one whose word +2 is 100h or
+ * more: bit 1 of +0 cleared */
+static void SLOT17_CLEAR(void)
+{
+    uint32_t p, e, q;
+
+    wd(0x0000, rd(rd(0x0014) + 0x28EA));
+    for (;;) {
+        p = rd(0x0000);
+        e = rd(p);
+        wd(0x0020, e);
+        wd(0x0000, p + 4);
+        if (e == 0)
+            break;
+        wd(0x0004, e);
+        for (;;) {
+            q = rd(0x0004);
+            wb(q, (uint8_t)(rb(q) & ~2));
+            if (rw(q + 2) >= 0x100)
+                break;
+            wd(0x0004, q + 8);
+        }
+    }
+}
+
 /* CODE:29FFA: header slot 16's counters (state+28E6h): +30h, +34h from
  * +28h, +2Ch, the eight players' words +6 and +16h to the word +2, +38h,
  * +3Ch and +26h 0, byte +2 of each threshold (12 bytes from +50h, to a
- * negative word) 0; then header slot 17's lists (state+28EAh) of 8-byte
- * entries, to one whose word +2 is 100h or more: bit 1 of +0 cleared */
+ * negative word) 0; then SLOT17_CLEAR */
 static void COUNTERS_RESET(void)
 {
     uint32_t st = rd(0x0014), p, e, q;
@@ -370,8 +395,27 @@ static void COUNTERS_RESET(void)
         }
         wd(0x0008, q);
     }
-    /* CODE:2A0C2 */
-    wd(0x0000, rd(rd(0x0014) + 0x28EA));
+    SLOT17_CLEAR();
+}
+
+/* ---- the next ball (GAME_PHASE 5) ---- */
+
+/* CODE:29CE3: header slot 15's records at the next ball: the lit list
+ * emptied; each record's bit for the player ([0038] AND 7) cleared in +2
+ * unless bit 5 of +0, in +1 unless bit 0; +1 FFh with bit 1; bit 2 and
+ * +30h cleared; one lit for the player (+2Eh FFFFh, its lamp +4, if any,
+ * on for the player's bit [003C]) back on the lit list; then
+ * STREAMS_RESET */
+static void RECORDS_BALL_RESET(void)
+{
+    uint32_t st = rd(0x0014), p, e, x, t;
+    unsigned bit;
+
+    wd(st + 0x2A32, 0);
+    wd(st + 0x2A36, 0);
+    wd(0x0038, sx16(rw(st + 0x0D72)));
+    wd(0x003C, sx16(rw(st + 0x0D74)));
+    wd(0x0000, rd(st + 0x28E2));
     for (;;) {
         p = rd(0x0000);
         e = rd(p);
@@ -380,14 +424,106 @@ static void COUNTERS_RESET(void)
         if (e == 0)
             break;
         wd(0x0004, e);
-        for (;;) {
-            q = rd(0x0004);
-            wb(q, (uint8_t)(rb(q) & ~2));
-            if (rw(q + 2) >= 0x100)
-                break;
-            wd(0x0004, q + 8);
+        bit = rd(0x0038) & 7;
+        if (!(rb(e) & 0x20))
+            wb(e + 2, (uint8_t)(rb(e + 2) & ~(1u << bit)));
+        /* CODE:29D63 */
+        if (!(rb(e) & 1))
+            wb(e + 1, (uint8_t)(rb(e + 1) & ~(1u << bit)));
+        /* CODE:29D80 */
+        if (rb(e) & 2)
+            wb(e + 1, 0xFF);
+        /* CODE:29D92 */
+        wb(e, (uint8_t)(rb(e) & ~4));
+        wd(e + 0x30, 0);
+        if (!(rb(e + 1) >> bit & 1))
+            continue;
+        ww(e + 0x2E, 0xFFFF);
+        x = rd(e + 4);
+        wd(0x0020, x);
+        if (x != 0) {
+            wd(0x0008, x);
+            wb(x, (uint8_t)(rb(x) | (uint8_t)rd(0x003C)));
+            wb(x + 2, (uint8_t)(rb(x + 2) | 2));
+            wb(x + 1, 0xFF);
+            wb(x + 3, 0);
+            wb(x + 4, 8);
         }
+        /* CODE:29DED */
+        wb(e, (uint8_t)(rb(e) | 4));
+        st = rd(0x0014);
+        t = rd(st + 0x2A36);
+        wd(0x0020, t);
+        if (t != 0) {
+            wd(0x000C, t);
+            wd(t + 0x30, e);
+        } else {
+            wd(st + 0x2A32, e);
+        }
+        wd(st + 0x2A36, e);
     }
+    STREAMS_RESET();
+}
+
+/* CODE:2A113: header slot 16's counters at the next ball: +38h, +3Ch,
+ * +26h 0; without bit 0 of +0 +30h, +34h from +28h, +2Ch and, without
+ * bit 3, the player's words +6 and +16h to the word +2 and the
+ * thresholds' bytes +2 0; with bit 0 the 12-digit number ending at +38h
+ * added to the one ending at +40h the player's word +6 times; then
+ * SLOT17_CLEAR */
+static void COUNTERS_BALL_RESET(void)
+{
+    uint32_t st = rd(0x0014), p, e, q;
+    uint16_t si, bx;
+
+    wd(0x0000, rd(st + 0x28E6));
+    for (;;) {
+        p = rd(0x0000);
+        e = rd(p);
+        wd(0x0020, e);
+        wd(0x0000, p + 4);
+        if (e == 0)
+            break;
+        wd(0x0004, e);
+        wd(e + 0x38, 0);
+        wd(e + 0x3C, 0);
+        ww(e + 0x26, 0);
+        si = rw(rd(0x0014) + 0x0D72);
+        ww(0x0024, si);
+        if (!(rb(e) & 1)) {
+            wd(e + 0x30, rd(e + 0x28));
+            wd(e + 0x34, rd(e + 0x2C));
+            if (rb(e) & 8)
+                continue;
+            wd(0x0020, (e & 0xFFFF0000u) | rw(e + 2));
+            ww(e + sx16(si) * 2 + 6, rw(0x0020));
+            ww(e + sx16(si) * 2 + 0x16, rw(0x0020));
+            wd(0x0008, e + 0x50);
+            /* CODE:2A1C6 */
+            for (q = e + 0x50; !(rw(q) & 0x8000); q += 0x0C) {
+                wb(q + 2, 0);
+                wd(0x0008, q + 0x0C);
+            }
+            continue;
+        }
+        /* CODE:2A1E5 */
+        bx = (uint16_t)(rw(e + sx16(si) * 2 + 6) - 1);
+        ww(0x0020, bx);
+        if (bx & 0x8000)
+            continue;
+        do {
+            /* CODE:2A210 */
+            q = rd(0x0004);
+            wd(0x0008, q + 0x38);
+            wd(0x000C, q + 0x40);
+            bcd12_add(rd(0x000C), rd(0x0008));
+            wd(0x0008, rd(0x0008) - 6);
+            wd(0x000C, rd(0x000C) - 6);
+            bx = rw(0x0020);
+            ww(0x0020, (uint16_t)(bx - 1));
+        } while (bx != 0);
+    }
+    SLOT17_CLEAR();
 }
 
 /* CODE:28E5D: the state [0020] of the drop target [0000] into
@@ -427,6 +563,52 @@ static void DROPS_UP_ALL(void)
     wd(st + 0x2AD0, 0xFA24);
     wd(st + 0x2A60, 0xF920);
     wd(st + 0x2A64, 0xFA48);
+}
+
+/* CODE:2A421: as DROPS_UP_ALL at the next ball, but a drop target with
+ * bit 0 of its byte +4 stays as it is */
+static void DROPS_UP_BALL(void)
+{
+    uint32_t st = rd(0x0014), p, e;
+    uint16_t si;
+
+    wd(0x0010, rd(st + 0x28B6));
+    ww(0x003C, 0xBF);
+    do {
+        p = rd(0x0010);
+        e = rd(p);
+        wd(0x0000, e);
+        wd(0x0010, p + 4);
+        if (e != 0 && rw(e) == 1 && !(rb(e + 4) & 1)) {
+            wb(e + 0x0B, 0);
+            wd(0x0020, 0);
+            DROP_SET();
+        }
+        si = rw(0x003C);
+        ww(0x003C, (uint16_t)(si - 1));
+    } while (si != 0);
+    st = rd(0x0014);
+    wd(st + 0x2AD0, 0xFA24);
+    wd(st + 0x2A60, 0xF920);
+    wd(st + 0x2A64, 0xFA48);
+}
+
+/* CODE:2A4B1: the player's bonus (the number ending at +10h) cleared
+ * unless byte +11h is set, the multiplier word +12h unless byte +14h is;
+ * both bytes cleared */
+static void BONUS_CLEAR(void)
+{
+    uint32_t pl = rd(rd(0x0014) + 0x0D76);
+
+    wd(0x0000, pl);
+    if (rb(pl + 0x11) == 0) {
+        wd(pl + 8, 0);
+        wd(pl + 0x0C, 0);
+    }
+    wb(pl + 0x11, 0);
+    if (rb(pl + 0x14) == 0)
+        ww(pl + 0x12, 0);
+    wb(pl + 0x14, 0);
 }
 
 /* CODE:2A976: GAME_PHASE 2, a game's start: the balls per game to
@@ -1379,6 +1561,197 @@ static void SAVE_SERVE(void)
         ww(st + 0x8E, 4);
 }
 
+/* CODE:2C037, host vector +0Ch: [0020] fiftieths of a second of frames
+ * (x FRAME_RATE / 50, CODE:2C0C3) with the scroll, the flippers, the
+ * flashes and the lights stepped; after the first half second
+ * (CODE:2C0C5) a key (LAST_KEY) ends it; [0010] kept */
+void FRAMES_WAIT(void)
+{
+    uint32_t keep10 = rd(0x0010), st = rd(0x0014);
+    uint16_t n;
+
+    ww(0x2C0C3, (uint16_t)((uint32_t)rw(0x0020) * rw(st + 0x50) / 0x32));
+    ww(0x2C0C5, (uint16_t)(rw(st + 0x50) >> 1));
+    for (;;) {
+        FRAME_STEP();
+        PLAY_SCROLL();
+        /* CODE:156C3, a RET */
+        FLIPPERS_STEP();
+        FLASH_STEP();
+        LIGHTS_STEP();
+        if (rw(0x2C0C5) != 0)
+            ww(0x2C0C5, (uint16_t)(rw(0x2C0C5) - 1));
+        else if (rb(N_LAST_KEY) != 0)
+            break;
+        n = (uint16_t)(rw(0x2C0C3) - 1);
+        ww(0x2C0C3, n);
+        if (n == 0)
+            break;
+    }
+    wd(0x0010, keep10);
+}
+
+/* CODE:2BD95: the bonus at a lost ball (nothing while the tilt,
+ * state+2A75h, is set): the player's bonus (the number ending at +10h)
+ * to the one ending at state+2AD0h once, or its multiplier (word +12h)
+ * times; a frame; the table module's slot 32 (state+2926h) with the
+ * host vector CODE:2CD10 in [0010], which shows it and leaves the total
+ * in the number ending at state+2AC8h; that added to the player's score
+ * (ending at +8), "PLAYER n" and the score drawn; with more than one
+ * player 1.5 s of frames (FRAMES_WAIT) */
+static void BONUS_ADD(void)
+{
+    uint32_t st = rd(0x0014), pl, v;
+    uint16_t n;
+
+    if (rb(st + 0x2A75) == 0) {
+        wd(st + 0x2AC0, 0);
+        wd(st + 0x2AC4, 0);
+        pl = rd(st + 0x0D76);
+        wd(0x0000, pl);
+        n = rw(pl + 0x12);
+        ww(0x0020, n);
+        if (n != 0)
+            ww(0x0020, (uint16_t)(n - 1));
+        st = rd(0x0014);
+        wd(st + 0x2AC8, 0);
+        wd(st + 0x2ACC, 0);
+        do {
+            /* CODE:2BE01 */
+            wd(0x0004, rd(0x0014) + 0x2AD0);
+            wd(0x0008, rd(0x0000) + 0x10);
+            bcd12_add(rd(0x0004), rd(0x0008));
+            wd(0x0008, rd(0x0008) - 6);
+            wd(0x0004, rd(0x0004) - 6);
+            n = rw(0x0020);
+            ww(0x0020, (uint16_t)(n - 1));
+        } while (n != 0);
+        FRAME_STEP();
+        PLAY_SCROLL();
+        /* CODE:156C3, a RET */
+        FLIPPERS_STEP();
+        FLASH_STEP();
+        LIGHTS_STEP();
+        DM_CLEAR();
+        wb(N_LAST_KEY, 0);
+        wd(0x0010, 0x2CD10);
+        MOD_CALL(rd(rd(0x0014) + 0x2926));
+        DM_CLEAR();
+        st = rd(0x0014);
+        pl = rd(st + 0x0D76);
+        wd(0x0000, pl);
+        wd(0x0004, pl + 8);
+        wd(0x0008, st + 0x2AC8);
+        bcd12_add(rd(0x0004), rd(0x0008));
+        wd(0x0008, rd(0x0008) - 6);
+        wd(0x0004, rd(0x0004) - 6);
+        /* "PLAYER n" (CODE:2A95A, its digit at CODE:2A965) */
+        st = rd(0x0014);
+        v = (rd(0x0020) & 0xFFFF0000u) | rw(st + 0x0D72);
+        v = (v & 0xFFFFFF00u) | (uint8_t)(v + 0x31);
+        wd(0x0020, v);
+        wb(0x2A965, (uint8_t)v);
+        wd(0x0000, 0x2A95A);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+        wd(0x0000, rd(st + 0x0D76) + 8);
+        ww(0x002C, 0x140);
+        ww(0x0030, 2);
+        ww(0x0034, 1);
+        ww(0x0038, 1);
+        DM_SCORE_DRAW();
+    }
+    /* CODE:2C018 */
+    if (rw(rd(0x0014) + 0x0D70) != 1) {
+        ww(0x0020, 0x4B);
+        FRAMES_WAIT();
+    }
+}
+
+/* CODE:2BBC6: GAME_PHASE 5, a ball lost: BONUS_ADD; an extra ball (the
+ * player's byte +10h) taken (GAME_PHASE 8), else the next player (the
+ * player count state+0D70h), after the last one the next ball
+ * (state+0D38h) or, when the balls (state+0D36h) are out, LIGHTS_RESET
+ * and GAME_PHASE 3; the next ball's resets; with an extra ball still
+ * held the first light state of header slot 25 (state+290Ah; its second
+ * is the ball save's lamp) gets byte +5 FFh; the ball waiting (state+0D3Ch), the sound CODE:1009A and the
+ * table module's slot 41 (state+294Ah) */
+static void BALL_END(void)
+{
+    uint32_t st = rd(0x0014), pl, e;
+    uint16_t di, n;
+
+    wb(st + 0x92, 0xFF);
+    wb(st + 0x2A7F, 0);
+    BONUS_ADD();
+    st = rd(0x0014);
+    wb(st + 0x2A75, 0);
+    ww(st + 0x2A78, 0);
+    pl = rd(st + 0x0D76);
+    wd(0x0000, pl);
+    if (rb(pl + 0x10) != 0) {
+        wb(pl + 0x10, (uint8_t)(rb(pl + 0x10) - 1));
+        ww(st + 0x8E, 8);
+    } else {
+        /* CODE:2BC19 */
+        wb(st + 0x0D30, 0);
+        di = (uint16_t)(rw(st + 0x0D72) + 1);
+        ww(0x0020, di);
+        ww(st + 0x0D74, (uint16_t)(rw(st + 0x0D74) << 1));
+        if (di >= rw(st + 0x0D70)) {
+            wd(0x0020, 0);
+            ww(st + 0x0D74, 1);
+            n = (uint16_t)(rw(st + 0x0D36) - 1);
+            ww(st + 0x0D36, n);
+            if (n == 0) {
+                /* CODE:2BD79 */
+                LIGHTS_RESET();
+                st = rd(0x0014);
+                ww(st + 0x8E, 3);
+                wb(st + 0x2A7F, 0);
+                return;
+            }
+            ww(st + 0x0D38, (uint16_t)(rw(st + 0x0D38) + 1));
+        }
+        /* CODE:2BC82 */
+        di = rw(0x0020);
+        ww(st + 0x0D72, di);
+        wd(0x0020, (uint32_t)di * 0x16);
+        e = st + sx16((uint16_t)(di * 0x16)) + 0x0D7A;
+        wd(0x0000, e);
+        wd(st + 0x0D76, e);
+        ww(st + 0x8E, 6);
+    }
+    /* CODE:2BCC0 */
+    BALLS_RESET();
+    LIGHTS_BALL_RESET();
+    COUNTERS_BALL_RESET();
+    RECORDS_BALL_RESET();
+    DISPLAY_RESET();
+    DROPS_UP_BALL();
+    BONUS_CLEAR();
+    if (rb(rd(0x0000) + 0x10) != 0) {
+        e = rd(rd(rd(0x0014) + 0x290A));
+        wd(0x0020, e);
+        if (e != 0) {
+            wd(0x0004, e);
+            wb(e + 5, 0xFF);
+        }
+    }
+    /* CODE:2BD15 */
+    st = rd(0x0014);
+    ww(st + 0x0D32, 1);
+    wb(st + 0x0D3C, 0xFF);
+    ww(st + 0x0D3E, 0);
+    wb(st + 0x0D3D, 0);
+    ww(st + 0x0D3A, 0);
+    wb(st + 0x92, 0);
+    wd(0x0000, 0x1009A);
+    SFX_PLAY();
+    MOD_CALL(rd(rd(0x0014) + 0x294A));
+    wb(rd(0x0014) + 0x2A7F, 0xFF);
+}
+
 /* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
  * +15h, and LAST_KEY cleared): frames with "REALLY QUIT TABLE?"
  * (CODE:2A93E) on the display and no display stream, until Y (QUIT_TABLE,
@@ -1575,6 +1948,10 @@ void TABLE_GAME(void)
         }
         if (ph == 7) {
             SAVE_SERVE();
+            continue;
+        }
+        if (ph == 5) {
+            BALL_END();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));
