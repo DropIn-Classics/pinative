@@ -831,6 +831,9 @@ name       CODE:A119 SPOOKY_SEL    ; "Spooky", 32DC0h bytes
 ; CODE:28C45, table 1)
 ; the game's start (2026-09-30, the code; the port against a run at
 ; CODE:30114, the four tables)
+code       CODE:9F2C SFX_PLAY      ; the sound record at [CODE:0000] on the driver's channel 4 (command 9: FS:ESI the sample +16h, ECX its length +8, BL the note +6, BH the volume +4) unless SFX_CHECK refuses
+code       CODE:9F5C SFX_CHECK     ; command 12h (channel 4 still playing a sound); CF when it is and the record's priority +2 is below SFX_PRIO; SFX_PRIO set to it either way
+name       CODE:9F86 SFX_PRIO
 code       CODE:B928 TABLE_GAME    ; DISPLAY_RESET, LIGHTS_RESET, DM_CLEAR, SCREEN_START, CODE:30114, CODE:156C4, CODE:1048B, LIGHTS_STEP, CODE:2ED15, CODE:A654, CODE:D973 1, GAME_PHASE 1, QUIT_TABLE 0, CODE:9B92, then the loop from CODE:B976 until QUIT_TABLE
 code       CODE:2A30E DISPLAY_RESET ; the display queue's state (state+2A26h .. 2A5Fh) 0, state+2A2Ah = DISPLAY_QBUF (its first dword 0), DM_CLEAR
 name       CODE:F71C DISPLAY_QBUF
@@ -863,6 +866,13 @@ code       CODE:156C4 FLIPPERS_DRAW ; each flipper (type 3 passed over) whose an
 code       CODE:1572D FLIP_BLIT    ; the kept pixels of the angle (+30h by |+1Ah|, FLIP_ANGLE2's box) drawn column by column (CODE:1578B, 157EA: a column's first byte is the rows passed over, then up to 55 rows until a 0; 16-bit SI and DI addressing), map mask 1, 2, 4, 8
 code       CODE:15C1A FLIP_ERASE   ; the same rows put back from SPOOKY_SEL (CODE:15C78, 15CED)
 code       CODE:1637B FLIP_ANGLE2  ; CX: +6 plus +1Ah around 0..77h (without +0Ah's sign)
+code       CODE:1048B FLIPPERS_STEP ; FLIPPERS_MOVE four times, then FLIPPER_SOUNDS (CODE:10471, 10476, 1047B, 10480 enter the same chain for four to one moves)
+code       CODE:144AD FLIPPERS_MOVE ; the nudges (Space: state+0D48h up by 258h to 3E8h, else down by C8h to 0, NUDGE_Y state+0D4Ch its high byte; Left/Right Alt: state+0D46h by 258h to -3E8h / 3E8h, else back toward 0 by C8h, NUDGE_X state+0D4Ah its high byte), the flipper keys to state+2A7Bh (left) and 2A7Ch (right), then each flipper record of header slot 22 (1F7h bytes, ended by type 0, type 3 passed over; +0Ah not 0 the left one, with the left key): with state+2A7Fh set and its key down it moves up (the speed +10h times 32h over FRAME_RATE added to the position +12h; at the limit +14h the position held, speed 0, state+2A7Dh/2A7Eh FFh; else the speed less/plus +16h, bounded by +18h), else down (the speed +10h added unscaled, bounded by the rest at 0 (left -1), where state+2A7Dh/2A7Eh go 0, and by +14h; the speed plus/less +0Ch, bounded by +0Eh); +1Ah the position over 40h. Then the tilt count (see TILT_STEP) unless state+0FC5h is set. Work cells CODE:0000, 0020 .. 0030
+code       CODE:104A5 FLIPPER_SOUNDS ; for the left and right flipper, when state+2A7Dh / 2A7Eh differ from FLIP_L_WAS / FLIP_R_WAS: SFX_PLAY of FLIP_UP_SFX (now FFh, the flipper at its top, presumably) or FLIP_DOWN_SFX (now 0, back at rest); the byte kept
+name       CODE:1053E FLIP_L_WAS
+name       CODE:1053F FLIP_R_WAS
+name       CODE:1004C FLIP_UP_SFX  ; a sound record (type 2, presumably; its sample not looked at)
+name       CODE:10066 FLIP_DOWN_SFX ; likewise
 name       CODE:B14E MULTIBALL_COUNTS ; two dwords a table (see MULTIBALL_CAP)
 name       CODE:B13E MULTIBALL_MAX ; four dwords by OPT_MULTIBALL: 6, 3, 4, 5
 code       CODE:BA9B TOP_COLOURS_SET ; TOP_COLOURS's twelve bytes, shifted right 2, to the DAC from colour FCh

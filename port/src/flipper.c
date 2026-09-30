@@ -375,3 +375,285 @@ void FLIPPERS_DRAW(void)
         flip_blit(p, 0);
     }
 }
+
+static uint32_t sx16(uint16_t w)
+{
+    return (uint32_t)(int32_t)(int16_t)w;
+}
+
+static uint16_t sar(uint16_t w, int n)
+{
+    return (uint16_t)((int16_t)w >> n);
+}
+
+/* the end of a move: the position in the low word of the work cell
+ * `cell` to +12h, over 40h to the cell and +1Ah; the next record */
+static void flip_moved(uint32_t p, uint32_t cell)
+{
+    uint16_t si = rw(cell);
+
+    ww(p + 0x12, si);
+    si = sar(si, 6);
+    ww(cell, si);
+    ww(p + 0x1A, si);
+}
+
+/* CODE:147B6 (left) and CODE:149EF (right): the flipper `p` moving up,
+ * the speed +10h times 32h over FRAME_RATE added to the position +12h;
+ * at the rest's side of 0 it goes back there, at the limit +14h it stops
+ * (state+2A7Dh or 2A7Eh FFh), else the speed grows by +16h up to +18h */
+static void flip_up(uint32_t p, int left)
+{
+    uint32_t st = rd(0x0014);
+    uint16_t pos = rw(p + 0x12), cx;
+    int16_t q;
+
+    wd(0x0020, sx16(rw(p + 0x10)));
+    wd(0x0028, sx16(rw(p + 0x14)));
+    wd(0x002C, sx16(rw(p + 0x16)));
+    wd(0x0030, sx16(rw(p + 0x18)));
+    q = (int16_t)((int32_t)0x32 * (int16_t)rw(p + 0x10) / (int16_t)rw(N_FRAME_RATE));
+    cx = (uint16_t)(pos + q);
+    wd(0x0024, (sx16(pos) & 0xFFFF0000u) | cx);
+    if (left) {
+        if ((int16_t)cx >= 0) {
+            wd(0x0024, 0xFFFFFFFFu);
+            ww(p + 0x10, 0);
+        } else if ((int16_t)cx <= (int16_t)rw(0x0028)) {
+            ww(0x0024, rw(0x0028));
+            wb(st + 0x2A7D, 0xFF);
+            ww(p + 0x10, 0);
+        } else {
+            ww(0x0020, (uint16_t)(rw(0x0020) - rw(0x002C)));
+            if ((int16_t)rw(0x0020) <= (int16_t)rw(0x0030))
+                ww(0x0020, rw(0x0030));
+            ww(p + 0x10, rw(0x0020));
+        }
+    } else {
+        if ((int16_t)cx < 0) {
+            wd(0x0024, 0);
+            ww(p + 0x10, 0);
+        } else if ((int16_t)cx >= (int16_t)rw(0x0028)) {
+            ww(0x0024, rw(0x0028));
+            wb(st + 0x2A7E, 0xFF);
+            ww(p + 0x10, 0);
+        } else {
+            ww(0x0020, (uint16_t)(rw(0x0020) + rw(0x002C)));
+            if ((int16_t)rw(0x0020) >= (int16_t)rw(0x0030))
+                ww(0x0020, rw(0x0030));
+            ww(p + 0x10, rw(0x0020));
+        }
+    }
+    flip_moved(p, 0x0024);
+}
+
+/* CODE:148DA (left) and CODE:14AEA (right): the flipper `p` falling
+ * back, the speed +10h added to the position unscaled; at the rest (0,
+ * the left one -1) it stops (state+2A7Dh or 2A7Eh 0), past the limit +14h
+ * it is held there, else the speed grows by +0Ch up to +0Eh */
+static void flip_down(uint32_t p, int left)
+{
+    uint32_t st = rd(0x0014), edx = sx16(rw(p + 0x12));
+    uint16_t dx;
+
+    wd(0x0020, sx16(rw(p + 0x0C)));
+    wd(0x0024, sx16(rw(p + 0x0E)));
+    wd(0x0028, sx16(rw(p + 0x10)));
+    wd(0x0030, sx16(rw(p + 0x14)));
+    dx = (uint16_t)(edx + rw(p + 0x10));
+    wd(0x002C, (edx & 0xFFFF0000u) | dx);
+    if (left) {
+        if ((int16_t)dx >= 0) {
+            wd(0x002C, 0xFFFFFFFFu);
+            ww(p + 0x10, 0);
+            wb(st + 0x2A7D, 0);
+        } else if ((int16_t)dx < (int16_t)rw(0x0030)) {
+            ww(0x002C, rw(0x0030));
+            ww(p + 0x10, 0);
+        } else {
+            ww(0x0028, (uint16_t)(rw(0x0028) + rw(0x0020)));
+            if ((int16_t)rw(0x0028) >= (int16_t)rw(0x0024))
+                ww(0x0028, rw(0x0024));
+            ww(p + 0x10, rw(0x0028));
+        }
+    } else {
+        if ((int16_t)dx < 0) {
+            wd(0x002C, 0);
+            ww(p + 0x10, 0);
+            wb(st + 0x2A7E, 0);
+        } else if ((int16_t)dx > (int16_t)rw(0x0030)) {
+            ww(0x002C, rw(0x0030));
+            ww(p + 0x10, 0);
+        } else {
+            ww(0x0028, (uint16_t)(rw(0x0028) - rw(0x0020)));
+            if ((int16_t)rw(0x0028) <= (int16_t)rw(0x0024))
+                ww(0x0028, rw(0x0024));
+            ww(p + 0x10, rw(0x0028));
+        }
+    }
+    flip_moved(p, 0x002C);
+}
+
+/* a nudge key's press (CODE:144C5 and on): bit `bit` of state+2A77h set;
+ * when it was set already (the key held) that of state+2A76h cleared */
+static void nudge_press(uint32_t st, int bit)
+{
+    uint8_t was = rb(st + 0x2A77);
+
+    wb(st + 0x2A77, (uint8_t)(was | 1 << bit));
+    if (was & 1 << bit)
+        wb(st + 0x2A76, (uint8_t)(rb(st + 0x2A76) & ~(1 << bit)));
+}
+
+/* CODE:144AD: the nudges, the flipper keys, each flipper's move and the
+ * tilt count */
+static void FLIPPERS_MOVE(void)
+{
+    uint32_t st = rd(0x0014), p;
+    uint16_t di;
+    uint8_t bl;
+    int nudge_x = 1;
+
+    wb(st + 0x2A76, (uint8_t)(rb(st + 0x2A76) | 7));
+    if (rb(st + 0x0E7F) != 0) {                         /* Space */
+        nudge_press(st, 0);
+        ww(st + 0x0D44, 0x258);
+        di = (uint16_t)(rw(st + 0x0D48) + rw(st + 0x0D44));
+        ww(0x0020, di);
+        ww(st + 0x0D48, di);
+        if (di >= 0x3E8) {
+            ww(st + 0x0D44, 0);
+            ww(st + 0x0D48, 0x3E8);
+            wb(st + 0x0E7F, 0);
+        }
+    } else {
+        wb(st + 0x2A77, (uint8_t)(rb(st + 0x2A77) & ~1));
+        ww(st + 0x0D44, 0xFF38);
+        di = (uint16_t)(rw(st + 0x0D48) + rw(st + 0x0D44));
+        ww(0x0020, di);
+        ww(st + 0x0D48, di);
+        if ((int16_t)di < 0) {
+            ww(st + 0x0D44, 0);
+            ww(st + 0x0D48, 0);
+        }
+    }
+    /* CODE:14578 */
+    di = sar(rw(st + 0x0D48), 8);
+    ww(0x0020, di);
+    ww(st + 0x0D4C, di);
+
+    if (rb(st + 0x0E7E) != 0) {                         /* Left Alt */
+        nudge_press(st, 1);
+        ww(st + 0x0D42, 0xFDA8);
+        di = (uint16_t)(rw(st + 0x0D46) + rw(st + 0x0D42));
+        ww(0x0020, di);
+        ww(st + 0x0D46, di);
+        if ((int16_t)di <= (int16_t)0xFC18) {
+            ww(st + 0x0D42, 0);
+            ww(st + 0x0D46, 0xFC18);
+            wb(st + 0x0E7E, 0);
+        }
+    } else if (rb(st + 0x0EFE) != 0) {                  /* Right Alt */
+        nudge_press(st, 2);
+        ww(st + 0x0D42, 0x258);
+        di = (uint16_t)(rw(st + 0x0D46) + rw(st + 0x0D42));
+        ww(0x0020, di);
+        ww(st + 0x0D46, di);
+        if ((int16_t)di >= 0x3E8) {
+            ww(st + 0x0D42, 0);
+            ww(st + 0x0D46, 0x3E8);
+            wb(st + 0x0EFE, 0);
+        }
+    } else {                                            /* CODE:14692 */
+        wb(st + 0x2A77, (uint8_t)(rb(st + 0x2A77) & 0xF9));
+        di = rw(st + 0x0D46);
+        ww(0x0020, di);
+        if (di == 0) {
+            nudge_x = 0;
+        } else {
+            uint32_t sum;
+
+            ww(st + 0x0D42, (int16_t)di < 0 ? 0xC8 : 0xFF38);
+            sum = (uint32_t)di + rw(st + 0x0D42);
+            ww(0x0020, (uint16_t)sum);
+            if (sum > 0xFFFF) {
+                /* the carry: both cleared, +0D46h then overwritten */
+                ww(st + 0x0D42, 0);
+                ww(st + 0x0D46, 0);
+            }
+            ww(st + 0x0D46, rw(0x0020));
+        }
+    }
+    if (nudge_x) {                                      /* CODE:14717 */
+        di = sar(rw(st + 0x0D46), 8);
+        ww(0x0020, di);
+        ww(st + 0x0D4A, di);
+    }
+
+    /* CODE:1473F: the flipper keys */
+    wd(0x0000, rd(st + 0x28FE));
+    wb(st + 0x2A7B, (uint8_t)(rb(st + 0x0E70) | rb(st + 0x0E63)));
+    bl = (uint8_t)(rb(st + 0x0E7C) | rb(st + 0x0EE3));
+    wb(0x0024, bl);
+    wb(st + 0x2A7C, bl);
+
+    for (;;) {                                          /* CODE:14781 */
+        p = rd(0x0000);
+        wb(0x0020, rb(p));
+        if (rb(p) == 0)
+            break;
+        if (rb(p) != 3) {
+            int left = rw(p + 0x0A) != 0;
+
+            if (rb(st + 0x2A7F) != 0 && rb(st + (left ? 0x2A7B : 0x2A7C)) != 0)
+                flip_up(p, left);
+            else
+                flip_down(p, left);
+        }
+        wd(0x0000, rd(0x0000) + 0x1F7);
+    }
+
+    /* CODE:14BD7: the tilt count */
+    if (rb(st + 0x0FC5) != 0)
+        return;
+    bl = (uint8_t)(rb(st + 0x2A77) & rb(st + 0x2A76));
+    wb(0x0020, bl);
+    if (bl != 0) {
+        ww(0x0020, rw(st + 0x0E3E));
+        ww(st + 0x2A78, (uint16_t)(rw(st + 0x2A78) + rw(0x0020)));
+        if (rw(st + 0x2A78) >= 0xC8)
+            wb(st + 0x2A75, 0xFF);
+    }
+    if (rw(st + 0x2A78) != 0)
+        ww(st + 0x2A78, (uint16_t)(rw(st + 0x2A78) - 1));
+}
+
+/* CODE:104A5: a flipper's sound when state+2A7Dh (left) or 2A7Eh (right)
+ * changed: FLIP_UP_SFX when it went to FFh, FLIP_DOWN_SFX to 0 */
+static void FLIPPER_SOUNDS(void)
+{
+    uint32_t st = rd(0x0014);
+    int k;
+
+    for (k = 0; k < 2; k++) {
+        uint32_t was = k ? N_FLIP_R_WAS : N_FLIP_L_WAS;
+        uint8_t b = rb(was), now = rb(st + 0x2A7D + k);
+
+        wb(0x0020, b);
+        if (b != now) {
+            wd(0x0000, (int8_t)(b - now) < 0 ? N_FLIP_DOWN_SFX : N_FLIP_UP_SFX);
+            SFX_PLAY();
+        }
+        wb(was, rb(st + 0x2A7D + k));
+    }
+}
+
+/* CODE:1048B: four moves, the sounds */
+void FLIPPERS_STEP(void)
+{
+    FLIPPERS_MOVE();
+    FLIPPERS_MOVE();
+    FLIPPERS_MOVE();
+    FLIPPERS_MOVE();
+    FLIPPER_SOUNDS();
+}

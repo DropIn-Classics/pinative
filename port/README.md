@@ -49,8 +49,9 @@ targets' files, the flippers' blocks (src/tblinit.c) and pictures
 and collision masks kept) and the multiball cap: TABLE_LOAD2 whole;
 the game's first steps (src/play.c, src/lights.c: the display queue
 and the lights reset, the drop targets drawn, the attract scroll's
-first line, the flippers drawn) up to CODE:1048B (`Stopped before
-CODE:1048B`); the Info page (a table's
+first line, the flippers drawn, the nudges and the flippers' moves with
+their sounds, src/flipper.c and the driver's commands 9 and 12h) up to
+LIGHTS_STEP (`Stopped before LIGHTS_STEP (CODE:2EF7A)`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -254,6 +255,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   `-break 1113BB -mem -vram`, the same keys): CODE differs only in
   FRAME_SPINS, TAIL and video memory equal (the flippers drawn), the
   heap blocks equal but the leftovers named above.
+- 2026-09-30, Linux: each of the four tables up to LIGHTS_STEP (dosrun
+  `-break 12FEAA -mem -vram`, the same keys): CODE differs only in
+  FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but
+  the leftovers named above. Only the flippers' rest path ran: their
+  move up, the nudges, the tilt count and the driver's commands 9 and
+  12h (the flippers' sounds) are not checked yet.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

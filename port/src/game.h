@@ -79,12 +79,16 @@ int MULTIBALL_CAP(void);
 /* flipper.c: CODE:1527F, CODE:156C4 */
 void FLIPPER_RENDER(void);
 void FLIPPERS_DRAW(void);
+/* CODE:1048B */
+void FLIPPERS_STEP(void);
 
 /* lights.c: CODE:29AF9 */
 void LIGHTS_RESET(void);
 /* play.c: CODE:B928, the game */
 void TABLE_GAME(void);
 
+/* table.c: CODE:9F2C, the sound record at [CODE:0000] */
+void SFX_PLAY(void);
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 

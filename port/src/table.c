@@ -101,6 +101,44 @@ static int tbl_driver(NsRegs *r)
     return ns_call(rw(N_TBL_DRIVER_ENTRY + 4), r);
 }
 
+/* CODE:9F5C: command 12h, then 1 (CF) when channel 4 still plays a sound
+ * and the record's priority +2 is below SFX_PRIO; SFX_PRIO set to it
+ * either way */
+static int SFX_CHECK(void)
+{
+    NsRegs r;
+    uint16_t ax;
+    int cf;
+
+    memset(&r, 0, sizeof r);
+    r.eax = 0x12;
+    r.edx = 4;
+    tbl_driver(&r);
+    ax = rw(rd(0x0000) + 2);
+    cf = r.eax != 0 && ax < rw(N_SFX_PRIO);
+    ww(N_SFX_PRIO, ax);
+    return cf;
+}
+
+/* CODE:9F2C: the sound record at [CODE:0000] on channel 4 (command 9) */
+void SFX_PLAY(void)
+{
+    uint32_t p;
+    NsRegs r;
+
+    if (SFX_CHECK())
+        return;
+    p = rd(0x0000);
+    memset(&r, 0, sizeof r);
+    r.eax = 9;
+    r.edx = 4;
+    r.fs = rw(N_TABLE_DS);
+    r.esi = rd(p + 0x16);
+    r.ecx = rw(p + 8);
+    r.ebx = (uint32_t)rb(p + 4) << 8 | rb(p + 6);
+    tbl_driver(&r);
+}
+
 /* CODE:9AB9: as SOUND_START's driver start (sound.c), with the table's
  * cells; the port loads NOSOUND.SDR whatever the header names */
 static int TABLE_SOUND(void)

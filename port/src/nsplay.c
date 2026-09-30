@@ -414,6 +414,36 @@ static void NOTE_FX(uint32_t ch, uint8_t cl, uint8_t csample, uint8_t dl, uint8_
     row_fx(ch, cl, csample, dl, dh);
 }
 
+/* CODE:0E2A: command 9, a sound on channel DL: FS:ESI its sample, ECX
+ * bytes, BL the note, BH the volume; the channel's music kept first
+ * (CODE:0EB4) unless a sound plays there already */
+int CMD_SFX(NsRegs *r)
+{
+    uint32_t ch = D_CHANNELS + (uint16_t)(0x3B * (uint8_t)((uint8_t)r->edx - 1));
+
+    if (rb(ch + C_SFX) == 0) {
+        wd(0x2D26, rd(ch + C_POS));
+        ww(0x2D2A, rw(ch + C_SEL));
+        wd(0x2D2C, rd(ch + C_END));
+        ww(0x2D30, rw(ch + C_LOOP_START));
+        ww(0x2D32, rw(ch + C_LOOP_END));
+        ww(0x2D34, rw(ch + C_STEP));
+        ww(0x2D36, rw(ch + C_STEP_FRAC));
+    }
+    ww(ch + C_SEL, r->fs);
+    wd(ch + C_POS, r->esi);
+    wd(ch + C_END, r->esi + r->ecx);
+    ww(ch + C_FINETUNE, 0);
+    ww(ch + C_LOOP_START, 0);
+    ww(ch + C_OFFSET, 0);
+    ww(ch + C_LOOP_END, 1);
+    step_to(ch, period_at((uint16_t)((uint8_t)((uint8_t)r->ebx - 1) * 2)), C_STEP, C_STEP_FRAC);
+    wb(ch + C_SFX, 0);
+    NOTE_FX(ch, (uint8_t)r->ecx, 0, 0x0C, (uint8_t)(r->ebx >> 8));
+    wb(ch + C_SFX, 1);
+    return 0;                   /* CODE:0975 */
+}
+
 /* CODE:14DC */
 static void NOTE_PLAY(uint32_t ch, uint8_t cl, uint8_t csample, uint8_t dl, uint8_t dh)
 {

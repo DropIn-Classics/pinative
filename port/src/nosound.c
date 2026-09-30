@@ -624,6 +624,17 @@ static int CMD_SET_END_CB(NsRegs *r)
     return 0;                   /* CODE:0975 */
 }
 
+/* CODE:0D13: command 12h, the byte +37h of channel DL (1 while a sound
+ * of command 9 plays) */
+static int CMD_SFX_BUSY(NsRegs *r)
+{
+    uint32_t ch = D_CHANNELS + (uint16_t)(0x3B * (uint8_t)((uint8_t)r->edx - 1));
+
+    r->eax = rb(ch + 0x37);
+    wd(D_RESULT, r->eax);
+    return 0;                   /* CODE:095A */
+}
+
 /* CODE:0D9F */
 static int CMD_MIX(NsRegs *r)
 {
@@ -701,6 +712,9 @@ int ns_call(uint16_t cs, NsRegs *r)
     case 8:
         cf = CMD_ORDER(r);
         break;
+    case 9:
+        cf = CMD_SFX(r);
+        break;
     case 0x0B:
         cf = CMD_END(r);
         break;
@@ -715,6 +729,9 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 0x11:
         cf = CMD_SET_END_CB(r);
+        break;
+    case 0x12:
+        cf = CMD_SFX_BUSY(r);
         break;
     default:
         pi_stop("NOSOUND: a command not translated yet");

@@ -2989,6 +2989,26 @@ is not reached there. Against the runs at CODE:1048B (`-break 1113BB`),
 all four tables: CODE only FRAME_SPINS, TAIL and video memory equal,
 the heap blocks equal but the known leftovers.
 
+FLIPPERS_STEP (CODE:1048B; names in the hints from FLIPPERS_STEP on)
+is FLIPPERS_MOVE four times and FLIPPER_SOUNDS. FLIPPERS_MOVE does the
+nudges (state+0D42h..0D4Ch), reads the flipper keys into state+2A7Bh
+and 2A7Ch, moves each flipper record of header slot 22 (1F7h bytes,
+ended by type 0) and counts the tilt (TILT_STEP). A flipper moves up
+only while state+2A7Fh is set (the module object's end, see the
+comment at CODE:2CFC8) and its key is down; up, its speed is scaled by
+32h / FRAME_RATE, down it is added as it is (not scaled: the fall
+presumably takes a little less time at 61 pictures a second than at 59;
+not looked at in a run). The left flipper (+0Ah not 0) rests at -1, the right one
+at 0. FLIPPER_SOUNDS plays FLIP_UP_SFX or FLIP_DOWN_SFX by SFX_PLAY
+(CODE:9F2C: the driver's commands 12h and 9, both now in the port's
+NOSOUND) when state+2A7Dh or 2A7Eh changed. Against the runs at
+LIGHTS_STEP (CODE:2EF7A, `-break 12FEAA`), all four tables: CODE only
+FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but the
+known leftovers. Only the rest path ran there (no key; the work cells
+CODE:0000..0030 equal): the up path, the nudges' keys, the tilt count
+and the sounds (commands 9 and 12h) are not checked in a run yet; the
+port's KBD_IRQ still stops it.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3200,8 +3220,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      from CODE:B976 with KBD_IRQ (CODE:A076) for the keys. Done
      2026-09-30: the start up to CODE:30114 (see "The game's start").
      Done 2026-09-30: ATTRACT_SCROLL and FLIPPERS_DRAW, up to
-     CODE:1048B (same section). Next: CODE:1048B, LIGHTS_STEP, 2ED15,
-     A654 (the palette's fade-in), 9B92 (the driver's commands).
+     CODE:1048B (same section). Done 2026-09-30: FLIPPERS_STEP, up to
+     LIGHTS_STEP (same section; its up path unchecked). Next:
+     LIGHTS_STEP, 2ED15, A654 (the palette's fade-in), 9B92 (the
+     driver's commands).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

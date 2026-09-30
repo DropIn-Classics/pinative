@@ -93,5 +93,6 @@ void TABLE_GAME(void)
     SCREEN_START();
     ATTRACT_SCROLL();
     FLIPPERS_DRAW();
-    pi_stop("CODE:1048B");
+    FLIPPERS_STEP();
+    pi_stop("LIGHTS_STEP (CODE:2EF7A)");
 }
