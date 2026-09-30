@@ -3167,6 +3167,51 @@ TIMER_COUNT. In that frame no ball was taken off (+70h 0 before the
 first drawing) and no drop target changed: BALL_ERASE's routines and
 DROP_MASK are not checked in a run yet.
 
+### The attract mode's display
+
+After FLIPPERS_STEP ATTRACT looks at state+0E34h (0 in the attract
+mode's start: the display branch at CODE:2A690; else texts at
+CODE:2A557, not followed yet): DISPLAY_RUN (CODE:2F35C), then
+ANIMS_STEP (CODE:27A0E), then by state+0E35h (1 at the start) the
+attract mode's display record (state+292Ah) queued with DISPLAY_QUEUE
+(CODE:2FEDB) and state+0E35h set to 0; 0 with no record running sets it FFh and goes
+to the high-score pages (CODE:2A6FA, not reached yet). Then
+ATTRACT_KEYS (CODE:2A7FD): Esc (state+0E47h) to CODE:2A8AB, F1..F8 or
+keypad Enter start a game (GAME_PHASE 2, the number added to
+state+0D70h). Names in src/ILLUSION.hints, "the attract mode's
+display"; the code is port/src/display.c.
+
+DISPLAY_RUN: a waiting count (state+2A40h, or +2A3Eh while +2A3Ch is set
+and no animation plays) is counted down; else the running record
+(state+2A2Eh) or the next from the ring of 64 at [state+2A2Ah]
+(state+2A28h the reading end) runs one opcode a frame: the word at the
+record's +6 plus its position +4, looked up in DISPLAY_OPTAB (a dword
+an opcode: the routine's offset from DISPLAY_OPCODES and the opcode's
+length, which is added to +4); opcode 0 ends the record. With no record,
+the background stream (state+2A58h) runs all its opcodes to its end in
+one frame. The routines get the record in [0000], the opcode's address
+in [0004], the routine's offset and length in [0020], [0024], the
+current player and its bit (state+0D72h, 0D74h) in [0038], [003C].
+DISPLAY_QUEUE: a record whose first word has bit 0 becomes the
+background stream; else its priority (bytes +2, +3) against the
+queue's (state+2A3Ah, 2A3Bh): lower, not queued; higher (or +2
+negative), the queue emptied and the display reset first; equal in +2
+and higher in +3, only added.
+
+ANIMS_STEP with no animation and no background animation writes through
+a null pointer: `MOV AX,[EBX+22H]; MOV [EBX+12H],AX; MOV DWORD PTR
+[EBX+16H],0` come between `CMP EBX,0` and its `JE`, and both ways lead
+to the RET, so CODE:0012 gets the word at CODE:0022 and CODE:0016..0019
+are cleared each such frame (presumably a slip; the port does the
+same, and CODE compares equal with it).
+
+Against the runs at the first display opcode's routine (CODE:2F9CF,
+opcode 1, an animation; `-break 1308FF`, in the second frame), all four
+tables: CODE only FRAME_SPINS, TAIL and video memory equal (the ball
+taken off and drawn again: BALL_ERASE's routines ran), the heap blocks
+equal but the known leftovers, the driver's block in SAVED_61,
+SAMPLE_POS and TIMER_COUNT.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3388,11 +3433,14 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (see "The attract mode's frame"). Done 2026-09-30: FRAME_STEP's rest
      (the balls by their own code, run from the image; DROPS_DRAW),
      ATTRACT_SCROLL and FLIPPERS_STEP, up to CODE:2A544 (see "The balls'
-     sprites"). Next: ATTRACT's rest from CODE:2A544 (state+0E34h 0: the
-     display stream DISPLAY_RUN, ANIMS_STEP, the high-score pages; else
-     the players' scores; then the keys) and KBD_IRQ (CODE:A076); then a
-     comparison some hundred frames on (FRAME_COUNT, the balls taken
-     off).
+     sprites"). Done 2026-09-30: ATTRACT's display branch (DISPLAY_RUN
+     with its streams, DISPLAY_QUEUE, ANIMS_STEP's empty path) and
+     ATTRACT_KEYS, up to the second frame's first display opcode
+     (CODE:2F9CF; see "The attract mode's display"). Next: the display
+     opcodes as the attract stream reaches them (opcode 1 first, the
+     animations of ANIMS_STEP with it), the high-score pages
+     (CODE:2A6FA), KBD_IRQ (CODE:A076); a comparison some hundred frames
+     on (FRAME_COUNT against the run's start-up gaps).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

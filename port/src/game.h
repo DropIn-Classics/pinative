@@ -98,6 +98,10 @@ void DROPS_DRAW(void);
 void BALLS_STEP(void);
 void BALLS_SHOW(void);
 void EVENT_QUEUE(void);
+/* display.c: CODE:2F35C, CODE:2FEDB, CODE:27A0E */
+void DISPLAY_RUN(void);
+void DISPLAY_QUEUE(void);
+void ANIMS_STEP(void);
 /* play.c: CODE:B928, the game */
 void TABLE_GAME(void);
 

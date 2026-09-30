@@ -10,6 +10,11 @@
 #include "pmem.h"
 #include "vga.h"
 
+static uint32_t sx16(uint16_t v)
+{
+    return (uint32_t)(int32_t)(int16_t)v;
+}
+
 /* CODE:2A30E: the display queue's state (state+2A26h .. 2A5Fh) cleared,
  * its pointer state+2A2Ah to DISPLAY_QBUF, whose first dword 0 */
 static void DISPLAY_RESET(void)
@@ -208,6 +213,41 @@ static void FRAME_STEP(void)
     ns_retrace();
 }
 
+/* CODE:2A7FD: Esc (state+0E47h) to CODE:2A8AB; else the first of the
+ * keys F8..F1 (state+0E88h down to +0E81h) set, or keypad Enter
+ * (state+0EE2h) as F1: cleared, GAME_PHASE 2 and its number (1..8) added
+ * to state+0D70h */
+static void ATTRACT_KEYS(void)
+{
+    uint32_t st = rd(0x0014);
+    uint16_t si;
+
+    if (rb(st + 0x0E47) != 0)
+        pi_stop("CODE:2A8AB");
+    wd(0x0020, 7);
+    wd(0x0000, st + 0x0E81);
+    for (si = 7; ; si--) {
+        if (rb(rd(0x0000) + sx16(si)) != 0) {
+            wb(rd(0x0000) + sx16(si), 0);
+            break;
+        }
+        wd(0x0020, (uint16_t)(si - 1));
+        if (si == 0) {
+            wd(0x0020, 0);
+            st = rd(0x0014);
+            if (rb(st + 0x0EE2) == 0)
+                return;
+            wb(st + 0x0EE2, 0);
+            break;
+        }
+    }
+    /* CODE:2A886 */
+    st = rd(0x0014);
+    ww(st + 0x8E, 2);
+    ww(0x0020, (uint16_t)(rw(0x0020) + 1));
+    ww(st + 0x0D70, (uint16_t)(rw(st + 0x0D70) + rw(0x0020)));
+}
+
 /* CODE:2A4F8: GAME_PHASE 1, the attract mode, a frame */
 static void ATTRACT(void)
 {
@@ -224,7 +264,27 @@ static void ATTRACT(void)
     ATTRACT_SCROLL();
     /* CODE:156C3, a RET */
     FLIPPERS_STEP();
-    pi_stop("CODE:2A544");
+    st = rd(0x0014);
+    if (rb(st + 0x0E34) != 0)
+        pi_stop("CODE:2A557");
+    /* CODE:2A690 */
+    DISPLAY_RUN();
+    ANIMS_STEP();
+    st = rd(0x0014);
+    if (rb(st + 0x0E35) & 0x80) {
+        pi_stop("CODE:2A6FA");
+    } else if (rb(st + 0x0E35) != 0) {
+        /* the attract mode's display record (state+292Ah) queued */
+        wb(st + 0x0E35, 0);
+        wd(0x0000, rd(st + 0x292A));
+        DISPLAY_QUEUE();
+    } else if (rd(st + 0x2A2E) == 0) {
+        wb(st + 0x0E35, 0xFF);
+        ww(0x2A6E4, 0);
+        ww(0x2A6E6, 0);
+        pi_stop("CODE:2A6FA");
+    }
+    ATTRACT_KEYS();
 }
 
 void TABLE_GAME(void)

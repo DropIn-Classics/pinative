@@ -61,7 +61,10 @@ dot-matrix display, the lights and drop targets that changed drawn,
 the retrace waited, the ball taken off and drawn by the original's own
 sprite routines run from the image, src/codeint.c and src/ball.c, the
 drop targets that changed, the flippers, the attract scroll and the
-flippers' moves) up to CODE:2A544 (`Stopped before CODE:2A544`); the Info page (a table's
+flippers' moves; the display's queue and streams, src/display.c, the
+attract mode's display record queued, its keys) up to the second
+frame's first display opcode, CODE:2F9CF (`Stopped before
+CODE:2F9CF`); the Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
 as well. The driver's picture measurement (command 0Eh) is
@@ -302,6 +305,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   above (the ball's mark in the hide-lights mask equal); the driver's
   block in SAVED_61, SAMPLE_POS and TIMER_COUNT. The ball's taking off
   and DROP_MASK did not run there.
+- 2026-09-30, Linux: each of the four tables up to CODE:2F9CF (dosrun
+  `-break 1308FF -mem -vram`, the same keys), the attract mode's second
+  frame at its first display opcode: CODE differs only in FRAME_SPINS,
+  TAIL and video memory equal (the ball taken off and drawn again), the
+  heap blocks equal but the leftovers named above; the driver's block in
+  SAVED_61, SAMPLE_POS and TIMER_COUNT. No key pressed: ATTRACT_KEYS'
+  paths with a key not checked.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

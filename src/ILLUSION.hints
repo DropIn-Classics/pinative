@@ -998,6 +998,13 @@ code       CODE:38DA0 BALL_ERASE2
 code       CODE:3A9A0 BALL_ERASE3
 code       CODE:3C5A0 BALL_ERASE4
 name       CODE:288DC DROP_STATES  ; 64h entries of 8 bytes: the state, the state drawn, the object (DROP_SET, DROPS_DRAW)
+; the attract mode's display (2026-09-30, the code; the port against a
+; run at the first display opcode, the four tables)
+name       CODE:2F621 DISPLAY_OPTAB ; a dword a display opcode (0 the end, then DISPLAY_OPCODES): the routine's offset from DISPLAY_OPCODES, the opcode's length in bytes (a word each)
+name       CODE:2F35B DISPLAY_BUSY  ; FFh after DISPLAY_RUN ran (or waited); 0 when the idle display was put up (CODE:2F5E9)
+name       CODE:27A7D ANIMS_BG_ONLY ; ANIMS_STEP: FFh when no animation plays (state+2A50h 0)
+comment    CODE:27A62 the background animation (state+2A5Ch) +12h from +22h, +16h 0, also when there is none: through EBX 0 at CODE:0012 and 0016 (the CMP's flags are tested after, both ways to the RET; presumably a slip)
+code       CODE:2A7FD ATTRACT_KEYS  ; Esc (state+0E47h) to CODE:2A8AB; else the first of F8..F1 (state+0E88h down to 0E81h) set, or keypad Enter (state+0EE2h) as F1: cleared, GAME_PHASE 2, the key's number (1..8) added to state+0D70h
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)
