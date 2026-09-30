@@ -6,10 +6,8 @@
  * kept in memory differ).  It loads the table (TABLE_LOAD: the driver
  * started again with the table's music; TABLE_LOAD2: the module and the
  * rest), runs the game with IRQ 1 unmasked (CODE:B928) and frees it all.
- * Translated so far: TABLE_LOAD2 up to CODE:BA9B, the module loaded
- * and the display set (docs/HANDOFF.md, "The table's start", "The
- * dot-matrix display's blocks", "The module's load", "The table's
- * display").
+ * Translated so far: TABLE_LOAD2 up to CODE:28C45 (docs/HANDOFF.md,
+ * "The table's start" and the sections after it).
  */
 #include <string.h>
 
@@ -199,7 +197,9 @@ static int TABLE_LOAD2(void)
         vga_outb(0x3C0, 0x33);
         vga_outb(0x3C0, 4);
     }
-    pi_stop("CODE:BA9B");
+    TOP_COLOURS_SET();
+    BALLS_INIT();
+    pi_stop("CODE:28C45");
     return 1;
 }
 

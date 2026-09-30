@@ -2909,6 +2909,22 @@ programs the PIT again; the port's NOSOUND counts IRQs per picture from
 PIT_DIV regardless. Whether and where the game or the driver restarts
 it is not followed; the driver's sample clock will show it.
 
+### The balls' and flippers' start
+
+BALLS_INIT (CODE:B797; names in src/ILLUSION.hints, "TABLE_LOAD2's
+end") fills the 13 ball records at state+10AEh (76h bytes each):
+header slots 0-5 into each (BALL_BUNDLE1), SLOPE_X/SLOPE_Y to +3Ch/+3Eh,
+then each is listed twice (state+1046h, state+107Ah), numbered 1..13 in
++0Ah and put at the plunger (BALL_PLACE: 11Ch, 1FEh, slots 6-11). The
+second coordinate's dword +22h is shifted from an EDI whose high word
+the first coordinate left (`MOV DI`), so it holds more than 1FEh << 0Ah
+(presumably a slip without effect when only the low word is read; not
+followed). The flipper records of header slot 22 get their step counts
+(+14h) and signs. Before it TOP_COLOURS_SET sets DAC colours FCh..FFh.
+
+Against the runs of all four tables at CODE:28C45 (`-break 129B75`):
+CODE only FRAME_SPINS, TAIL equal, the heap blocks as at CODE:BA9B.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3109,9 +3125,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      up to the module, CODE:B22D (see "The dot-matrix display's
      blocks"). Done 2026-09-30: the module's load, up to CODE:911F on
      all four tables (see "The module's load"). Done 2026-09-30:
-     TBL_VGA_INIT, up to CODE:BA9B (see "The table's display"). Next:
-     the rest of TABLE_LOAD2 (CODE:BA9B, CODE:B797, CODE:28C45,
-     CODE:15030, MULTIBALL_CAP), then the game at CODE:B928.
+     TBL_VGA_INIT, up to CODE:BA9B (see "The table's display"). Done
+     2026-09-30: TOP_COLOURS_SET and BALLS_INIT, up to CODE:28C45 (see
+     "The balls' and flippers' start"). Next: the rest of TABLE_LOAD2
+     (CODE:28C45 the lights, CODE:15030 the flipper data,
+     MULTIBALL_CAP), then the game at CODE:B928.
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

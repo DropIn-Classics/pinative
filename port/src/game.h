@@ -66,6 +66,10 @@ void DEC_TEXT(void);
 /* tblvga.c: CODE:911F */
 void TBL_VGA_INIT(void);
 
+/* tblinit.c: CODE:BA9B, CODE:B797 */
+void TOP_COLOURS_SET(void);
+void BALLS_INIT(void);
+
 /* table.c: CODE:A323, AL the table 1..4; 1 (CF) when a load failed */
 int TABLE(uint8_t al);
 
