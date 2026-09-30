@@ -16,6 +16,7 @@ code       CODE:37AD MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-m
 code       CODE:00B4 MOD_LOADED    ; slot 39: called once the module is loaded and its resources resolved (main program CODE:B287); a RET
 code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D); a RET in table 1
 code       CODE:00B6 MOD_NEXT_BALL ; slot 41: called at the next player's ball (main program CODE:2BD61)
+comment    CODE:00B6 with the current player's record (state+0D76h) word +12h n not 0 (the bonus multiplier, presumably): slot-16 counter 4502h (thresholds 1..6) set to n/2 in its words +6 and +16h for the current player (state+0D72h), and the first n/2 light states of the chain at 942Eh (next +10h, lights 2..6) get the player's bit (state+0D74h) in byte +5, so the counter's lamps come back for the player's ball. An odd n would not end the loop at 2 steps (not checked whether it occurs)
 comment    CODE:00A8 slot 42: 0, and relocated (in T001.REL): the module's base once loaded
 
 ; 16-bit addresses without a register (67h, the main program's cells at
@@ -23,3 +24,18 @@ comment    CODE:00A8 slot 42: 0, and relocated (in T001.REL): the module's base 
 ; (3E), EBP the index, as in ILLUSION.386; its displacement an offset, so
 ; the line is DB, DD label, DB
 raw        CODE:394C
+
+; the opcode-14h object of mode stream 5EA8h (command 5EE0h), table 1's
+; shooting game on the display (docs/bpc-module.md, "Table 1's shooting
+; game"): two methods the main program calls (CODE:2DBAD, CODE:2CFC8)
+name       CODE:9A46 SHOOT_OBJECT
+words      CODE:9A46 2 CODE
+code       CODE:9A4E SHOOT_START   ; the object's +0: hits 0, lives 4, window 1, score 0, the windows' delays
+code       CODE:9B25 SHOOT_UPDATE  ; the object's +4, once a frame: the street, the windows, the flippers, the crosshair
+name       CODE:9E2D SHOOT_WINDOWS ; the four windows of the state from +12h: timers, steps, looks, the hits and the bad guys' shots
+name       CODE:A0F9 SHOOT_PIC     ; picture ECX+1 of the table at FS:0 to the display at ES:[PIC_OFFSET], PIC_WIDTH x PIC_HEIGHT, rows 160 apart, 0FCh added to each byte; ES and FS from host vector +28h
+name       CODE:A142 SHOOT_PIC_TRANSP ; as SHOOT_PIC, bytes 0 left out (transparent)
+name       CODE:A193 PIC_WIDTH
+name       CODE:A197 PIC_HEIGHT
+name       CODE:A19B PIC_OFFSET
+name       CODE:A19F SHOOT_STATE   ; hits, lives, the crosshair's window, the flippers' repeats, the 25-hit flag, the score, the four windows (docs/bpc-module.md)

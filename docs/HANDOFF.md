@@ -446,6 +446,19 @@ code yet. The hints: the header's four code slots (32, 39, 40, 41) as
   table 4's slot 30, which holds 0 (table 4 has no second music module,
   docs/bpc-module.md). Checked with a scratch script, 2026-09-30.
 - The `.REL` lists are not sorted; the order is not looked at.
+- 2026-09-30: with the opcode-14h object's two methods as entry points
+  (SHOOT_START, SHOOT_UPDATE) build.py says IDENTICAL, 955
+  instructions, 723 labels; gaps.py leaves 4 gaps, all data (the
+  header, 0149h-37ADh, 3D5Ch-9A4Eh, A193h-end). So the module's code is
+  three runs, 00B4h-0149h, 37ADh-3D5Ch, 9A4Eh-A193h, all reached. Of
+  the relocated dwords outside them, exactly six point into them: the
+  header's slots 32, 39, 40, 41 and the object's two methods (checked
+  with a scratch script on T001.REL). The calls through the host vector
+  counted in the rebuilt source: +04 3, +08 4, +0C 4, +10 3, +14 6,
+  +18 2, +1C 3, +28 2 (27, three of them through `DS:[EBP+n]`), the
+  earlier scanner's row for table 1 exactly (docs/bpc-module.md, "Host
+  callback vector"). MOD_NEXT_BALL read: the bonus multiplier's
+  counter 4502h and its lamps set again for the player (the hints).
 
 ## The loader in the runner
 
@@ -2942,10 +2955,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      already read, each compared with memcmp.py;
    - stage 1 for `SOURCE\T001.BPC` before table 1's code is needed:
      begun 2026-09-30 (see "Stage 1: T001.BPC"; the header's code slots
-     reached). Next there: the code the main program reaches through
-     the other slots' records (the event streams' handlers, the
-     opcode-14h objects, docs/bpc-module.md) as entry points, then the
-     gaps;
+     reached); done 2026-09-30: the opcode-14h object's methods, and
+     with them every byte of code in the module (the event streams'
+     handlers are the main program's). Open: the data as `words`/names
+     where the port needs them (the event streams, slot-15 records,
+     counters; tools/event_streams.py lists them), and the other three
+     modules the same way;
    - not read yet and wanted: the ball's physics and collisions
      (CODE:1352D, the map DROP_MASK writes, header slot 18), the
      flippers' movement, the drawing and scrolling; whether any of it

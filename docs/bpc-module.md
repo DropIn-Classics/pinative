@@ -738,6 +738,9 @@ records through `+0x10` and `+0x14`, and advances the sequence with `+0x0C`.
 This ties the callback meanings to both the main targets and four independent
 module implementations rather than to names inferred from one table.
 
+Table 1's row checked 2026-09-30 in the rebuilt source of src/T001.hints
+(docs/HANDOFF.md, "Stage 1: T001.BPC"); the other rows not yet.
+
 This was found with an earlier scanner (`bpc_abi.py`) that is no longer in the
 repository (it is in build/earlier/ on the machine it was removed on);
 to be checked again in the hints once the 32-bit stage 1 exists.
