@@ -1005,6 +1005,20 @@ name       CODE:2F35B DISPLAY_BUSY  ; FFh after DISPLAY_RUN ran (or waited); 0 w
 name       CODE:27A7D ANIMS_BG_ONLY ; ANIMS_STEP: FFh when no animation plays (state+2A50h 0)
 comment    CODE:27A62 the background animation (state+2A5Ch) +12h from +22h, +16h 0, also when there is none: through EBX 0 at CODE:0012 and 0016 (the CMP's flags are tested after, both ways to the RET; presumably a slip)
 code       CODE:2A7FD ATTRACT_KEYS  ; Esc (state+0E47h) to CODE:2A8AB; else the first of F8..F1 (state+0E88h down to 0E81h) set, or keypad Enter (state+0EE2h) as F1: cleared, GAME_PHASE 2, the key's number (1..8) added to state+0D70h
+; the high-score pages and the numbers on the display (2026-09-30, the
+; code; the port against runs at CODE:2A7D4 and at CODE:2A6C1's second
+; call, the four tables)
+code       CODE:2A6FA HISCORE_PAGES ; ATTRACT when state+0E35h is negative (set FFh with HISCORE_PAGE and HISCORE_WAIT 0 when the attract record has ended): with HISCORE_WAIT 0 the display cleared, the entry HISCORE_PAGE of TABLE_HISCORES (state+0CFCh, 10 bytes: the initials, a 0, the score's high word, its low dword) drawn, its number by DM_HISCORE_DRAW (centred at x 140h, line 2, font 1), place and initials by HISCORE_TEXT, HISCORE_WAIT 3 x FRAME_RATE; else HISCORE_WAIT counted down, at 0 the next entry, after the fifth state+0E35h 1 (the attract record queued again)
+name       CODE:2A6E4 HISCORE_PAGE  ; the high-score entry shown, 0..4
+name       CODE:2A6E6 HISCORE_WAIT  ; the frames left of a high-score page
+name       CODE:2A968 HISCORE_TEXT  ; a text record (x 0, line 2, font 1, alignment 0): the place ('1' + HISCORE_PAGE, at CODE:2A970), a space, the initials (CODE:2A972..2A974)
+code       CODE:27783 DM_TEXT_DRAW  ; the text record at CODE:0000 (words x, y, font, alignment, the text 0-ended) into DM_TEXT; CF for an alignment other than 0, 1, 2
+code       CODE:275D7 DM_HISCORE_DRAW ; DM_BCD from a high-score entry (CODE:0000 its end) by DM_BCD_HISCORE, then as DM_SCORE_DRAW
+code       CODE:275E4 DM_SCORE_DRAW ; DM_BCD from a player's number (CODE:0000 its +8) by DM_BCD_SCORE; at CODE:275EF DM_BCD as decimal text without leading zeros (one digit at least), a comma before each three, built back from CODE:27710, the record's words from CODE:002C, 0030, 0034, 0038, DM_TEXT_DRAW; CF (nothing drawn) at a nibble above 9
+code       CODE:2758B DM_SCORE_IDLE ; the current player's score (state+0D76h) by DM_SCORE_DRAW, centred at x 140h, line 2, font 1 (3 when the record's word +0 is not 0); the idle display (CODE:2F5E9, not reached in runs)
+code       CODE:2754C DM_BCD_HISCORE ; DM_BCD: 0, 0, [EDI-5], [EDI-6], [EDI-1] .. [EDI-4]
+code       CODE:2750D DM_BCD_SCORE  ; DM_BCD: 0, 0, [EDI-7], [EDI-8], [EDI-1] .. [EDI-4]
+name       CODE:26ECB DM_BCD        ; 8 bytes, the number DM_SCORE_DRAW writes, packed BCD from the highest digits
 ; the table's module (2026-09-30, the code and docs/bpc-module.md; the
 ; port against a run at CODE:911F, table 1)
 code       CODE:B22D TABLE_MODULE  ; TABLE_HISCORES 0, MODULE_NAME's digits from TABLE_INDEX + 1 by DEC_TEXT and its ".bpc", MODULE_LOAD (CF), OPTIONS_APPLY, BALLS_ON_TABLE 1, TBL_DBF5 0, the module's slot 39 called (a RET in all four), HISCORES_GET (its CF not looked at)
@@ -1340,7 +1354,7 @@ dptr       CODE:27407 CODE	; MOV 26CA1h: stored as a pointer
 dptr       CODE:2741B CODE	; MOV 26B12h: stored as a pointer
 dptr       CODE:2744C CODE	; MOV 26DA2h: stored as a pointer
 dptr       CODE:27460 CODE	; MOV 26B79h: stored as a pointer
-ptr        CODE:275EF CODE	; MOV 26ED3h: stored as a pointer
+num        CODE:275EF	; MOV 26ED3h: the end of DM_BCD (8 bytes from CODE:26ECB), not DM_FONTS_LOAD, which begins there
 dptr       CODE:27627 CODE	; MOV 27711h: addresses memory
 dptr       CODE:278D8 CODE	; MOV 2791Fh: a pointer (read after a jump)
 dptr       CODE:278F6 CODE	; MOV 278DFh: passed to the INT

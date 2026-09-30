@@ -174,7 +174,7 @@ static void background_run(uint32_t st)
             return;
         wb(N_DISPLAY_BUSY, 0);
         DM_CLEAR();
-        pi_stop("CODE:2758B");
+        DM_SCORE_IDLE();
         return;
     }
     wd(0x0000, rec);

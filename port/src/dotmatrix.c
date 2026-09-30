@@ -322,3 +322,118 @@ int DM_TEXT_DRAW(void)
         font_glyph(rd(0x27723 + (uint32_t)rw(rd(0x0000) + 4) * 4), rb(p), 0, &edi);
     return 0;
 }
+
+/* CODE:275EF: the 12-digit packed-BCD number in the 8 bytes at CODE:26ECB
+ * (two 0 bytes first) as text, its leading zeros left out (one digit at
+ * least) and a comma before each group of three, built backwards from
+ * CODE:27710 (0-ended at CODE:27711); the text record's words before it
+ * from CODE:002C, 0030, 0034, 0038 and DM_TEXT_DRAW; 1 (CF) at a nibble
+ * above 9, nothing drawn then */
+static int number_draw(void)
+{
+    uint32_t edi, esi, ebp = 0;
+    uint8_t al;
+
+    wd(0x0000, 0x26ED3);
+    for (edi = 0x26ECB; ; edi++) {
+        if (rb(edi) & 0xF0)
+            break;
+        ebp++;
+        if (rb(edi) & 0x0F)
+            break;
+        ebp++;
+        if (ebp >= 0x10)
+            break;
+    }
+    esi = rd(0x0000) - 1;
+    wb(0x2771A, 0xFF);
+    edi = 0x27711;
+    wb(edi, 0);
+    edi--;
+    wd(0x2771F, 0);
+    wd(0x2771B, 0x10 - ebp);
+    ebp = 0;
+    do {
+        if (rd(0x2771F) >= 3) {
+            wb(edi--, ',');
+            wd(0x2771F, 0);
+        }
+        wd(0x2771F, rd(0x2771F) + 1);
+        al = rb(esi);
+        if (rb(0x2771A) != 0xFF) {
+            al >>= 4;
+            if (al > 9)
+                return 1;
+            wb(edi--, (uint8_t)(al + 0x30));
+            esi--;
+            wb(0x2771A, 0xFF);
+        } else {
+            al &= 0x0F;
+            if (al > 9)
+                return 1;
+            wb(edi--, (uint8_t)(al + 0x30));
+            wb(0x2771A, 0);
+        }
+        ebp++;
+    } while (ebp < rd(0x2771B));
+    edi = edi + 1 - 8;
+    wd(0x0000, edi);
+    ww(edi, rw(0x002C));
+    ww(edi + 2, rw(0x0030));
+    ww(edi + 4, rw(0x0034));
+    ww(edi + 6, rw(0x0038));
+    DM_TEXT_DRAW();
+    return 0;
+}
+
+/* CODE:275D7: the number of a high-score entry, [0000] its end (the
+ * high word at -6, the low dword at -4), by CODE:2754C */
+int DM_HISCORE_DRAW(void)
+{
+    uint32_t e = rd(0x0000);
+
+    wb(0x26ECB, 0);
+    wb(0x26ECC, 0);
+    wb(0x26ECD, rb(e - 5));
+    wb(0x26ECE, rb(e - 6));
+    wb(0x26ECF, rb(e - 1));
+    wb(0x26ED0, rb(e - 2));
+    wb(0x26ED1, rb(e - 3));
+    wb(0x26ED2, rb(e - 4));
+    return number_draw();
+}
+
+/* CODE:275E4: a player's number, [0000] its record's +8 (the high word
+ * at -8, the low dword at -4), by CODE:2750D */
+int DM_SCORE_DRAW(void)
+{
+    uint32_t e = rd(0x0000);
+
+    wb(0x26ECB, 0);
+    wb(0x26ECC, 0);
+    wb(0x26ECD, rb(e - 7));
+    wb(0x26ECE, rb(e - 8));
+    wb(0x26ECF, rb(e - 1));
+    wb(0x26ED0, rb(e - 2));
+    wb(0x26ED1, rb(e - 3));
+    wb(0x26ED2, rb(e - 4));
+    return number_draw();
+}
+
+/* CODE:2758B: the current player's score (the record at state+0D76h)
+ * centred on the display's second line, in font 1, or font 3 when the
+ * record's word +0 is not 0 */
+void DM_SCORE_IDLE(void)
+{
+    uint32_t a;
+
+    wd(0x002C, 0x140);
+    wd(0x0030, 2);
+    wd(0x0034, 1);
+    wd(0x0038, 1);
+    a = rd(rd(0x0014) + 0x0D76) + 8;
+    wd(0x0000, a);
+    if (rw(a - 8) != 0)
+        wd(0x0034, rd(0x0034) + 2);
+    DM_SCORE_DRAW();
+}

@@ -3261,6 +3261,45 @@ attract record (table 1, run to CODE:2A6FA) drew 11 texts; the first,
 in the 5-row font, is equal in DM_TEXT on all four tables one frame
 later (`-break 130A47#2`, the port stopped there by a scratch build).
 
+### The high-score pages
+
+When the attract record has ended (no record running, state+0E35h 0)
+ATTRACT sets state+0E35h FFh and HISCORE_PAGE, HISCORE_WAIT (CODE:2A6E4,
+2A6E6) 0; while state+0E35h is negative HISCORE_PAGES (CODE:2A6FA) runs
+in its place: with HISCORE_WAIT 0 the display cleared and the entry
+HISCORE_PAGE of TABLE_HISCORES (state+0CFCh, 10 bytes: the initials, a
+0, the score's high word at +4, its low dword at +6) drawn, then
+HISCORE_WAIT 3 x FRAME_RATE; each frame after that counts it down, at 0
+the next entry, and after the fifth state+0E35h 1, so the next frame
+queues the attract record again. ATTRACT_KEYS runs in every case.
+
+The page: the score by DM_HISCORE_DRAW (CODE:275D7), centred at x 140h
+on line 2 in font 1, then HISCORE_TEXT (CODE:2A968: the place '1' +
+the entry, a space, the initials) from the left. DM_HISCORE_DRAW and
+DM_SCORE_DRAW (CODE:275E4, a player's record, the display's score and
+display opcodes 6 and 8) copy the number into DM_BCD (CODE:26ECB, 8
+bytes, two 0 bytes first) in different byte orders (DM_BCD_HISCORE,
+DM_BCD_SCORE), then CODE:275EF writes it as text: leading zero nibbles
+skipped (one digit at least: the loop is a do-while), a comma before
+each three digits, built backwards into the 27h bytes before
+CODE:27711, the text record's four words (from CODE:002C..0038) in the
+8 bytes before the text, DM_TEXT_DRAW, CLC; a nibble above 9 gives CF
+and draws nothing. The `MOV EDI,26ED3h` at CODE:275EF is DM_BCD's end,
+not DM_FONTS_LOAD, which begins there (a `num` hint now; it was a `ptr`
+hint). The default entries of table 1 read 1,000,000,000, 500,000,000,
+250,000,000 and so on (the run's dump).
+
+Against runs (all four tables) one frame after the first page
+(CODE:2A7D4, `-break 12B704`) and after the fifth, the attract record
+queued again (CODE:2A6C1, `-break 12B5F1#2`), the port stopped at the
+same places by a scratch build: CODE only FRAME_SPINS and FRAME_COUNT
+(the port one ahead, as at the display opcodes), TAIL and video memory
+equal, the heap blocks equal but the known leftovers, DM_TEXT with
+them. With no key the attract mode now goes round for ever; FRAME_STEP's
+wait stops the port when the window closes (as the chooser's FRAME_WAIT
+does), so `DK_FRAMES` ends a headless run: 9000 pictures, 3098 table
+frames, 1.5 s for 7200 pictures.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3497,8 +3536,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      display opcodes 2, 0Ah, 0Dh, 0Fh, 13h, 14h, 18h and 19h (only 2
      run), up to opcode 3 (CODE:2FB17). Done 2026-09-30: opcode 3's
      text drawing (CODE:27783, DM_TEXT_DRAW in dotmatrix.c), to the
-     attract record's end (same section). Next: the high-score pages,
-     CODE:2A6FA.
+     attract record's end (same section). Done 2026-09-30: the
+     high-score pages, CODE:2A6FA (see "The high-score pages"): with no
+     key the attract mode goes round in the port. Next: KBD_IRQ
+     (CODE:A076), so that keys reach ATTRACT_KEYS; then Esc there
+     (CODE:2A8AB) and a game's start, GAME_PHASE 2 (CODE:2A976); the
+     players' scores of ATTRACT (state+0E34h set, CODE:2A557).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

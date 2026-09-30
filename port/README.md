@@ -65,8 +65,12 @@ flippers' moves; the display's queue and streams, src/display.c, the
 attract mode's display record queued, its keys; display opcodes 1
 and 7, the animation played into the dot-matrix display's buffer, the
 opcodes that clear the display, wait, loop and set the top colours,
-opcode 3's text in the display's fonts) to the attract record's end and
-the high-score pages, CODE:2A6FA (`Stopped before CODE:2A6FA`); the
+opcode 3's text in the display's fonts) to the attract record's end,
+the high-score pages (CODE:2A6FA: an entry a page, its score drawn from
+packed BCD, src/dotmatrix.c) and the attract record again, round and
+round with no key; the port stops there only when the window is closed
+(`DK_FRAMES` for the headless build: `Stopped before FRAME_STEP (the
+window closed; N table frames)`); the
 Info page (a table's
 picture, text and high scores) and the greetings page in their own
 256-colour mode. With -mem the port writes its memory at the program's end
@@ -339,6 +343,18 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   11 texts drawn in the run; DM_TEXT is cleared again there, so of the
   texts only the first is compared byte for byte. Which of the fonts
   and alignments ran is not looked at.
+- 2026-09-30, Linux: each of the four tables one frame after the
+  first high-score page, CODE:2A7D4 (dosrun `-break 12B704 -mem -vram`,
+  the port stopped there by a scratch build, the same keys), and after
+  the fifth page, the attract record queued again (`-break 12B5F1#2`):
+  CODE differs only in FRAME_SPINS and FRAME_COUNT (timing; the port
+  one ahead), TAIL and video memory equal, the heap blocks equal but the
+  leftovers named above, so DM_TEXT equal ("1 ICE" and 1,000,000,000 on
+  table 1). The idle score (CODE:2758B, now translated with the same
+  number drawing) did not run; a number with a nibble above 9 (CF) was
+  not seen. A headless run with `DK_FRAMES=9000` ended at the window's
+  close after 3098 table frames, a screenshot showed "2 ANY
+  500,000,000".
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

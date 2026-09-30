@@ -182,9 +182,12 @@ static void frame_routine(uint32_t a)
  * DRV_FRAME); then the retrace waited.  The port has no interrupts: the
  * retrace comes only in the wait, so the four always run (as in the runs,
  * docs/HANDOFF.md, "The attract mode's frame") */
+static unsigned long table_frames;      /* the port's count, for its stop */
+
 static void FRAME_STEP(void)
 {
     uint32_t ebx;
+    static char why[96];
 
     wb(N_FRAME_DONE, 0);
     for (ebx = 0; ebx < 4; ebx++) {
@@ -195,8 +198,13 @@ static void FRAME_STEP(void)
     if (ebx == 4) {
         ww(0x2982A, 0);
         while (rb(N_FRAME_DONE) != 0xFF)
-            frame_wait();
+            if (!frame_wait()) {
+                snprintf(why, sizeof why, "FRAME_STEP (the window closed; %lu table frames)",
+                         table_frames);
+                pi_stop(why);
+            }
     }
+    table_frames++;
     /* CODE:298C5 */
     BALLS_STEP();
     {
@@ -251,6 +259,53 @@ static void ATTRACT_KEYS(void)
     ww(st + 0x0D70, (uint16_t)(rw(st + 0x0D70) + rw(0x0020)));
 }
 
+/* CODE:2A6FA: the attract mode's high-score pages, one of the table's
+ * five entries (TABLE_HISCORES, state+0CFCh, 10 bytes each) a page for
+ * 3 x FRAME_RATE frames (CODE:2A6E6), CODE:2A6E4 the entry: the display
+ * cleared, the entry's number drawn centred on the second line, its
+ * place and initials (the text record CODE:2A968, "1 ICE" and so on)
+ * from the left; after the fifth state+0E35h 1, the attract record next */
+static void HISCORE_PAGES(void)
+{
+    uint32_t st, ecx, ebx, esi;
+    uint16_t si;
+
+    if (rw(0x2A6E6) != 0) {
+        /* CODE:2A7D4 */
+        ww(0x2A6E6, (uint16_t)(rw(0x2A6E6) - 1));
+        if (rw(0x2A6E6) != 0)
+            return;
+        ww(0x2A6E4, (uint16_t)(rw(0x2A6E4) + 1));
+        if (rw(0x2A6E4) < 5)
+            return;
+        wb(rd(0x0014) + 0x0E35, 1);
+        return;
+    }
+    DM_CLEAR();
+    si = rw(0x2A6E4);
+    ebx = (rd(0x0024) & 0xFFFF0000u) | (si & 0xFF00u) | (uint8_t)(si + 0x31);
+    wd(0x0024, ebx);
+    wb(0x2A970, (uint8_t)ebx);
+    esi = (uint32_t)si * 10;
+    wd(0x0020, esi);
+    ecx = rd(0x0014) + sx16((uint16_t)esi) + 0x0CFC;
+    wb(0x2A972, rb(ecx));
+    wb(0x2A973, rb(ecx + 1));
+    wb(0x2A974, rb(ecx + 2));
+    wd(0x0000, ecx + 10);
+    ww(0x002C, 0x140);
+    wd(0x0030, 2);
+    wd(0x0034, 1);
+    wd(0x0038, 1);
+    DM_HISCORE_DRAW();
+    wd(0x0000, 0x2A968);
+    DM_TEXT_DRAW();
+    st = rd(0x0014);
+    esi = 3u * rw(st + 0x50);
+    wd(0x0020, esi);
+    ww(0x2A6E6, (uint16_t)esi);
+}
+
 /* CODE:2A4F8: GAME_PHASE 1, the attract mode, a frame */
 static void ATTRACT(void)
 {
@@ -275,7 +330,7 @@ static void ATTRACT(void)
     ANIMS_STEP();
     st = rd(0x0014);
     if (rb(st + 0x0E35) & 0x80) {
-        pi_stop("CODE:2A6FA");
+        HISCORE_PAGES();
     } else if (rb(st + 0x0E35) != 0) {
         /* the attract mode's display record (state+292Ah) queued */
         wb(st + 0x0E35, 0);
@@ -285,7 +340,7 @@ static void ATTRACT(void)
         wb(st + 0x0E35, 0xFF);
         ww(0x2A6E4, 0);
         ww(0x2A6E6, 0);
-        pi_stop("CODE:2A6FA");
+        HISCORE_PAGES();
     }
     ATTRACT_KEYS();
 }
