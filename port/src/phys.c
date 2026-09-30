@@ -704,6 +704,85 @@ static void clamp_cell(uint32_t c)
         cw(c, 0x0FFF);
 }
 
+/* CODE:12F26: a bumper's kick, [002C] its number n: the speed along
+ * the normal ([0020]) less 157Ch; the bumper's record (state+28D6h, word
+ * offsets from it, n - 1 the index), unless its byte +1 is running, +1
+ * 6, its points (+16h, SCORE_ADD), its event stream (+6, EVENT_QUEUE)
+ * and sound record (+2, SFX_PLAY); [0028], [0000], [0004], [000C] and
+ * [0010] kept */
+static void BUMPER_KICK(void)
+{
+    uint32_t k10 = rd(0x0010), k0c = rd(0x000C), k04 = rd(0x0004), k00 = rd(0x0000),
+             k28 = rd(0x0028), t, r, e;
+
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | (uint16_t)(rd(0x0020) - 0x157C));
+    t = rd(rd(0x0014) + 0x28D6);
+    r = t + sx16(rw(t + sx16((uint16_t)rd(0x002C)) * 2 - 2));
+    wd(0x0004, r);
+    if (rb(r + 1) == 0) {
+        wb(r + 1, 6);
+        wd(0x000C, r + 0x16);
+        SCORE_ADD();
+        r = rd(0x0004);
+        e = rd(r + 6);
+        wd(0x002C, e);
+        if (e != 0) {
+            wd(0x0000, e);
+            wd(0x002C, r);
+            EVENT_QUEUE();
+            wd(0x0004, rd(0x002C));
+        }
+        r = rd(0x0004);
+        e = rd(r + 2);
+        wd(0x002C, e);
+        if (e != 0) {
+            wd(0x0000, e);
+            SFX_PLAY();
+        }
+    }
+    wd(0x0028, k28);
+    wd(0x0000, k00);
+    wd(0x0004, k04);
+    wd(0x000C, k0c);
+    wd(0x0010, k10);
+}
+
+/* CODE:1302B: a slingshot's kick, [002C] its number n: the speed along
+ * the normal less DACh, the ball's +6 added to [0028]'s low word; the
+ * slingshot's record (state+28DAh, as the bumpers') byte +0 FFh (its
+ * picture, SLINGS_STEP), unless its +1 is running, +1 6, its points and
+ * sound record; the same cells kept, [0028] as changed here */
+static void SLING_KICK(void)
+{
+    uint32_t b = rd(0x0010), k0c = rd(0x000C), k04 = rd(0x0004), k00 = rd(0x0000),
+             k28, t, r, e;
+
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | (uint16_t)(rd(0x0020) - 0x0DAC));
+    k28 = (rd(0x0028) & 0xFFFF0000u) | (uint16_t)(rd(0x0028) + rw(b + 6));
+    wd(0x0028, k28);
+    t = rd(rd(0x0014) + 0x28DA);
+    r = t + sx16(rw(t + sx16((uint16_t)rd(0x002C)) * 2 - 2));
+    wd(0x0000, r);
+    wb(r, 0xFF);
+    if (rb(r + 1) == 0) {
+        wb(r + 1, 6);
+        wd(0x000C, r + 0x16);
+        SCORE_ADD();
+        r = rd(0x0000);
+        e = rd(r + 2);
+        wd(0x002C, e);
+        if (e != 0) {
+            wd(0x0000, e);
+            SFX_PLAY();
+        }
+    }
+    wd(0x0028, k28);
+    wd(0x0000, k00);
+    wd(0x0004, k04);
+    wd(0x000C, k0c);
+    wd(0x0010, b);
+}
+
 /* CODE:12C20 */
 static void BALL_BOUNCE(void)
 {
@@ -795,11 +874,14 @@ static void BALL_BOUNCE(void)
         }
         /* CODE:12EF8: a bumper, then a slingshot */
         wd(0x002C, rb(b + 4));
-        if (rb(b + 4) != 0 && (int16_t)(uint16_t)rd(0x0020) <= (int16_t)0xFFCE)
-            pi_stop("BALL_BOUNCE: a bumper's kick (CODE:12F1D)");
+        if (rb(b + 4) != 0 && (int16_t)(uint16_t)rd(0x0020) <= (int16_t)0xFFCE) {
+            BUMPER_KICK();
+            goto l130d9;
+        }
         wd(0x002C, rb(b + 5));
         if (rb(b + 5) != 0 && (int16_t)(uint16_t)rd(0x0020) <= (int16_t)0xFF9C)
-            pi_stop("BALL_BOUNCE: a slingshot's kick (CODE:1301A)");
+            SLING_KICK();
+l130d9:
         /* CODE:130D9: the speed along the normal times +36h / 100h */
         esi = (uint32_t)((int32_t)sx16((uint16_t)rd(0x0020)) * (int16_t)rw(b + 0x36) >> 8);
         wd(0x0020, esi);

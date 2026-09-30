@@ -3764,6 +3764,35 @@ because the table's blocks and the stale headers the chooser left lie
 where the runs have them). A block in policy 2's DOS memory gets no
 header (none looked at in a run).
 
+### The kicks in the port
+
+BUMPER_KICK (CODE:12F26) and SLING_KICK (CODE:1302B) in BALL_BOUNCE and
+PIECE_SET (CODE:28E7B, the slingshot's picture through DROP_PIECES) are
+in the port (src/phys.c, src/play.c; names in src/ILLUSION.hints,
+2026-09-30). The port's earlier stops were named CODE:12F1D and 1301A,
+both inside an instruction (the CMP before the first, the JE before
+the second); the kicks start at 12F26 and 1302B.
+
+A kick needs the ball up among the bumpers, which no flipperless game
+of the earlier runs reached in the original (a second game after game
+over, tables 3 and 4 with Enter every 15 s, flipper taps every half
+second on table 1: no kick up to t=250..340). The port met one in a
+second game, which was then set up alike in the original: game 1 ended
+after its first ball (balls left poked to 1), F1 at the 1080th attract
+frame after game over (dosrun `-key 195 3B`, the port's picture 9461),
+the first ball launched at the wait's 101st pass (`-key 197.845 1C`,
+picture 9561), the second at the 60th (`-key 218.67 1C`, picture
+10695, found by trying launch passes in the port): served again once,
+then slingshot 1, bumpers 3, 1 and 2 at t=228.48 on. The launch pass
+decides the ball's path; how long Enter is held does not (5 or 9
+passes gave the same). Compared at game 2's phase-7 entries and at the
+second ball's end (`-break 12CAF6#3`, t=233.10): CODE but FRAME_SPINS
+equal, video memory equal, the heap as in "pMAX's heap headers"; every
+instruction of both kicks and of PIECE_SET ran (dosrun `-cover`).
+The pictures were found by counting passes (the wait's by `-log
+12C14E`, ATTRACT's by `-log 12B428`, the port's frames by a scratch
+print) as in "GAME_PHASE 3 and 8 in the port".
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4025,7 +4054,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      over, and 8, the extra ball, with the players' scores of ATTRACT
      (CODE:2A557) done 2026-09-30, see "GAME_PHASE 3 and 8 in the
      port"; the headers of pMAX's heap done 2026-09-30, see "pMAX's heap
-     headers"; next the slingshot's kick, same section); later table 2's slot 40, and the
+     headers"; the bumpers' and slingshots' kicks done 2026-09-30, see
+     "The kicks in the port"); later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte

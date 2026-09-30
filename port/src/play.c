@@ -775,6 +775,18 @@ static void DROPS_QUEUE_STEP(void)
     DROP_SET();
 }
 
+/* CODE:28E7B: the DROP_PIECES entry of the object [0000] (its dword
+ * +8 the index) gets the state [0020]'s low byte and the object's x, y
+ * (the low words of its dwords +0, +4); DROPS_UPDATE draws it */
+static void PIECE_SET(void)
+{
+    uint32_t o = rd(0x0000), i = rd(o + 8) * 8;
+
+    wb(N_DROP_PIECES + 1 + i, rb(0x0020));
+    ww(N_DROP_PIECES + 2 + i, rw(o));
+    ww(N_DROP_PIECES + 4 + i, rw(o + 4));
+}
+
 /* CODE:308E7: the slingshots' records (state+28DAh: word offsets from
  * it, 0 ends): a byte +0 FFh (a kick) set to 2, a count above 0 down;
  * at 0 their picture +16h drawn (CODE:28E7B) */
@@ -812,7 +824,8 @@ static void SLINGS_STEP(void)
         wd(0x0024, rd(r + 0x16));
         if (rd(r + 0x16) == 0)
             continue;
-        pi_stop("SLINGS_STEP: a slingshot's picture (CODE:28E7B)");
+        wd(0x0000, rd(r + 0x16));
+        PIECE_SET();
     }
 }
 

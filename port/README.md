@@ -511,6 +511,15 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   now equal at the second lost ball (CODE:2BBC6 second hit, t=180.07)
   and at the players' scores after its game over (CODE:2A573,
   t=185.58): CODE but FRAME_SPINS and FRAME_COUNT, video memory equal.
+- 2026-09-30, Linux: the bumpers' and slingshots' kicks (BALL_BOUNCE,
+  CODE:12F26 and 1302B) in a second game on table 1 after a one-ball
+  first game (dosrun `-poke 12CAF6 10E7A4 0100 -key 195 3B -key 197.845
+  1C -key 218.67 1C`, the port's F1 at picture 9461, Enter at 9561 and
+  10695): equal at the game's phase-7 entries (`-break 12C91C#3`, #4,
+  #5) and at its second ball's end (`-break 12CAF6#3`, t=233.10), after
+  slingshot 1 and bumpers 3, 1 and 2: CODE but FRAME_SPINS, video
+  memory equal, the heap but the driver's clock and the top's free
+  space; both kicks and CODE:28E7B ran whole (dosrun `-cover`).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
