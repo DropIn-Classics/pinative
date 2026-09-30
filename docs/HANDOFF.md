@@ -177,7 +177,9 @@ lines:
 
 - twelve instructions with a 16-bit address and no register (67h, e.g.
   `mov word ptr es:[0x27], 0` at CODE:0667): a USE32 source line cannot
-  ask for that address size;
+  ask for that address size. Since doskit 346bbfc (2026-09-30) they are
+  written `ES:[SMALL 27H]` (TASM's operator) and their 13 raw hints are
+  gone; build.py IDENTICAL with the 4 below, 30,189 instructions;
 - CODE:31649 `64 66 AD`: FS before 66h, the one such order;
 - CODE:13AD7, 141D6, 164B4: a DS prefix where DS is the default, all
   three with EBP as the index register (45 others with it have none).
@@ -423,19 +425,18 @@ the modules.
 
 `python3 doskit/tools/build.py src/T001.hints`: IDENTICAL, "offsets:
 the 1707 of the offrel list, no other", 435 instructions, 693 labels,
-134 lines as DB, 1.8 s. gaps.py: 72,124 of 73,728 bytes not reached as
+1 line as DB, 1.8 s. gaps.py: 72,124 of 73,728 bytes not reached as
 code yet. The hints: the header's four code slots (32, 39, 40, 41) as
-`words` and entry points, named after docs/bpc-module.md; the 134 `raw`
-lines.
+`words` and entry points, named after docs/bpc-module.md; one `raw`.
 
-- 133 of the `raw` lines are instructions with a 16-bit address and no
-  register (67h, `mov esi,[0x14]`): the module reads and writes the main
-  program's cells at DS:0..3Fh (CODE:0010 the host vector, see "Stage
-  1: ILLUSION.386", CODE:2CD10; [14h] the state pointer,
+- 133 instructions have a 16-bit address and no register (67h,
+  `mov esi,[0x14]`): the module reads and writes the main program's
+  cells at DS:0..3Fh (CODE:0010 the host vector, see "Stage 1:
+  ILLUSION.386", CODE:2CD10; [14h] the state pointer,
   docs/bpc-module.md), so its DS is the main program's CODE (not checked
-  in a run). The whole module will have many more; a source form for
-  them would want tasm.py to take one (not decided; the kit's METHOD.md
-  says they stay DB).
+  in a run). The whole module will have many more, so doskit 346bbfc
+  gave tasm.py TASM's `SMALL`: they are written `DS:[SMALL 14H]`, no raw
+  hints (decided 2026-09-30).
 - CODE:394C: a DS prefix where DS is the default, EBP the index, as the
   three in ILLUSION.386. Its displacement is an offset of the list; the
   line is written DB, DD label, DB (doskit acedd78).

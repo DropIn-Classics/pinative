@@ -281,21 +281,8 @@ comment    CODE:2E396 handler 19h of CODE:2DA0A: as handler 0Fh with DAS: the st
 comment    CODE:2E51D handler 1Ah of CODE:2DA0A: a number 0..FFh from the low byte of CODE:BAD4 (the counter display opcode 1Ah blinks by, CODE:2F7DE); [+34h] is a list of 8-byte entries (flags word, limit word, event stream): the first whose limit is above the number has its stream queued, unless its flag bit 0 is set and bit 1 set already (set here), then the number plus 5Dh again: a random award, each with bit 0 once (tables 2 and 4, 8 entries each, the last limit 100h); the number is so the frame count's low byte (DRV_TICK). Table 4's record 5662h: 8 entries of 32 each, all with bit 0 (light 5728h, takes 4F3Ah, 5790h, 575Ch, 57C4h, three empty); 5662h is lit only by threshold 15 of counter 55F6h, whose word +16h is per player and reset only at the game start (CODE:29FFA; flag bit 0 keeps it at CODE:2A113), so at most one award per player and game, eight at most: the loop at CODE:2E56D, endless once all eight are given, is not reached (by the code, not run). Bit 1 is cleared only at the game start (CODE:2A0C2) and is shared by the players
 comment    CODE:2E506 handler 1Bh of CODE:2DA0A: as handler 0Fh with the number past [+38h]+8 (in table 3 a slot-26 counter +2: its current value)
 
-; 16-bit addresses without a register (67h): no source form in a USE32
-; segment, the assembler would write a 32-bit address
-raw        CODE:0667
-raw        CODE:0670
-raw        CODE:0679
-raw        CODE:068A
-raw        CODE:2870
-raw        CODE:A3C1
-raw        CODE:27CA4              ; FS:[0] with 67h
-raw        CODE:29044              ; ES:[0] with 67h
-raw        CODE:30E49
-raw        CODE:31D3D
-raw        CODE:32A7C
-raw        CODE:32A9D
-raw        CODE:35B40
+; 16-bit addresses without a register (67h) are written DS:[SMALL n]
+; since doskit 2026-09-30 (13 raw lines before)
 ; FS before 66h (64 66 AD), where the assembler writes 66h first
 raw        CODE:31649
 ; a DS prefix where DS is the default (3E), all three with EBP as the index
