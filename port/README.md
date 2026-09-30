@@ -78,8 +78,11 @@ slingshots' steps, the balls' physics in src/phys.c: each ball's edge
 sampled against the level's map, the surface's normal and number, the
 bounce with its friction, the move and the slope; the zones of types
 0 to 3 with their points, the serve and Enter's plunger, "PLAYER n BALL
-n") up to `Stopped before CODE:2B76E` when the ball leaves the lane
-(GAME_PHASE 4); the driver's command 2 (the pause toggle) with the
+n"), play (GAME_PHASE 4, CODE:2B76E, src/play.c and src/events.c:
+the event streams with the opcodes met so far, the lit records' timers
+and lamps, the counters' and objects' timers, the ball save's lamp, the
+M key) up to `Stopped before BALL_SAMPLE: a flipper's mask (CODE:1241E)`
+when the ball first comes near a flipper; the driver's command 2 (the pause toggle) with the
 PIC's mask the port now keeps for it;
 Esc's question "REALLY QUIT TABLE?" (CODE:2A8AB, src/play.c), Y leaving
 the table (`Stopped before TABLE: after the game (CODE:A3FF)`), another
@@ -419,6 +422,17 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   flippers' surfaces, bumpers' and slingshots' kicks, two balls, zone
   type 4, a light record in a zone, RECORD_DISPATCH (the port stops by
   name at each).
+- 2026-09-30, Linux: GAME_PHASE 4 on table 1 (dosrun `-key 150 3B -key
+  153.24 1C`, the port's F1 at picture 7087 and Enter at 7201 as
+  before), at BALL_SAMPLE's flipper-mask path CODE:1241E (`-break
+  11334E`, t=156.050743, where the port stops): CODE differs only in
+  FRAME_SPINS, TAIL and video memory equal, the heap blocks equal but
+  the leftovers named above and the driver's sample clock. Ran there
+  (dosrun `-cover`): event opcodes 2, 5 and 13h, take handler 15h and
+  COUNTER_LEVELS' reached threshold, LIT_LIST_STEP's countdown and
+  blinking, the ball save's lamp; not reached: a lost ball, a record
+  leaving the lit list, LAMP_OFF, the other opcodes (the port stops by
+  name at those not translated).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

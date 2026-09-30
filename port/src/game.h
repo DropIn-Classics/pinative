@@ -117,13 +117,25 @@ void DROPS_DRAW(void);
 /* ball.c: CODE:14DE2, CODE:14C46 */
 void BALLS_STEP(void);
 void BALLS_SHOW(void);
+void BALL_HIDE(void);
 void EVENT_QUEUE(void);
 /* display.c: CODE:2F35C, CODE:2FEDB, CODE:27A0E */
 void DISPLAY_RUN(void);
 void DISPLAY_QUEUE(void);
 void ANIMS_STEP(void);
-/* play.c: CODE:B928, the game */
+/* play.c: CODE:B928, the game; CODE:2F85C, CODE:2FBBF */
 void TABLE_GAME(void);
+void MUSIC_REQUEST(void);
+void TAKE_PAY(void);
+/* events.c: CODE:2E82F, 2D080, 2CD3C, 2E8CD, 2EAC9, 2CB69, 2CBCF, 2C7FC */
+void LAMP_OFF(void);
+void EVENT_RUN(void);
+void MODE_RUN(void);
+void LIT_LIST_STEP(void);
+void BCD_COUNTERS_STEP(void);
+void COUNTER_TIMERS(void);
+void OBJECT_TIMERS(void);
+void OBJECT_HITS(void);
 
 /* table.c: CODE:9F2C, the sound record at [CODE:0000] */
 void SFX_PLAY(void);

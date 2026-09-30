@@ -3501,6 +3501,38 @@ list) and a lost ball (phases 5, 7, 8). Keys for play: the flippers
 are Left/Right Shift or Ctrl (state+2A7Bh/2A7Ch, CODE:14757); a run's key
 at a picture has to be searched as above while frames are slow.
 
+### GAME_PHASE 4 in the port
+
+PLAY (CODE:2B76E) and a frame's rules (PLAY_EVENTS, CODE:2B4B9) are in
+the port (src/play.c, the new src/events.c; names in src/ILLUSION.hints,
+"GAME_PHASE 4, play"). What ran was found by the runner's `-cover`: a run
+to CODE:2B76E and one to the first flipper-mask sample (below), the
+code of the second not in the first grouped by the labels of
+build/ILLUSION.ASM (a scratch script); that is what was translated, with
+the rest of each small routine as read:
+
+- EVENT_RUN with opcodes 2 (lit for a time), 5 (a record taken: RECORD_TAKE
+  with take handler 15h, COUNTER_LEVELS) and 13h (MUSIC_REQUEST); the
+  other opcodes and take handlers stop the port by name. MODE_RUN's
+  idle path and a mode stream's commands (the same dispatch);
+  LIT_LIST_STEP whole; COUNTER_TIMERS, OBJECT_TIMERS whole;
+  BCD_COUNTERS_STEP and OBJECT_HITS only as far as nothing is running
+  or hit.
+- BALLS_LOST, the ball save's serve again (CODE:2B922, GAME_PHASE 7) and
+  LOST_RUNOUT (GAME_PHASE 5) translated from reading, not reached yet.
+- The port's stop in BALL_SAMPLE was named CODE:12409, which is inside
+  an instruction; the flipper-mask path begins at CODE:1241E (after the
+  box's flag +1F6h at 1240B and the level check), now so named.
+
+Compared (port/README.md, "Checked"): table 1, F1 and Enter as in
+"GAME_PHASE 6 in the port", at CODE:1241E (t=156.050743, 0.52 s into
+play, where the port stops): equal as before. The ball had not been lost
+then: the lost-ball paths, LIT_LIST_STEP's removal of a record and
+LAMP_OFF did not run. In the coverage run to GAME_PHASE 7 (t=160.34,
+the ball lost under the ball save, no flipper pressed) the ball went
+through the flippers' boxes (the flipper-mask sampling, CODE:12453, and
+the flipper surfaces, CODE:1187F on, ran), which is the next step.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -3749,7 +3781,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      first (see "GAME_PHASE 6, what it calls"; stage 2 of the physics
      done 2026-09-30, see "The balls' physics"; done 2026-09-30 in the
      port up to GAME_PHASE 4, CODE:2B76E, see "GAME_PHASE 6 in the
-     port"; next GAME_PHASE 4, play, same section); later table 2's slot
+     port"; GAME_PHASE 4 begun 2026-09-30, see "GAME_PHASE 4 in the port":
+     up to the first flipper-mask sample; next that sampling and the
+     flipper surfaces, then the ball lost, phases 7 and 5); later table 2's slot
      40, and the other phases as a game reaches them; the table's end after
      Y (TABLE from CODE:A3FF, then the chooser again, CODE:7182); the
      players' scores of ATTRACT (state+0E34h set, CODE:2A557).

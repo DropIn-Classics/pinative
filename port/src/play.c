@@ -494,7 +494,7 @@ static void GAME_START(void)
  * its word +2 not negative: the module request (order +4, slot +6, the
  * word to MOD_REQUEST); FFFFh or FFFEh: the flags and track kept in
  * state+5Ah, 2A82h first */
-static void MUSIC_REQUEST(void)
+void MUSIC_REQUEST(void)
 {
     uint32_t st = rd(0x0014), r = rd(0x0000);
     uint16_t di;
@@ -695,7 +695,7 @@ static void DROPS_RAISE_STEP(void)
 /* CODE:2FBBF: a take's points: the 12-digit packed-BCD number [000C]
  * points past added to the player's +10h (the bonus), the one 8 bytes
  * before it to the player's +8 (the score); [000C] 14 back after */
-static void TAKE_PAY(void)
+void TAKE_PAY(void)
 {
     uint32_t keep10 = rd(0x0010), keep0 = rd(0x0000), pl;
     int k;
@@ -1002,6 +1002,18 @@ static void PLAYERS_KEYS(void)
         ww(st + 0x0D70, 8);
 }
 
+/* CODE:2B49A: the scroll, the lights and CODE:30784's steps (CODE:156C3,
+ * 14DE1 and 14C45 are RETs) */
+static void PLAY_STEP(void)
+{
+    PLAY_SCROLL();
+    LIGHTS_STEP();
+    DROPS_QUEUE_STEP();
+    SLINGS_STEP();
+    HOLE_EJECT_STEP();
+    DROPS_RAISE_STEP();
+}
+
 /* a number into a text record's digits and the record drawn: [0020]'s
  * low word `n` by DEC_TEXT ending at `end`, then the record `rec` */
 static void number_text(uint16_t n, uint32_t end, uint32_t rec)
@@ -1031,13 +1043,7 @@ static void BALL_WAIT(void)
     MUSIC_REQUEST();
     for (;;) {
         FRAME_STEP();
-        /* CODE:2B49A (156C3, 14DE1, 14C45 are RETs) */
-        PLAY_SCROLL();
-        LIGHTS_STEP();
-        DROPS_QUEUE_STEP();
-        SLINGS_STEP();
-        HOLE_EJECT_STEP();
-        DROPS_RAISE_STEP();
+        PLAY_STEP();
         BALLS_PHYSICS();
         ZONES_CHECK();
         SERVE();
@@ -1069,6 +1075,268 @@ static void BALL_WAIT(void)
     ww(st + 0x2A78, 0);
     wb(st + 0x2A75, 0);
     ww(st + 0x8E, 4);
+}
+
+/* ---- play (GAME_PHASE 4) ---- */
+
+/* CODE:2B4B9: a frame's rules */
+static void PLAY_EVENTS(void)
+{
+    ZONES_CHECK();
+    OBJECT_HITS();
+    EVENT_RUN();
+    SERVE();
+    FLASH_STEP();
+    LIT_LIST_STEP();
+    MODE_RUN();
+    BCD_COUNTERS_STEP();
+    COUNTER_TIMERS();
+    OBJECT_TIMERS();
+}
+
+/* CODE:2B4EC: M (state+0E78h) flips CODE:9C4E's bit 0; P (state+0E5Fh)
+ * the pause (not translated); state+91h FFh */
+static void PLAY_KEYS(void)
+{
+    uint32_t st = rd(0x0014);
+
+    if (rb(st + 0x0E78) != 0) {
+        wb(st + 0x0E78, 0);
+        wb(0x9C4E, (uint8_t)(rb(0x9C4E) ^ 1));
+    }
+    st = rd(0x0014);
+    if (rb(st + 0x0E5F) != 0)
+        pi_stop("PLAY_KEYS: the pause (CODE:2B51C)");
+    wb(rd(0x0014) + 0x91, 0xFF);
+}
+
+/* CODE:2994A: 150h bytes of video memory at D9E0h cleared in all four
+ * planes */
+static void VIDEO_D9E0_CLEAR(void)
+{
+    uint16_t i;
+
+    vga_outw(0x3C4, 0x0F02);
+    for (i = 0; i < 0x150; i++)
+        vga_write((uint16_t)(0xD9E0 + i), 0);
+}
+
+/* CODE:2C0C7: the balls on the table and to serve (state+0D32h, 0D3Ah);
+ * each lost one (+9 set) cleared, the sound record CODE:10080, swapped
+ * with the list's last (state+1046h), taken off, its erase place +70h
+ * D8BDh; one fewer on the table, and while the ball save runs one more
+ * to serve.  1 (SF) when none is left on the table */
+static int BALLS_LOST(void)
+{
+    uint32_t st = rd(0x0014), p, b, list;
+    uint16_t di = (uint16_t)(rw(st + 0x0D32) + rw(st + 0x0D3A));
+
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | di);
+    if (di == 0)
+        goto none;
+    ww(st + 0x0D34, di);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | (uint16_t)(di - 1));
+    wd(0x000C, st + 0x1046);
+    wd(0x0008, st + 0x1046);
+    do {                                                /* CODE:2C110 */
+        p = rd(0x000C);
+        b = rd(p);
+        wd(0x0010, b);
+        wd(0x000C, p + 4);
+        if (rb(b + 9) != 0) {
+            uint32_t k;
+
+            wb(b + 9, 0);
+            wd(0x0000, 0x10080);
+            SFX_PLAY();
+            list = rd(0x0008);
+            k = list + sx16(rw(0x0020)) * 4;
+            p = rd(0x000C) - 4;
+            wd(0x000C, p);
+            wd(p, rd(k));
+            wd(k, rd(0x0010));
+            BALL_HIDE();
+            VIDEO_D9E0_CLEAR();
+            ww(rd(0x0010) + 0x70, 0xDBD8);              /* CODE:2996F */
+            st = rd(0x0014);
+            ww(st + 0x0D32, (uint16_t)(rw(st + 0x0D32) - 1));
+            if (rw(st + 0x0D32) == 0)
+                goto none;
+            if (rw(st + 0x0D3E) != 0)
+                ww(st + 0x0D3A, (uint16_t)(rw(st + 0x0D3A) + 1));
+        }
+        st = rd(0x0014);                                /* CODE:2C1A5 */
+        ww(st + 0x0D34, (uint16_t)(rw(st + 0x0D34) - 1));
+    } while (rw(st + 0x0D34) != 0);
+    wd(0x0020, 0);
+    return 0;
+none:
+    wd(0x0020, 0xFFFFFFFFu);
+    return 1;
+}
+
+/* a frame of play without the flippers' keys and the ball save: as the
+ * lost ball's loops at CODE:2B95A and 2BA0A step */
+static void PLAY_FRAME_LOST(void)
+{
+    FRAME_STEP();
+    PLAY_STEP();
+    BALLS_PHYSICS();
+    PLAY_EVENTS();
+    PLAY_KEYS();
+    DISPLAY_RUN();
+    ANIMS_STEP();
+}
+
+/* 1 while the display's queue (state+2A2Ah at index state+2A28h) has an
+ * entry or a display record runs (state+2A2Eh) */
+static int display_busy(void)
+{
+    uint32_t st = rd(0x0014), c;
+    uint16_t di = rw(st + 0x2A28);
+
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | di);
+    c = rd(rd(st + 0x2A2A) + sx16(di) * 4);
+    wd(0x0020, c);
+    return c != 0 || rd(st + 0x2A2E) != 0;
+}
+
+/* CODE:2B9F6: the last ball lost without the ball save: LOST_BALL_RUNOUT
+ * and state+0D51h set, frames until the display, the event queue and the
+ * mode stream are done, then GAME_PHASE 5 */
+static void LOST_RUNOUT(void)
+{
+    uint32_t st = rd(0x0014);
+
+    wb(st + 0x0D51, 0xFF);
+    wb(N_LOST_BALL_RUNOUT, 0xFF);
+    for (;;) {
+        uint16_t di;
+        uint32_t c;
+
+        PLAY_FRAME_LOST();
+        if (display_busy())
+            continue;
+        st = rd(0x0014);
+        di = rw(st + 0x2A1C);
+        wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | di);
+        c = rd(rd(st + 0x2A1E) + sx16(di) * 4);
+        wd(0x0020, c);
+        if (c != 0 || rd(st + 0x0D5E) != 0)
+            continue;
+        break;
+    }
+    wb(st + 0x0D51, 0);
+    wb(N_LOST_BALL_RUNOUT, 0);
+    ww(st + 0x8E, 5);
+}
+
+/* CODE:2B76E: GAME_PHASE 4, a frame of play: Esc ends the game at once
+ * (GAME_PHASE 3); state+0EC5h puts the first ball back at the plunger;
+ * the physics and the lost balls, the rules, the keys, the display, the
+ * ball save counted down with its lamp (header slot 25's second light
+ * state) blinking faster in its last frames; a lost last ball served
+ * again while the ball save runs (GAME_PHASE 7), else LOST_RUNOUT; the
+ * tilt (state+2A75h) GAME_PHASE 9 */
+static void PLAY(void)
+{
+    uint32_t st, l;
+
+    FRAME_STEP();
+    PLAY_STEP();
+    st = rd(0x0014);
+    if (rb(st + 0x0E47) != 0) {
+        /* CODE:2BAB5 */
+        wb(st + 0x8D, 0xFF);
+        wb(N_LOST_BALL_RUNOUT, 0);
+        ww(st + 0x8E, 3);
+        return;
+    }
+    if (rb(st + 0x0EC5) != 0) {
+        wb(st + 0x0EC5, 0);
+        if (rb(st + 0x0D3C) == 0) {
+            wd(0x0010, rd(st + 0x1046));
+            BALL_PLACE();
+            wb(rd(0x0014) + 0x0D3C, 0xFF);
+        }
+    }
+    st = rd(0x0014);                                    /* CODE:2B7C8 */
+    if (rb(st + 0x0EC5) != 0)
+        pi_stop("PLAY: CODE:2B7D7");
+    if (rb(st + 0x0FC5) == 0) {                         /* CODE:2B81E */
+        BALLS_PHYSICS();
+        if (BALLS_LOST())
+            goto lost;
+    }
+    PLAY_EVENTS();                                      /* CODE:2B83D */
+    PLAY_KEYS();
+    DISPLAY_RUN();
+    ANIMS_STEP();
+    st = rd(0x0014);
+    if (rb(st + 0x0FC5) != 0) {
+        ww(st + 0x0D3E, 1);
+    } else {
+        if (rw(st + 0x0D3E) == 0)
+            goto keys;
+        ww(st + 0x0D3E, (uint16_t)(rw(st + 0x0D3E) - 1));
+    }
+    /* CODE:2B883: the ball save's lamp */
+    st = rd(0x0014);
+    l = rd(rd(st + 0x290A) + 4);
+    wd(0x0020, l);
+    if (l != 0) {
+        uint16_t bp = rw(st + 0x0D3E);
+        int nz;
+
+        wd(0x0004, l);
+        wd(0x0020, (l & 0xFFFF0000u) | bp);
+        if (bp > 0x64) {
+            wd(0x0020, (l & 0xFFFF0000u) | (bp & 4));
+            nz = (bp & 4) != 0;
+        } else if (bp > 0x32) {
+            wd(0x0020, (l & 0xFFFF0000u) | (bp & 1));
+            nz = (bp & 1) != 0;
+        } else {
+            wb(l, 0);
+            goto keys;
+        }
+        wb(rd(0x0004), (uint8_t)nz);
+    }
+keys:                                                   /* CODE:2B8ED */
+    PLAYERS_KEYS();
+    st = rd(0x0014);
+    if (rb(st + 0x2A75) != 0) {
+        wd(0x0000, rd(st + 0x293E));
+        MUSIC_REQUEST();
+        ww(rd(0x0014) + 0x8E, 9);
+    }
+    return;
+lost:                                                   /* CODE:2B922 */
+    st = rd(0x0014);
+    l = rd(rd(st + 0x290A) + 4);
+    wd(0x0020, l);
+    if (l != 0) {
+        wd(0x0004, l);
+        wb(l, 0);
+    }
+    if (rw(st + 0x0D3E) == 0) {
+        LOST_RUNOUT();
+        return;
+    }
+    do                                                  /* CODE:2B95A */
+        PLAY_FRAME_LOST();
+    while (display_busy());
+    st = rd(0x0014);
+    l = rd(st + 0x2A5C);
+    wd(0x0024, l);
+    if (l != 0) {
+        wd(0x0000, l);
+        ww(l + 0x12, rw(l + 0x22));
+        wd(l + 0x16, 0);
+    }
+    st = rd(0x0014);                                    /* CODE:2B9DE */
+    ww(st + 0x0D3A, (uint16_t)(rw(st + 0x0D3A) + 1));
+    ww(st + 0x8E, 7);
 }
 
 /* CODE:2A8AB: Esc in the attract mode (its key and Y's, KEY_DOWN+1 and
@@ -1259,6 +1527,10 @@ void TABLE_GAME(void)
         }
         if (ph == 6) {
             BALL_WAIT();
+            continue;
+        }
+        if (ph == 4) {
+            PLAY();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));

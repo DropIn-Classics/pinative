@@ -120,7 +120,7 @@ static int BALL_SAMPLE(void)
         wb(edi + 0x1F6, 0xFF);
         if (rd(ebx + 0x54) != rd(edi + 0x1C))
             continue;
-        pi_stop("BALL_SAMPLE: a flipper's mask (CODE:12409)");
+        pi_stop("BALL_SAMPLE: a flipper's mask (CODE:1241E)");
     }
     /* CODE:1281D */
     MAP_SAMPLE(ax, dx, rd(rd(0x0010) + 0x54));

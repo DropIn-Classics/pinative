@@ -94,6 +94,13 @@ static void BALL_MARK(void)
 
 /* CODE:14DE2: state+0D5Ah 0; each of the state+0D32h balls on the list at
  * state+1046h to [0010], taken off and its mark cleared (CODE:14DD6) */
+/* CODE:14DD6: the ball [0010] taken off and its mark cleared */
+void BALL_HIDE(void)
+{
+    BALL_ERASE();
+    BALL_UNMARK();
+}
+
 void BALLS_STEP(void)
 {
     uint32_t st = rd(0x0014);
@@ -108,8 +115,7 @@ void BALLS_STEP(void)
 
         wd(0x0008, esi + 4);
         wd(0x0010, rd(esi));
-        BALL_ERASE();
-        BALL_UNMARK();
+        BALL_HIDE();
         ww(0x003C, (uint16_t)(rw(0x003C) - 1));
     } while (rw(0x003C) != 0);
 }
