@@ -63,6 +63,42 @@ static void show(void)
     plat_present(pixels, TM_WIDTH, TM_HEIGHT, palette);
 }
 
+/* 1 once the player agreed to a copy from the GOG release (open_cd then
+ * takes the CD along without asking again) */
+static int agreed;
+/* 1 if the player declined the game's files */
+static int declined;
+
+/* asks whether `what` may be copied from `from` into `to`: Y or Enter yes,
+ * N or Esc no; 1 yes.  Not asked (1) when -gog named the release or the
+ * build has no window to ask in. */
+static int offer(const char *what, const char *from, const char *to, int named)
+{
+    const uint8_t attr = TM_ATTR(TM_LIGHTGREY, TM_BLUE), hi = TM_ATTR(TM_YELLOW, TM_BLUE);
+
+    if (named || agreed || !plat_has_window())
+        return 1;
+    tm_clear(' ', attr);
+    tm_text(2, 2, "Pinball Illusions was found (the GOG release):", TM_ATTR(TM_WHITE, TM_BLUE));
+    tm_text(2, 3, from, hi);
+    tm_text(2, 5, what, TM_ATTR(TM_WHITE, TM_BLUE));
+    tm_text(2, 6, to, hi);
+    tm_text(2, 8, "Do that now?  Y / N", hi);
+    show();
+    while (plat_pump()) {
+        int b;
+
+        while ((b = plat_read_scancode()) >= 0) {
+            if (b == 0x15 || b == 0x1C)                 /* Y, Enter */
+                return agreed = 1;
+            if (b == 0x31 || b == 0x01)                 /* N, Esc */
+                return 0;
+        }
+        plat_sleep_ms(15);
+    }
+    return 0;
+}
+
 /* the game's files: found, or from the GOG release (its CD image
  * unpacked, or an installed folder of the game's files copied); 1 if
  * there */
@@ -83,6 +119,12 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     folder = sys_is_dir(from);
     sys_data_dir(data, sizeof data);
     sys_join(out, n, data, "game");
+    if (!offer(folder ? "Its game files can be copied into the data folder's"
+                      : "Its CD image can be unpacked into the data folder's",
+               from, out, gog != NULL)) {
+        declined = 1;
+        return 0;
+    }
     tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
     tm_text(2, 2, folder ? "Copying the game's files from" : "Unpacking the game's files from",
             TM_ATTR(TM_WHITE, TM_BLUE));
@@ -133,7 +175,9 @@ static int open_cd(const char *gog)
 
     sys_data_dir(data, sizeof data);
     sys_join(dir, sizeof dir, data, "cd");
-    if (!sys_is_dir(dir) && gog_cue(gog, from, sizeof from)) {
+    if (!sys_is_dir(dir) && gog_cue(gog, from, sizeof from) &&
+        offer("Its CD image and music can be copied into the data folder's", from, dir,
+              gog != NULL)) {
         tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
         tm_text(2, 2, "Copying the CD's image and music from", TM_ATTR(TM_WHITE, TM_BLUE));
         tm_text(2, 3, from, TM_ATTR(TM_YELLOW, TM_BLUE));
@@ -183,8 +227,13 @@ int main(int argc, char **argv)
     if (!plat_init("Pinball Illusions"))
         return 1;
     if (!get_game(given, gog, game, sizeof game)) {
-        plat_message("The game's files were not found. This program needs an installed "
-                     "copy of Pinball Illusions (the GOG release), or -game with its folder.");
+        if (declined)
+            plat_message("The game's files were not copied, so nothing can be played. "
+                         "Start pinative again to be asked again, or use -game with "
+                         "the folder of the game's files.");
+        else
+            plat_message("The game's files were not found. This program needs an installed "
+                         "copy of Pinball Illusions (the GOG release), or -game with its folder.");
         plat_shutdown();
         return 1;
     }

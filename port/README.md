@@ -726,6 +726,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   sheet read from there; the run went on to the chooser. Whether the
   music plays from the copy not listened to; Windows and macOS not
   tried.
+- 2026-10-01: the window builds ask before copying from the GOG release
+  (main.c's offer: Y or Enter copies, N or Esc not; asked once for the
+  game's files and the CD together; not asked with -gog or in the
+  headless build), as doskit/docs/RELEASE.md and port/dist/README.txt
+  say. Built on Linux without warnings, the headless first start (no
+  question) copied `game` and `cd` as before; the question itself not
+  seen, no window tried.
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),
