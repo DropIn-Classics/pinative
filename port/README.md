@@ -189,6 +189,11 @@ VGA 360 for the same pictures).
 builds the packages doskit/docs/RELEASE.md prescribes; a pushed tag
 `vX.Y` makes a release of them. `dist/README.txt` is the players' README
 in each package, filled in for the chooser the port reaches so far.
+`dist/uninstall-data.sh` (macOS, Linux) and `dist/uninstall-data.bat`
+(Windows) go into the packages beside it: after asking they remove the
+data folder's `game` and `cd` (the copied game files, CD image and
+music) and keep pinative.cfg and ILLUSION.CFG, so a fresh copy from the
+GOG release can be tried (since 2026-10-01).
 
 No release made yet; no package started from a download. The new
 workflow not run yet (the macOS app, its static SDL2, the checks).

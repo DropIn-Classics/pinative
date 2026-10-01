@@ -39,7 +39,7 @@ jobs:
         run: |
           $d = "pinative-windows-x64"
           New-Item -ItemType Directory $d | Out-Null
-          Copy-Item port\build\pinative.exe, port\dist\README.txt $d
+          Copy-Item port\build\pinative.exe, port\dist\README.txt, port\dist\uninstall-data.bat $d
           Copy-Item doskit\runtime\third_party\micromod\LICENCE.txt $d\LICENCE-micromod.txt
           Compress-Archive $d "$d.zip"
       - uses: actions/upload-artifact@v4
@@ -81,7 +81,7 @@ jobs:
           test -x port/build/pinative
           d=pinative-linux-x64
           mkdir $d
-          cp port/build/pinative port/dist/README.txt $d/
+          cp port/build/pinative port/dist/README.txt port/dist/uninstall-data.sh $d/
           cp -L sdl2/lib/libSDL2-2.0.so.0 $d/
           # sdl2-config's search path is this machine's: only the program's own folder
           patchelf --set-rpath '$ORIGIN' $d/pinative
@@ -135,7 +135,7 @@ jobs:
           mkdir $d
           python3 doskit/tools/macapp.py port/build/pinative $d --name pinative \
             --id io.github.dropin-classics.pinative --version "$PORT_VERSION"
-          cp port/dist/README.txt $d/
+          cp port/dist/README.txt port/dist/uninstall-data.sh $d/
           cp doskit/runtime/third_party/micromod/LICENCE.txt $d/LICENCE-micromod.txt
           cp SDL2-$SDL2_VERSION/LICENSE.txt $d/LICENCE-SDL2.txt
           ditto -c -k --keepParent $d $d.zip

@@ -67,6 +67,15 @@ Table chooser: the arrow keys choose, Enter or Space takes the choice,
 F1 to F4 take a table at once; Esc leaves an Info page, else ends the
 program.
 
+Removing the copied game files
+
+uninstall-data.bat (Windows, a double click) or uninstall-data.sh
+(macOS, Linux: sh uninstall-data.sh in a terminal) removes the game's
+files, the CD's image and its music from the data folder, after asking.
+The next start copies them again from your GOG release. The settings
+(pinative.cfg) and the game's options and high scores (ILLUSION.CFG)
+stay; the program itself is removed by deleting its folder.
+
 Licences
 --------
 
