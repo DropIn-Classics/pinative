@@ -15,6 +15,12 @@ static uint32_t sx16(uint16_t v)
     return (uint32_t)(int32_t)(int16_t)v;
 }
 
+/* the low word of the cell c */
+static void cw(uint32_t c, uint16_t w)
+{
+    wd(c, (rd(c) & 0xFFFF0000u) | w);
+}
+
 /* CODE:2A30E: the display queue's state (state+2A26h .. 2A5Fh) cleared,
  * its pointer state+2A2Ah to DISPLAY_QBUF, whose first dword 0 */
 static void DISPLAY_RESET(void)
@@ -829,19 +835,180 @@ static void SLINGS_STEP(void)
     }
 }
 
-/* CODE:30996: a hole ejecting, else the next hole from the stack
- * state+2A64h (only the empty cases translated) */
+/* the ball the hole [0000] holds (its byte +1, the ball's number) to
+ * [0010], the number less 1 to [0020] */
+static uint32_t hole_ball(void)
+{
+    uint32_t h = rd(0x0000), b;
+    uint16_t bx = (uint16_t)(rb(h + 1) - 1);
+
+    wd(0x0020, bx);
+    b = rd(rd(0x0014) + 0x107A + sx16(bx) * 4);
+    wd(0x0010, b);
+    return b;
+}
+
+/* CODE:30CFB: the ball [0010] out of the hole [0000]: at its +6, +8 (the
+ * pixels to +12h, +14h, shifted left by 0Ah to +1Eh, +22h), its speed
+ * words (high bytes cleared) plus +0Ah, +0Ch, onto the level +0Eh as
+ * zone type 3 (0) or 2 (1) does */
+static void HOLE_BALL_OUT(void)
+{
+    uint32_t h = rd(0x0000), b = rd(0x0010);
+    int32_t x, y;
+    uint16_t lv;
+
+    x = (int32_t)sx16(rw(h + 6));
+    y = (int32_t)sx16(rw(h + 8));
+    ww(b + 0x12, (uint16_t)x);
+    ww(b + 0x14, (uint16_t)y);
+    wd(0x0028, 0x0A);
+    wd(b + 0x1E, (uint32_t)x << 10);
+    wd(b + 0x22, (uint32_t)y << 10);
+    wd(0x0020, sx16(rw(h + 0x0A)));
+    wd(b + 0x0E, rd(b + 0x0E) & 0x00FF00FFu);
+    ww(b + 0x0E, (uint16_t)(rw(b + 0x0E) + rw(h + 0x0A)));
+    ww(b + 0x10, (uint16_t)(rw(b + 0x10) + rw(h + 0x0C)));
+    lv = rw(h + 0x0E);
+    wd(0x0024, (sx16(rw(h + 0x0C)) & 0xFFFF0000u) | lv);
+    if (lv == 0)
+        BALL_BUNDLE1();
+    else if (lv == 1)
+        BALL_BUNDLE2();
+    else
+        pi_stop("HOLE_EJECT_STEP: a level above 1 (CODE:30D6F)");
+}
+
+/* the hole's count [0020] at or below 3Ch: at 3Ch the ball out; below
+ * 32h every 8th count the sound record +10h of [0004] (none: nothing
+ * drawn either), then the picture +30h of [0004] (the second hole) or of
+ * the hole flickered by count AND 4 */
+static void hole_flicker(int second)
+{
+    uint16_t di = rw(0x0020);
+    uint32_t r;
+
+    if (di > 0x3C)
+        return;
+    if (di == 0x3C) {                                   /* CODE:30CAD */
+        hole_ball();
+        if (rb(rd(0x0000)) & 2)                         /* CODE:30CDE */
+            wd(0x0000, rd(rd(0x0000) + 0x34));
+        HOLE_BALL_OUT();
+        return;
+    }
+    if (di >= 0x32)
+        return;
+    cw(0x0024, (uint16_t)(di & 7));
+    if ((di & 7) == 0) {
+        r = rd(rd(0x0004) + 0x10);
+        wd(0x0024, r);
+        if (r == 0)
+            return;
+        if (second) {
+            wd(0x0000, r);
+            SFX_PLAY();
+        } else {
+            wd(0x0028, rd(0x0000));
+            wd(0x0000, r);
+            SFX_PLAY();
+            wd(0x0000, rd(0x0028));
+        }
+    }
+    cw(0x0020, (uint16_t)(rw(0x0020) & 4));             /* CODE:30A92, 30BB1 */
+    wd(0x0000, rd((second ? rd(0x0004) : rd(0x0000)) + 0x30));
+    PIECE_SET();
+}
+
+/* CODE:30C5C: a hole without a picture whose count ran out: the ball let
+ * go and out */
+static void hole_out_now(void)
+{
+    uint32_t h = rd(0x0000), b;
+
+    wd(rd(0x0014) + 0x2A68, 0);
+    b = hole_ball();
+    wb(b + 1, (uint8_t)(rb(b + 1) & 0x7F));
+    wb(h + 1, 0);
+    if (rb(h) & 2) {
+        wb(h, (uint8_t)(rb(h) & ~2));
+        wd(0x0000, rd(h + 0x34));                       /* CODE:30CEC */
+    }
+    HOLE_BALL_OUT();
+}
+
+/* CODE:30996: the hole ejecting (state+2A68h): its count +4 counted up
+ * from below 0 (no picture: the ball out at 0) or down from 4Ch (at 0 the
+ * ball let go and the hole free, at 3Ch the ball out, below 32h the
+ * picture flickered with its sound); a hole with bit 1 of its byte +0
+ * set ejects at its second hole +34h, one without ends with the main
+ * program's record CODE:100E8. With none ejecting the next from the
+ * stack state+2A64h (up from CODE:FA48): count 4Ch when the hole the
+ * ball comes out of has a picture (+30h), else FFCEh */
 static void HOLE_EJECT_STEP(void)
 {
-    uint32_t st = rd(0x0014), h = rd(st + 0x2A68);
+    uint32_t st = rd(0x0014), h = rd(st + 0x2A68), p, b;
 
     wd(0x0020, h);
-    if (h != 0)
-        pi_stop("HOLE_EJECT_STEP: a hole ejecting (CODE:309BB)");
-    h = rd(st + 0x2A64);
-    wd(0x0004, h);
-    if (h != 0xFA48)
-        pi_stop("HOLE_EJECT_STEP: a hole on the stack (CODE:30BF0)");
+    if (h != 0) {
+        wd(0x0000, h);
+        if (rb(h) & 2) {
+            wd(0x0004, rd(h + 0x34));
+            if (rw(h + 4) & 0x8000) {
+                ww(h + 4, (uint16_t)(rw(h + 4) + 1));
+                if (rw(h + 4) == 0)
+                    hole_out_now();
+                return;
+            }
+            ww(h + 4, (uint16_t)(rw(h + 4) - 1));       /* CODE:309E5 */
+            if (rw(h + 4) == 0) {
+                wd(st + 0x2A68, 0);
+                b = hole_ball();
+                wb(b + 1, (uint8_t)(rb(b + 1) & 0x7F));
+                wb(h, (uint8_t)(rb(h) & ~2));
+                wb(h + 1, 0);
+            }
+            h = rd(0x0000);                             /* CODE:30A33 */
+            wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(h + 4));
+            hole_flicker(1);
+            return;
+        }
+        if (rw(h + 4) & 0x8000) {                       /* CODE:30AB7 */
+            ww(h + 4, (uint16_t)(rw(h + 4) + 1));
+            if (rw(h + 4) == 0)
+                hole_out_now();
+            return;
+        }
+        ww(h + 4, (uint16_t)(rw(h + 4) - 1));           /* CODE:30AD0 */
+        if (rw(h + 4) == 0) {
+            wd(st + 0x2A68, 0);
+            wd(0x0024, h);
+            wd(0x0000, 0x100E8);
+            RECORD_DISPATCH();
+            h = rd(0x0024);
+            wd(0x0000, h);
+            b = hole_ball();
+            wb(b + 1, (uint8_t)(rb(b + 1) & 0x7F));
+            wb(h + 1, 0);
+        }
+        h = rd(0x0000);                                 /* CODE:30B44 */
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(h + 4));
+        hole_flicker(0);
+        return;
+    }
+    p = rd(st + 0x2A64);                                /* CODE:30BD6 */
+    wd(0x0004, p);
+    if (p == 0xFA48)
+        return;
+    wd(st + 0x2A64, p + 4);
+    h = rd(p);
+    wd(0x0000, h);
+    wd(0x0004, p + 4);
+    if ((rb(h) & 2) ? rd(rd(h + 0x34) + 0x30) != 0 : rd(h + 0x30) != 0)
+        ww(h + 4, 0x4C);
+    else
+        ww(h + 4, 0xFFCE);
+    wd(rd(0x0014) + 0x2A68, h);
 }
 
 /* CODE:30799: a bank of drop targets raised: with none waiting (state+
@@ -1028,6 +1195,56 @@ static void ZONE_TYPE0(void)
     ZONE_LEAVE();                                       /* CODE:2C713 */
 }
 
+/* CODE:2C719: zone type 4, a hole: unless the ball is held (bit 7 of its
+ * byte +1), when the hole's byte +1 is 0 (none held): with its byte +2
+ * set, the player's bit (state+0D74h) in the light state at +2Ch, which
+ * then stands for the hole in what follows, its byte +3 and state+2A6Ch
+ * counted up; the ball's number into its byte +1, the ball held, the
+ * points before +2Ch (TAKE_PAY), the main program's record CODE:100CE
+ * (RECORD_DISPATCH) and the event stream +14h */
+static void ZONE_TYPE4(void)
+{
+    uint32_t b = rd(0x0010), h, r, st;
+
+    if (rb(b + 1) & 0x80)
+        return;
+    h = rd(rd(0x0000) + 0x0A);
+    wd(0x0004, h);
+    wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | rb(h + 1));
+    if (rb(h + 1) != 0)
+        return;
+    if (rb(h + 2) != 0) {
+        r = rd(h + 0x2C);
+        wd(0x0020, r);
+        if (r != 0) {
+            uint16_t dx;
+
+            wd(0x0004, r);
+            st = rd(0x0014);
+            dx = rw(st + 0x0D74);
+            wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | dx);
+            wb(r, (uint8_t)(rb(r) | (uint8_t)dx));
+        }
+        r = rd(0x0004);                                 /* CODE:2C78B */
+        wb(r + 3, (uint8_t)(rb(r + 3) + 1));
+        st = rd(0x0014);
+        ww(st + 0x2A6C, (uint16_t)(rw(st + 0x2A6C) + 1));
+    }
+    b = rd(0x0010);                                     /* CODE:2C7A3 */
+    wb(rd(0x0004) + 1, rb(b + 0x0A));
+    wb(b + 1, (uint8_t)(rb(b + 1) | 0x80));
+    wd(0x000C, rd(0x0004) + 0x2C);
+    TAKE_PAY();
+    wd(0x0000, 0x100CE);
+    RECORD_DISPATCH();
+    r = rd(rd(0x0004) + 0x14);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        EVENT_QUEUE();
+    }
+}
+
 static void zone_handler(uint16_t type)
 {
     static char why[48];
@@ -1046,6 +1263,9 @@ static void zone_handler(uint16_t type)
     case 3:
         ZONE_LEAVE();
         BALL_BUNDLE1();
+        break;
+    case 4:
+        ZONE_TYPE4();
         break;
     default:
         snprintf(why, sizeof why, "ZONES_CHECK: zone type %u", (unsigned)type);

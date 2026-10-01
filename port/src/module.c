@@ -74,6 +74,37 @@ static void dec_digit(uint32_t bx)
     wb(rd(0x0000), (uint8_t)ecx);
 }
 
+/* CODE:305E3: the low three nibbles of [0020] as decimal, BCD through
+ * DEC_ONES, DEC_SIXTEENS and DEC_256S into the word BIN_BCD_WORD ([0000]
+ * the place, [0004] the table's); the BCD word to [0020]'s low word */
+void BIN_BCD(void)
+{
+    static const uint32_t tables[3] = { N_DEC_ONES, N_DEC_SIXTEENS, N_DEC_256S };
+    int i;
+
+    ww(N_BIN_BCD_WORD, 0);
+    wd(0x0000, N_BIN_BCD_WORD + 2);
+    for (i = 0; i < 3; i++) {
+        uint32_t n;
+        int cf = 0;
+
+        if (i)
+            wd(0x0020, shr_si(rd(0x0020)));
+        n = rd(0x0020) & 0xF;
+        wd(0x0028, (i ? rd(0x0028) & 0xFFFFFF00u : 0) | n);
+        if (!n)
+            continue;
+        wd(0x0004, tables[i] + 2 * n);
+        adc_daa(rd(0x0000) - 2, rd(0x0004) - 2, &cf);
+        adc_daa(rd(0x0000) - 1, rd(0x0004) - 1, &cf);
+        wd(0x0004, rd(0x0004) - 2);
+        wd(0x0000, rd(0x0000) - 2);
+        if (i < 2)
+            wd(0x0000, rd(0x0000) + 2);
+    }
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(N_BIN_BCD_WORD));
+}
+
 /* CODE:30368, host vector +18h: the low three nibbles of [0020] as
  * decimal (BCD through the tables DEC_ONES, DEC_SIXTEENS, DEC_256S into
  * DEC_BCD), its digits ('0' = [002C] = 30h) written backwards before

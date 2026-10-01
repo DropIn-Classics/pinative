@@ -83,7 +83,10 @@ the event streams with the opcodes met so far, the lit records' timers
 and lamps, the counters' and objects' timers, the ball save's lamp, the
 M key, the flippers' masks and surfaces in src/phys.c, the bumpers'
 and slingshots' kicks, the objects a ball hits (OBJECT_HITS: type 0
-with its light and points, drop targets, type 2's record taken), a
+with its light and points, drop targets, type 2's record taken), the
+holes (a ball taken, held and ejected with the hole's picture
+flickering), more of the records' take handlers and of the display's
+opcodes (numbers, the bonus, blinking text), a
 zone's light flashed, a module's note through the driver's command 7),
 a lost ball
 served again under the ball save (GAME_PHASE 7, "DON'T MOVE"), a lost
@@ -541,6 +544,19 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   compare: the run took the second key's interrupt about 6 ms later,
   after that frame's flipper reads (docs/HANDOFF.md, "The objects a ball
   hits in the port").
+- 2026-10-01, Linux: a whole blind game on table 1 (doskit's new
+  `-keysat 12A7F5 FILE`, the keys by CODE:298C5's pass as above): F1 at
+  frame 1185, Enter 1299, every 45 frames Left Shift and a frame later
+  Right Shift (8 frames each) and every 315 frames Enter, to game over
+  at frame 5552 (holes taken and ejected, take handlers 6, 7, 0Bh, 10h,
+  14h, display opcodes 6 and 9 ran; dosrun `-cover`). Compared at
+  passes 1911, 1950, 2100, 2500, 3000, 4000, 5500, 7000 (the same
+  keys without the Enters after the first: the second ball waits for
+  its launch at 3000 and after) and 3000, 4300, 5490, 6000 (with them; 6000 in the attract
+  mode after game over): CODE but FRAME_SPINS, video memory and the
+  heap equal as before, but at 4300 FRAME_COUNT one behind and
+  LIGHTS_DRAW_POS 0 for the run's 30h (a frame where the run's
+  LIGHTS_DRAW was cut by the retrace; equal again at 5490).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

@@ -3845,6 +3845,52 @@ earlier reading of 2026-09-29 is all there is), OBJECT_TYPE2, type 0's
 branch of a light already set, an index of 20h and above, a timer
 running.
 
+### The holes and a whole game in the port
+
+Since 2026-10-01 a blind flipper game on table 1 runs in the port from
+F1 to game over and back to the attract mode, equal to a run of the
+original where compared. Translated for it (names in
+src/ILLUSION.hints):
+
+- ZONE_TYPE4 (CODE:2C719, a hole takes the ball), event opcodes 8 and
+  18h (OP_HOLE, OP_HOLE2) and HOLE_EJECT_STEP (CODE:30996) whole, with
+  HOLE_BALL_OUT (CODE:30CFB); src/play.c, src/events.c.
+- Take handlers 6 (TAKE_COUNT_STREAM), 7 (TAKE_SCORE), 0Bh
+  (TAKE_RAISE), 10h (the three in turn) and 14h (TAKE_TIMER).
+- Display opcodes 5, 6, 8, 9, 0Ch, 0Eh, 10h, 12h and 1Ah
+  (src/display.c), with BIN_BCD (CODE:305E3) and DM_SMALL_NUMBER
+  (CODE:1015E, 1010A).
+
+What was learned:
+
+- In a hole's ZONE_TYPE4 with its byte +2 set, the light state at +2Ch
+  takes the hole's place in [CODE:0004] for the rest: the ball's
+  number goes into the light state's byte +1 and the points and the
+  event stream are the light state's +2Ch and +14h, not the hole's (as
+  read; that path did not run).
+- The hole holds the ball (its byte +1 bit 7, so BALLS_PHYSICS passes
+  it over) until the count reaches 0, also after HOLE_BALL_OUT put it
+  at the exit at count 3Ch: 60 frames at the exit without moving.
+- The own hole's sound record is read from [CODE:0004]+10h (the slip
+  in "The holes' eject"); in the run it was 0, so neither the sound nor
+  the picture's flicker of that frame came, and the port, which keeps
+  the scratch cells, does the same.
+
+Input: doskit's runner has `-keysat ADDR FILE` since 2026-10-01 (many
+`-keyat` keys from a file, one breakpoint), as -keyat's 64
+breakpoints were too few for a game.
+
+Compared (port/README.md, "Checked", 2026-10-01): the game ended at
+table frame 5552 (balls lost at 2488, 3782, 5489; two served again
+under the ball save). The frames where the run's LIGHTS_DRAW was cut
+by the retrace (FRAME_COUNT one ahead, LIGHTS_DRAW_POS 30h) are the
+run's timing, as in "The attract mode's display"; the next comparison
+was equal again. Not run in that game: DROP_HIT, OBJECT_TYPE2, OP_HOLE2
+and the second-hole path, a hole without a picture, the hole with its
+light state (ZONE_TYPE4's byte +2), TAKE_COUNT_STREAM's threshold
+stream, TAKE_RAISE's cap, display opcodes 5, 8, 0Ch, 0Eh, 10h, 12h,
+1Ah (read, translated, not compared).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4108,8 +4154,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      port"; the headers of pMAX's heap done 2026-09-30, see "pMAX's heap
      headers"; the bumpers' and slingshots' kicks done 2026-09-30, see
      "The kicks in the port"; the objects a ball hits done 2026-10-01,
-     see "The objects a ball hits in the port"; next zone type 4, the
-     holes, CODE:2C719, where blind flipper games stop now);
+     see "The objects a ball hits in the port"; the holes and what a
+     whole blind game on table 1 needed done 2026-10-01, see "The holes
+     and a whole game in the port"; next: games on tables 2, 3 and 4,
+     and table 1 with other keys, for the paths not run yet);
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

@@ -263,10 +263,11 @@ static int COUNTER_LEVELS(void)
     }
 }
 
-/* CODE:2E08C, take handler 15h: the slot-16 counter at the record's +34h
- * counted up for the player (+6, and +16h), its stream +48h when it
- * reaches its top +4 (0: none), then COUNTER_LEVELS */
-static void TAKE_COUNT(void)
+/* the start of take handlers 6 and 15h: the slot-16 counter at the
+ * record's +34h counted up for the player (+6, and +16h), its stream +48h
+ * when it reaches its top +4 (0: none), then COUNTER_LEVELS (its result,
+ * 1 for none reached); -1 when the count was at the top already */
+static int take_count(void)
 {
     uint32_t c = rd(rd(0x0008) + 0x34), k;
     uint16_t cx, dx, si;
@@ -278,7 +279,7 @@ static void TAKE_COUNT(void)
     dx = rw(c + 4);
     cw(0x0028, dx);
     if (dx != 0 && cx == dx)
-        return;
+        return -1;
     si = (uint16_t)(cx + 1);
     cw(0x0020, si);
     ww(k + 6, si);
@@ -294,7 +295,86 @@ static void TAKE_COUNT(void)
             wd(0x0000, rd(0x0008));
         }
     }
-    COUNTER_LEVELS();
+    return COUNTER_LEVELS();
+}
+
+/* CODE:2E08C, take handler 15h: the counter counted (take_count) */
+static void TAKE_COUNT(void)
+{
+    take_count();
+}
+
+/* CODE:2DCA1, take handler 6: as 15h, and when a threshold was reached
+ * its event stream (its +4) to EVENT_QUEUE, the player's bit [003C] set
+ * in its +2 first when the counter's flag bit 2 is set */
+static void TAKE_COUNT_STREAM(void)
+{
+    uint32_t a;
+
+    if (take_count() != 0)
+        return;
+    a = rd(0x0004);
+    if (rb(rd(0x0000)) & 4)
+        wb(a + 2, (uint8_t)(rb(a + 2) | (uint8_t)rd(0x003C)));
+    wd(0x0000, rd(a + 4));                              /* CODE:2DD75 */
+    EVENT_QUEUE();
+}
+
+/* CODE:2E13D, take handler 0Bh: the counter at the record's +34h, its
+ * value (12 BCD digits: the word +38h, the dword +3Ch) raised by its step
+ * (+30h, +34h); then the value set to +40h, +44h when +40h is not
+ * negative and both of the value's dwords (+38h, +3Ch) are at or above
+ * +40h's and +44h's: a cap, presumably */
+static void TAKE_RAISE(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34), src, dst, v0, v1, m;
+    int cf = 0, i;
+
+    wd(0x0000, c);
+    wd(0x0004, c + 0x38);
+    wd(0x000C, c + 0x40);
+    src = c + 0x38;
+    dst = c + 0x40;
+    for (i = 0; i < 4; i++)
+        adc_daa(dst - 4 + (uint32_t)i, src - 4 + (uint32_t)i, &cf);
+    for (i = 0; i < 2; i++)
+        adc_daa(dst - 8 + (uint32_t)i, src - 8 + (uint32_t)i, &cf);
+    wd(0x0004, rd(0x0004) - 6);
+    wd(0x000C, rd(0x000C) - 6);
+    v0 = rd(c + 0x38);
+    wd(0x0020, v0);
+    v1 = rd(c + 0x3C);
+    wd(0x0024, v1);
+    m = rd(c + 0x40);
+    wd(0x0028, m);
+    if ((m & 0x80000000u) || v0 < m || v1 < rd(c + 0x44))
+        return;
+    wd(c + 0x38, rd(c + 0x40));
+    wd(c + 0x3C, rd(c + 0x44));
+}
+
+/* CODE:2E6CC, take handler 7: the counter's value (the word +38h, the
+ * dword +3Ch) to the player's score (SCORE_ADD) */
+static void TAKE_SCORE(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34);
+
+    wd(0x0000, c);
+    wd(0x000C, c + 0x40);
+    SCORE_ADD();
+}
+
+/* CODE:2E7C8, take handler 14h: the counter at the record's +34h, its
+ * timer +26h = the record's word +38h times FRAME_RATE (state+50h), after
+ * which COUNTER_TIMERS puts its step back and its value to 0 */
+static void TAKE_TIMER(void)
+{
+    uint32_t r = rd(0x0008), c = rd(r + 0x34), v;
+
+    wd(0x0000, c);
+    v = (uint32_t)rw(r + 0x38) * rw(rd(0x0014) + 0x50);
+    wd(0x0020, v);
+    ww(c + 0x26, (uint16_t)v);
 }
 
 static void take_handler(uint32_t a)
@@ -306,6 +386,23 @@ static void take_handler(uint32_t a)
         break;
     case 0x2E08C:
         TAKE_COUNT();
+        break;
+    case 0x2DCA1:
+        TAKE_COUNT_STREAM();
+        break;
+    case 0x2E13D:
+        TAKE_RAISE();
+        break;
+    case 0x2E6CC:
+        TAKE_SCORE();
+        break;
+    case 0x2E7C8:
+        TAKE_TIMER();
+        break;
+    case 0x2DC91:                                       /* handler 10h: 0Bh, 6, 7 */
+        TAKE_RAISE();
+        TAKE_COUNT_STREAM();
+        TAKE_SCORE();
         break;
     default:
         snprintf(why, sizeof why, "RECORD_TAKE: take handler CODE:%X", (unsigned)a);
@@ -553,6 +650,37 @@ static void OP_UNLESS_LIT(void)
     ww(rd(0x0000) + 2, rw(c + 6));
 }
 
+/* CODE:2D785, event opcode 8 (a hole): bit 1 of its byte +0 cleared,
+ * +34h 0, pushed on the stack at state+2A64h for HOLE_EJECT_STEP */
+static void OP_HOLE(void)
+{
+    uint32_t st = rd(0x0014), h = rd(rd(0x0004) + 2), p;
+
+    wd(0x0008, h);
+    wb(h, (uint8_t)(rb(h) & ~2));
+    wd(h + 0x34, 0);
+    p = rd(st + 0x2A64) - 4;
+    wd(0x0000, p);
+    wd(p, h);
+    wd(st + 0x2A64, p);
+}
+
+/* CODE:2D7BE, event opcode 18h (a hole, a second hole): as opcode 8 with
+ * bit 1 set and the second hole in +34h, where the ball comes out */
+static void OP_HOLE2(void)
+{
+    uint32_t c = rd(0x0004), h = rd(c + 2), st, p;
+
+    wd(0x0000, h);
+    wb(h, (uint8_t)(rb(h) | 2));
+    wd(h + 0x34, rd(c + 6));
+    st = rd(0x0014);
+    p = rd(st + 0x2A64) - 4;
+    wd(0x0004, p);
+    wd(p, h);
+    wd(st + 0x2A64, p);
+}
+
 /* one command of a stream: its handler by its address (CODE:2D193 plus
  * the table's offset) */
 static void event_op(uint32_t a)
@@ -577,6 +705,12 @@ static void event_op(uint32_t a)
         break;
     case 0x2D8C2:
         OP_UNLESS_LIT();
+        break;
+    case 0x2D785:
+        OP_HOLE();
+        break;
+    case 0x2D7BE:
+        OP_HOLE2();
         break;
     case 0x2D358:                   /* opcode 19h: CODE:B927 (a RET) when RES_CODE is 5 */
         break;

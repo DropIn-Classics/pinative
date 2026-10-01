@@ -246,6 +246,7 @@ comment    CODE:3007A by the type of the record at [CODE:0000] (its first byte A
 ; the tracks of the table's modes (2026-09-29, from the four modules' data
 ; and the handlers below; no such play seen in a run yet)
 comment    CODE:2D9DE the word +2Ch of the slot-15 record at [CODE:0008] picks one of the handlers at CODE:2DA0A (0: none)
+name       CODE:2DCA1 TAKE_COUNT_STREAM
 comment    CODE:2DCA1 handler 6 of CODE:2DA0A: the record's dword +34h is a slot-16 counter; the current player's word +6 of it counted up, at the limit (word +4) its stream +48h to EVENT_QUEUE; then CODE:2DD8A
 comment    CODE:2DD8A the counter's threshold actions (12 bytes from +50h): the one reached has its dword +4, an event stream, go to EVENT_QUEUE (at CODE:2DD75)
 comment    CODE:2E5A2 handler 11h of CODE:2DA0A: the record's dword +34h is an event stream, to EVENT_QUEUE
@@ -253,6 +254,7 @@ name       CODE:2FE8E EVENT_QUEUE  ; [CODE:0000] into the ring of 64 dwords at [
 ; how a mode starts (2026-09-29; run on table 1 with two -poke, see
 ; docs/HANDOFF.md, "A mode's track in a run")
 comment    CODE:2C1DA each ball of the list at state+C1046h (state+C0D32h of them): its centre (words +12h, +14h, plus 8 each) against the zones at its dword +64h (14 bytes: x0, y0, x1, y1, a type, an object; -1 ends them; header slots 5 and 11 in table 1); inside one, the type through CODE:2C3DD. The ball's byte +0Ah marks the object while it is inside (type 4 in the object's byte +1, types 0 and 1 in byte +0), so a zone acts on entry, presumably (run: table 1's zone 3447h widened, its object's stream ran 0.56 s later)
+name       CODE:2E08C TAKE_COUNT
 comment    CODE:2E08C handler 15h of CODE:2DA0A: as handler 6 (CODE:2DCA1) without its end: the counter at +34h counted up for the current player, its word +16h too, then CODE:2DD8A (run, table 1: record 41E6h, counter 421Eh, at the ball's launch and in bursts; +16h back to 1 after 9 at CODE:2DF20)
 comment    CODE:2E5B7 handler 16h of CODE:2DA0A: the counter at +34h's threshold action equal to the current player's word +16h: its stream (+4) to EVENT_QUEUE (table 1: record 4362h, lit by zone 352Fh's stream, taken by zone 3447h's; run with it forced: threshold 1, opcode 9, the mode stream's opcode 13h plays track 4)
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
@@ -275,10 +277,12 @@ comment    CODE:2E2E1 handler 1 of CODE:2DA0A: the first light state of header s
 comment    CODE:2E31C handler 2 of CODE:2DA0A: byte +0 of [+34h] set to FFh when that is not 0 (table 2's one such record, 7402h, has 2 there, the next record's first word, so CODE:0002 is written, a scratch dword rewritten at once), the player's bit (CODE:003C, presumably) into byte +0 of the light state at +8, the player's byte +11h FFh (bonus held, CODE:2A4B1)
 comment    CODE:2E6AB handler 3 of CODE:2DA0A: the player's +10h number added to its +8 (in no record of the four tables)
 comment    CODE:2E43A handler 5 of CODE:2DA0A: the player's word +12h = the record's word +34h (2, 4, 6, 8, 0Ah in five records of tables 1, 2 and 4; 2..5 in four of table 3): the bonus multiplier, presumably
+name       CODE:2E6CC TAKE_SCORE
 comment    CODE:2E6CC handler 7 of CODE:2DA0A: the slot-16 counter at +34h: its value (high word +38h, low dword +3Ch) added to the player's +8
 comment    CODE:2E37F handler 8 of CODE:2DA0A: the player's byte +14h FFh (multiplier held, CODE:2A4B1; in table 1 only)
 comment    CODE:2E2C0 handler 9 of CODE:2DA0A: the player's +8 added to itself (in no record)
 comment    CODE:2E6EA handler 0Ah of CODE:2DA0A: the counter at +34h's value (as handler 7) added to the player's +8 as many times as the record's word +38h, or the current player's count (word +6) when that is less, and then that count set to 0; the count is not lowered otherwise (table 1's record 7C64h, the word 19h)
+name       CODE:2E13D TAKE_RAISE
 comment    CODE:2E13D handler 0Bh of CODE:2DA0A: the counter at +34h's value (+38h/+3Ch) raised by its step (high word +30h, low dword +34h; from +28h/+2Ch at CODE:2DF5C), then set to +40h/+44h when both dwords are at or above those and +40h is not negative: a cap, presumably
 comment    CODE:2E29F handler 0Dh of CODE:2DA0A: the player's +10h added to itself (in no record)
 comment    CODE:2E778 handler 0Eh of CODE:2DA0A: the counter at +34h's step (+30h/+34h) added to the player's +8
@@ -286,6 +290,7 @@ comment    CODE:2E45C handler 0Fh of CODE:2DA0A: the counter at +34h's step rais
 comment    CODE:2DC91 handler 10h of CODE:2DA0A: handlers 0Bh, 6 and 7 in turn
 comment    CODE:2DC86 handler 12h of CODE:2DA0A: handlers 0Bh and 6 in turn
 comment    CODE:2E796 handler 13h of CODE:2DA0A: [+34h] is a slot-26 BCD counter (so in all four tables): its current value (+2, +6) copied to its +22h, +26h and added to the player's +8
+name       CODE:2E7C8 TAKE_TIMER
 comment    CODE:2E7C8 handler 14h of CODE:2DA0A: the counter at +34h's word +26h = the record's word +38h times FRAME_RATE (state+50h): the time until COUNTER_TIMERS puts the counter's step back and its value to 0 (records 579Ch, 57D6h of table 1, 5 and 10 s, counter 574Ah; 490Ch of table 3, 12 s, counter 48BAh)
 comment    CODE:2E21D handler 17h of CODE:2DA0A: while the mode stream waits with a timer (state+0D50h, 0D62h not negative) the timer set to the smaller of the record's words +34h and +36h times FRAME_RATE (state+50h); the timer plus +34h is computed (CODE:0024) and not used (table 3's record 75C4h: 5 and 1Eh, so 5 s)
 comment    CODE:2E7FC handler 18h of CODE:2DA0A: the counter at +34h's words +6 and +16h of the current player one less, unless +6 is 0
@@ -407,6 +412,7 @@ comment    CODE:2D23E event opcode 4 (an object, a word): when the object's word
 comment    CODE:2D907 event opcode 5 (a slot-15 record): taken (CODE:2D916) when lit for the current player and not blocked: unlit, its points (CODE:2FBBF: packed BCD, the word +24h and dword +28h, e.g. 05000000h, to the player's +10h, the bonus presumably; +1Ch/+20h to its +8), lit again when flag bit 1 or 3 is set, else its lamp off; its display stream +18h through CODE:2FEDB, the player's bit in byte +5 of the light state at +8, its +10h through CODE:3007A, then its handler by the word +2Ch (CODE:2D9DE)
 comment    CODE:2D827 event opcode 6 (a slot-16 counter): its dwords +28h, +2Ch to +30h, +34h
 comment    CODE:2D8A6 event opcode 7 (a slot-16 counter, two dwords): the dwords to the counter's +30h, +34h
+name       CODE:2D785 OP_HOLE
 comment    CODE:2D785 event opcode 8 (a hole: the object of a type-4 zone): bit 1 cleared, +34h 0, pushed on the stack at state+2A64h (down from FA48h); CODE:30BD6 takes them one at a time, CODE:30CFB puts the ball the hole holds (byte +1) out at the hole's +6, +8 with the speed +0Ah, +0Ch on the level +0Eh: an eject
 comment    CODE:2DA7B event opcode 9 (an event stream): unless state+0D4Fh is set, the stream becomes the running mode stream (state+0D5Eh, state+0D4Fh FFh, the wait and loop state cleared) and the records on the list at state+2A32h with flag bit 4 get their lamps off for the player; in the modules the stream with the mode's opcode 13h (its CD track) is started only this way
 comment    CODE:2D5F4 event opcode 0Ah (a position): the stream's position: a jump
@@ -424,6 +430,7 @@ comment    CODE:2CFC8 when no event stream runs and the queue's next entry is em
 comment    CODE:2D85F event opcode 15h (a slot-16 counter, a word): the current player's words +6 and +16h = the word
 comment    CODE:2D7F9 event opcode 16h (a slot-16 counter): the current player's words +6 and +16h = the counter's word +2
 comment    CODE:2D8C2 event opcode 17h (a slot-15 record, a position): unless the record is lit for the current player and not blocked (bytes +1, +2), a jump to the position: past the take that follows, in table 1's stream 4F50h
+name       CODE:2D7BE OP_HOLE2
 comment    CODE:2D7BE event opcode 18h (a hole, a second hole): as opcode 8, with bit 1 set and the second hole in +34h, whose +6..+0Eh CODE:30CEC takes instead: the ball comes out at the second hole (table 1's modes: held in 4F18h, out at 4DB0h)
 comment    CODE:2D358 event opcode 19h: when state+0E44h (RES_CODE, 0..3) is 5, a call of CODE:B927, a RET: no effect (in the modules as often as opcode 1Bh)
 comment    CODE:2D60A event opcode 1Ah (a hole): its ball (byte +1 less one, an index into state+C107Ah) let go (bit 1 and byte +1 cleared, +34h 0) and put at 11Ch, 1FEh (CODE:29A5A; the plunger lane, presumably); balls on the table (state+0D32h) one less, to be served (state+0D3Ah) one more
@@ -479,6 +486,7 @@ name       CODE:30996 HOLE_EJECT_STEP ; each frame (CODE:30784 from CODE:2B49A):
 comment    CODE:30368 host vector +18h: the binary word in [CODE:0020] as decimal digits (BCD, each nonzero nibble from the tables at CODE:30585, 305A5, 305C5) ending at [CODE:0000]; uses CODE:0004, 0008, 0028, 002C as work cells, so a module that keeps a pointer in CODE:0004 loses it here: [CODE:0004] is left at CODE:30585 or 305A5 + 2 x (the highest nonzero nibble) - 2. Table 1's shooting game reads its state through CODE:0004 after this call (module 9D80h), so its 25-hit test reads a byte of these tables instead (not FFh for any count 1..29, read from the image; run 2026-09-29 with 26 hits: the other branch taken; docs/HANDOFF.md, "Table 1's shooting game when the lives run out")
 comment    CODE:30996 with bit 1 the second hole (+34h) stands in for the hole in what follows but the count. A count below 0 counts up and at 0 puts the ball out at once (CODE:30C5C). A count above 0 counts down: at 3Ch the ball is put out (CODE:30CAD), below 32h every 8th frame the sound record +10h (CODE:9F2C) and each frame the object +30h drawn in state count AND 4 (CODE:28E7B: it flickers every 4 frames), at 0 the hole is done (state+2A68h 0; without bit 1 the program's own record CODE:100E8, a sound presumably, through RECORD_DISPATCH), its ball no longer held (bit 7 of the ball's byte +1). Without bit 1 the sound record is read from [CODE:0004]+10h, and CODE:0004 then still holds what DROPS_QUEUE_STEP left there (state+2A60h's place), not the hole: a slip. Run 2026-09-29, table 1 (hole module 4F18h, both ejects at t=149.37 and 172.13): [CODE:0004] was F920h, the queue's empty end, at all 14 reads, and CODE:F930 is 0 (the queue grows down from F920h, nothing writes above it), so nothing sounds and that frame's draw is skipped as well (the JE to the RET); the hole's own +10h is module 11BBFh, a type-2 record. With three or more entries left in the queue the read would land in the queue's entries, a pointer of their bytes to CODE:9F2C (read, not run)
 comment    CODE:30BD6 the next hole from the stack state+2A64h (opcode 8, 18h): its count +4 is 4Ch (76 frames) when the hole that puts the ball out has an object at +30h, else FFCEh (-50: 50 frames, no picture). Run 2026-09-29, table 1: 4Ch twice (t=148.980, 171.732), the ball out 0.223 and 0.227 s later (16 frames); FFCEh not seen
+name       CODE:30CFB HOLE_BALL_OUT
 comment    CODE:30CFB the ball out: its words +12h, +14h = +6, +8 (and shifted by 0Ah into its dwords +1Eh, +22h), the high bytes of its words +0Eh, +10h cleared and +0Ah, +0Ch added, then onto level +0Eh as zone type 3 (0: CODE:2C414) or type 2 (1: CODE:2C467) do
 ; the display language (the same way; opcodes 4, 5, 0Bh, 11h, 12h, 15h..17h
 ; are in none of the modules' streams the tool finds)
@@ -525,6 +533,7 @@ comment    CODE:2C59C zone type 0: as type 1 (from CODE:2C61F), first, when stat
 comment    CODE:2C4B5 zone type 1: on entry the object's points (from +1Eh; through CODE:2FD11 from +26h instead when the record at +0Ah has the player's bit already), its +2 through CODE:3007A, its +6 (an event stream) to EVENT_QUEUE
 comment    CODE:2C462 zone type 2: the ball's +50h..+64h from header slots 6..11 (state+28BEh), byte +8 FFh: onto the other level, presumably
 comment    CODE:2C40F zone type 3: the ball's +50h..+64h from header slots 0..5 (state+28A6h), byte +8 0
+name       CODE:2C719 ZONE_TYPE4
 comment    CODE:2C719 zone type 4, a hole: unless the ball is held (bit 7 of its byte +1), when the hole's byte +1 is 0 it holds the ball (its number to byte +1), the points before +2Ch (CODE:2FBBF), the main program's record at CODE:100CE through CODE:3007A, the event stream at +14h to EVENT_QUEUE
 words      CODE:2DA0A 1C CODE      ; PUSH [EBX*4+2DA0A] at CODE:2DA02 after PUSH 2DA09h, then RET: by the word at [[CODE:0008]+2Ch] (0 not taken); 28 up to the first target (a RET at CODE:2DA7A)
 words      CODE:2CD10 0B CODE      ; its address put in [CODE:0010] (CODE:2BEDC, 2D04D, 2DBD3) before calls into the table module: its host vector (docs/bpc-module.md), +14h (CODE:27783) draws a text record, +1Ch is EVENT_QUEUE (checked 2026-09-29: table 1's and 2's arguments there are event streams), the others not checked one by one
@@ -1117,6 +1126,11 @@ code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94
 name       CODE:D83A TABLE_HISCORES
 code       CODE:30368 DEC_TEXT     ; host vector +18h (see the comment there)
 name       CODE:30581 DEC_BCD      ; the BCD word DEC_TEXT adds up
+name       CODE:305E3 BIN_BCD      ; the low three nibbles of [CODE:0020] as decimal: BCD through DEC_ONES, DEC_SIXTEENS, DEC_256S into BIN_BCD_WORD ([CODE:0000] the place, [CODE:0004] the table's entry), the BCD word to [CODE:0020]'s low word (display opcodes 5, 9, 0Eh; run 2026-10-01 through opcode 9)
+name       CODE:30782 BIN_BCD_WORD
+name       CODE:1015E DM_SMALL_NUMBER ; the word before [CODE:0000], AND 0FFFh, through BIN_BCD into SMALL_NUMBER's low word (the dword before, 0) and drawn by DM_SCORE_DRAW with [CODE:0000] = DM_SMALL_NUMBER_BE (which it reads 8 bytes back from)
+name       CODE:1010A DM_SMALL_NUMBER_BE ; as DM_SMALL_NUMBER with the word's bytes swapped first (display opcodes 5 and 0Eh; not run)
+name       CODE:10102 SMALL_NUMBER
 name       CODE:30585 DEC_ONES     ; BCD words 1..15
 name       CODE:305A5 DEC_SIXTEENS ; BCD words 16..240
 name       CODE:305C5 DEC_256S     ; BCD words 256..3840

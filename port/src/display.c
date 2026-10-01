@@ -80,6 +80,141 @@ static void OP_LOOP(void)
         ww(rd(0x0000) + 4, di);
 }
 
+/* the layout of a number, the four words at `w` to [002C]..[0038] (x,
+ * y, font, alignment) */
+static void layout(uint32_t w)
+{
+    wd(0x002C, sx16(rw(w)));
+    wd(0x0030, sx16(rw(w + 2)));
+    wd(0x0034, sx16(rw(w + 4)));
+    wd(0x0038, sx16(rw(w + 6)));
+}
+
+/* DM_SMALL_NUMBER (DM_SMALL_NUMBER_BE with `swap`: the word's bytes
+ * swapped first): the word before [0000], AND 0FFFh, drawn as a number:
+ * BIN_BCD, the BCD into the 12-digit SMALL_NUMBER that DM_SCORE_DRAW
+ * reads before DM_SMALL_NUMBER_BE */
+static void small_number(int swap)
+{
+    uint16_t w = rw(rd(0x0000) - 2);
+
+    if (swap)
+        w = (uint16_t)(w << 8 | w >> 8);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | (w & 0x0FFF));
+    BIN_BCD();
+    wd(N_SMALL_NUMBER, 0);
+    wd(N_SMALL_NUMBER + 4, 0);
+    ww(N_SMALL_NUMBER + 4, rw(0x0020));
+    wd(0x0000, N_DM_SMALL_NUMBER_BE);
+    DM_SCORE_DRAW();
+}
+
+/* CODE:2FB2C, display opcode 5 (a pointer, four words): the word before
+ * the pointer, its bytes swapped (big-endian), drawn as a number */
+static void OP_WORD(void)
+{
+    uint32_t c = rd(0x0004);
+
+    wd(0x0000, rd(c + 2));
+    layout(c + 6);
+    small_number(1);
+}
+
+/* CODE:2F712, display opcode 6 (a pointer, four words): the packed-BCD
+ * number that ends at the pointer (DM_SCORE_DRAW) */
+static void OP_BCD(void)
+{
+    uint32_t c = rd(0x0004);
+
+    wd(0x0000, rd(c + 2));
+    layout(c + 6);
+    DM_SCORE_DRAW();
+}
+
+/* CODE:2FA88, display opcode 8 (four words): the current player's score
+ * (the record at state+0D76h, its +8); font 1 becomes 3 when the
+ * record's word +0 is not 0 */
+static void OP_SCORE(void)
+{
+    uint32_t c = rd(0x0004), e;
+
+    layout(c + 2);
+    e = rd(rd(0x0014) + 0x0D76) + 8;
+    wd(0x0000, e);
+    if (rw(0x0034) == 1 && rw(e - 8) != 0)
+        wd(0x0034, rd(0x0034) + 2);
+    DM_SCORE_DRAW();
+}
+
+/* CODE:2F812, display opcode 9 (a pointer, four words): the current
+ * player's word of the table at the pointer ([0038] the player from 1, a
+ * word each) drawn as a number */
+static void OP_NUMBER(void)
+{
+    uint32_t c = rd(0x0004);
+
+    wd(0x0000, rd(c + 2) + sx16(rw(0x0038)) * 2);
+    layout(c + 6);
+    small_number(0);
+}
+
+/* CODE:2F68D, display opcode 0Ch (an animation record, five words, the
+ * fifth not read): as opcode 1 into state+2A5Ch, without the wait;
+ * nothing when it is the one there already */
+static void OP_ANIM2(void)
+{
+    uint32_t p = rd(0x0004), a = rd(p + 2), st = rd(0x0014), ecx;
+
+    wd(0x0000, a);
+    if (a == rd(st + 0x2A5C))
+        return;
+    wd(st + 0x2A5C, a);
+    ecx = sx16(rw(p + 6));
+    wd(0x0024, sx16(rw(p + 8)));
+    wd(0x0028, sx16(rw(p + 10)));
+    wd(0x002C, sx16(rw(p + 12)));
+    ecx = (ecx & 0xFFFF0000u) | (uint16_t)((uint16_t)ecx >> 4 << 1);
+    wd(0x0020, ecx);
+    ww(a + 6, (uint16_t)ecx);
+    ww(a + 8, rw(p + 8));
+    ww(a + 10, rw(p + 10));
+    ww(a + 12, rw(p + 12));
+    ww(a + 0x12, rw(a + 0x22));
+    wb(a + 0x10, 0);
+    wd(a + 0x16, 0);
+}
+
+/* CODE:2F982, display opcode 0Eh (four words): as opcode 5 with the word
+ * at state+2A6Eh */
+static void OP_WORD2(void)
+{
+    layout(rd(0x0004) + 2);
+    wd(0x0000, rd(0x0014) + 0x2A70);
+    small_number(1);
+}
+
+/* CODE:2F755, display opcode 12h (four words): as opcode 8 with the
+ * player record's +10h (the bonus) */
+static void OP_BONUS(void)
+{
+    layout(rd(0x0004) + 2);
+    wd(0x0000, rd(rd(0x0014) + 0x0D76) + 0x10);
+    DM_SCORE_DRAW();
+}
+
+/* CODE:2F7DE, display opcode 1Ah (a text record, a word): drawn when the
+ * word AND FRAME_COUNT is not 0 (blinking) */
+static void OP_BLINK(void)
+{
+    uint32_t c = rd(0x0004);
+    uint16_t bp = rw(c + 6) & rw(N_FRAME_COUNT);
+
+    wd(0x0000, rd(c + 2));
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | bp);
+    if (bp)
+        DM_TEXT_DRAW();
+}
+
 /* a display opcode's routine by its address */
 static void display_op(uint32_t a)
 {
@@ -110,6 +245,34 @@ static void display_op(uint32_t a)
         break;
     case 0x2FAE9:
         OP_LOOP_SET();
+        break;
+    case 0x2FB2C:
+        OP_WORD();
+        break;
+    case 0x2F712:
+        OP_BCD();
+        break;
+    case 0x2FA88:
+        OP_SCORE();
+        break;
+    case 0x2F812:
+        OP_NUMBER();
+        break;
+    case 0x2F68D:
+        OP_ANIM2();
+        break;
+    case 0x2F982:
+        OP_WORD2();
+        break;
+    case 0x2FB02:               /* opcode 10h, a record by its type */
+        wd(0x0000, rd(rd(0x0004) + 2));
+        RECORD_DISPATCH();
+        break;
+    case 0x2F755:
+        OP_BONUS();
+        break;
+    case 0x2F7DE:
+        OP_BLINK();
         break;
     case 0x2FA56:
         OP_LOOP();
