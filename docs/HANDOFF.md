@@ -3975,6 +3975,38 @@ flips every 61 frames the port stops at `BALLS_MOVE: two balls`
 which "The balls' physics" left unread. Opcodes 1Ah, 1Bh, 7, 12h, 15h,
 16h not checked by -cover.
 
+### The ball-ball physics in the port
+
+BALLS_PAIR (CODE:13597..1445C, the rest of BALLS_MOVE) is in the port
+since 2026-10-01 (src/phys.c; the reading in src/ILLUSION.hints at its
+name). Read from the listing: the pair is looked at only when both are
+on one level and within 11h pixels both ways; the entry of CODE:24C19
+for (dx, dy) is 0 for no contact, else a distance-like word (15, 16
+and 17 seen), the case 0..7 and a push; the push (a word below 10h)
+moves ball B when dy is negative, else ball A. The eight cases are
+four bodies over two tests (close in along x or along y), as the hint
+says; only ball A's +9 and +1 are tested, not B's.
+
+Found in blind games (the port with a scratch log; flips every PERIOD
+frames, Enter every Nth, as in "Table 2 in the port"): on table 2 the
+balls touched in 1 of 16 periods (23..83 in steps of 4, Enter every
+5th) and in 14 of 72 patterns (periods 21..89 in steps of 4, Enter
+every 3rd, 4th, 6th or 9th); tables 1, 3 and 4 had no two balls in
+play in the 16 periods with Enter every 5th.
+
+Compared (port/README.md, "Checked"): table 2, flips every 67 (Enter
+every 5th; 2 contacts, 1 turn, case 0), 65 (every 9th; 15 contacts,
+12 turns, cases 1, 3, 4) and 89 frames (every 9th; 40 contacts, cases
+1, 5, 6, pushes at d=15 in frames 6104..6106), at passes right after
+the contacts: equal but for FRAME_SPINS, FRAME_COUNT (the run's 1, 4
+or 6 ahead; the open question of "Table 2 in the port") and the keys
+at a pass after a key. A game with flips every 29 frames and Enter
+every 3rd parted at pass 2037, before any multiball: its Enter release
+and a Shift press fall at one pass (2031), the runner's two keys at a
+pass ("The objects a ball hits in the port"), not the port. Not run:
+cases 2 and 7 compared (2 ran in the 29-frame game only, 7 in none
+compared); the pushes of B (dy negative) not told apart from A's.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4244,9 +4276,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      and table 1 with other keys, for the paths not run yet; tables 1, 3
      and 4 done 2026-10-01 as far as blind games go, see "The modes and
      the take handlers in the port"; table 2's slots 40 and 41 done 2026-10-01, see "Table 2 in the
-     port"; next: table 2's FRAME_COUNT 10 behind, the ball-ball
-     physics for the multiball (BALLS_MOVE, CODE:13597), event opcode
-     14h's module object (table 2's music chooser));
+     port"; the ball-ball physics done 2026-10-01, see "The ball-ball
+     physics in the port"; next: table 2's FRAME_COUNT behind (1 to 10
+     frames), event opcode 14h's module object (table 2's music
+     chooser));
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

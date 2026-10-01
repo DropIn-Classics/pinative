@@ -574,6 +574,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   the same blind keys, passes 2000, 4000, 6000, 8000: CODE but
   FRAME_SPINS and FRAME_COUNT (the run's 10 ahead at all four, not
   found yet) equal, video memory and the heap equal as before.
+- 2026-10-01, Linux: two balls against each other (BALLS_PAIR), table 2
+  blind games as above with flips every 67 frames (Enter every 5th;
+  passes 4753, 4754, 4756, 4800), 65 (every 9th; 5993, 6047, 6100) and
+  89 (every 9th; 4890, 6026, 6105, 6110): contacts, turns (cases 0, 1,
+  3, 4, 5, 6) and pushes ran before those passes; CODE but FRAME_SPINS
+  and FRAME_COUNT (the run's 1 to 6 ahead), video memory and the heap
+  equal as before (docs/HANDOFF.md, "The ball-ball physics in the port").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

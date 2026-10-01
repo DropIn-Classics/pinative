@@ -2,8 +2,6 @@
  * sampled against the level's map, the normal and the surface found, the
  * bounce, the move and the slope (docs/HANDOFF.md, "The balls' physics").
  * The work cells CODE:0000..003C are kept as the original leaves them.
- * Not translated yet, the port stopping there by name: a bumper's or
- * slingshot's kick, two balls against each other.
  */
 #include <stdio.h>
 #include "game.h"
@@ -970,6 +968,199 @@ l130f9:
 
 /* ---- the move ---- */
 
+/* the word at P + v * 2, v the low word of cell `c` */
+static uint16_t tw(uint32_t p, uint32_t c)
+{
+    return rw(p + sx16(rw(c)) * 2);
+}
+
+/* the speed word `v` shifted right by 4, sign-extended */
+static uint32_t spd4(uint16_t v)
+{
+    return sx16((uint16_t)((int16_t)v >> 4));
+}
+
+/* CODE:142AE: cell `c` (a speed word's place) is the speed `v` with the
+ * low word of `d` taken off its size when both have one sign, else added */
+static void spd_turn(uint32_t c, uint16_t v, uint32_t d)
+{
+    cw(c, v);
+    if (((int16_t)v < 0) == ((int16_t)rw(d) < 0))
+        cw(c, (uint16_t)(v - rw(d)));
+    else
+        cw(c, (uint16_t)(v + rw(d)));
+}
+
+/* CODE:13597: ball [CODE:0010] against the next one of the list at
+ * [CODE:0008]: on the same level (+8) within 11h pixels both ways, the
+ * pair's entry in CODE:24C19 (lines by dy through CODE:13760, 8 bytes by
+ * dx: a word that is 0 for no contact, the case, the push x, y as
+ * dwords) pushes one of them apart when the word is below 10h; the case
+ * (CODE:13784) turns both speeds (>> 4) into the frame of the turn
+ * CODE:14493 gives for the low word of CODE:0034 (tables CODE:17F81,
+ * 1B381, 1E781, a product table each, presumably sine and cosine,
+ * not checked), unless the two do not close in; then the new speeds
+ * from the turned ones, A's from B's and the other way */
+static void BALLS_PAIR(void)
+{
+    uint32_t p = rd(0x0008), a = rd(0x0010), bb, e, t, sv;
+    uint16_t lo, tgt;
+    int kind, body, skip;
+
+    bb = rd(p);
+    wd(0x0004, bb);
+    wd(0x0008, p + 4);
+    if (rb(a + 9) != 0 || (rb(a + 1) & 0x80))
+        goto out;
+    cb(0x0020, rb(a + 8));
+    if (rb(a + 8) != rb(bb + 8))
+        goto out;
+    wd(0x003C, 4);
+    wd(0x0028, sx16(rw(a + 0x12)));
+    wd(0x002C, sx16(rw(a + 0x14)));
+    wd(0x0034, sx16(rw(bb + 0x14)));
+    wd(0x0030, (sx16(rw(bb + 0x12)) & 0xFFFF0000u)
+                   | (uint16_t)(rw(bb + 0x12) - rw(a + 0x12)));
+    lo = rw(0x0030);
+    cw(0x0020, lo);
+    if ((int16_t)lo < 0)
+        cw(0x0020, (uint16_t)-lo);
+    if (rw(0x0020) > 0x11)
+        goto out;
+    ww(0x0034, (uint16_t)(rw(0x0034) - rw(0x002C)));
+    lo = rw(0x0034);
+    cw(0x0020, lo);
+    if ((int16_t)lo < 0)
+        cw(0x0020, (uint16_t)-lo);
+    if (rw(0x0020) > 0x11)
+        goto out;
+    e = 0x24C19 + sx16(rw(0x13760 + sx16(rw(0x0034)) * 2));
+    wd(0x0000, e);
+    e += sx16(rw(0x0030)) * 8;
+    cw(0x0020, rw(e));
+    if (rw(0x0020) == 0)
+        goto out;
+    wd(0x0024, sx16(rw(e + 2)));
+    wd(0x0028, sx16(rw(e + 4)));
+    wd(0x002C, sx16(rw(e + 6)));
+    if (rw(0x0020) < 0x10) {
+        if ((int16_t)rw(0x0034) < 0) {
+            wd(bb + 0x1E, rd(bb + 0x1E) + rd(0x0028));
+            wd(bb + 0x22, rd(bb + 0x22) + rd(0x002C));
+        } else {
+            wd(a + 0x1E, rd(a + 0x1E) - rd(0x0028));
+            wd(a + 0x22, rd(a + 0x22) - rd(0x002C));
+        }
+    }
+    /* CODE:1371C: the case */
+    lo = rw(0x13784 + sx16(rw(0x0024)) * 2);
+    cw(0x0024, lo);
+    tgt = (uint16_t)(0x3784 + lo);         /* low word of 13784h + lo */
+    switch (tgt) {
+    case 0x3E9A: kind = 0; body = 1; break; /* 0 */
+    case 0x3D2B: kind = 1; body = 3; break; /* 1 */
+    case 0x38FC: kind = 1; body = 2; break; /* 2 */
+    case 0x3794: kind = 0; body = 0; break; /* 3 */
+    case 0x3A5E: kind = 0; body = 1; break; /* 4 */
+    case 0x3BB3: kind = 1; body = 3; break; /* 5 */
+    case 0x4004: kind = 1; body = 2; break; /* 6 */
+    case 0x415D: kind = 0; body = 0; break; /* 7 */
+    default:
+        pi_stop("BALLS_PAIR: a case not in CODE:13784");
+        return;
+    }
+    /* what each case does to CODE:0030, 0034 first */
+    if (tgt == 0x3E9A || tgt == 0x3794)
+        cw(0x0034, (uint16_t)-rw(0x0034));
+    else if (tgt == 0x38FC || tgt == 0x3BB3) {
+        cw(0x0030, (uint16_t)-rw(0x0030));
+        cw(0x0034, rw(0x0030));
+    } else if (tgt == 0x3D2B || tgt == 0x4004)
+        cw(0x0034, rw(0x0030));
+    if (kind == 0) {
+        /* along x: the y speeds kept whole until the test */
+        wd(0x0024, sx16(rw(a + 0x10)));
+        wd(0x002C, sx16(rw(bb + 0x10)));
+        wd(0x0020, spd4(rw(a + 0x0E)));
+        wd(0x0028, spd4(rw(bb + 0x0E)));
+        if (tgt == 0x3E9A || tgt == 0x415D)
+            skip = (int16_t)rw(0x0028) > (int16_t)rw(0x0020);
+        else
+            skip = (int16_t)rw(0x0028) < (int16_t)rw(0x0020);
+        if (skip)
+            goto out;
+        wd(0x0024, spd4(rw(0x0024)));
+        wd(0x002C, spd4(rw(0x002C)));
+    } else {
+        wd(0x0020, sx16(rw(a + 0x0E)));
+        wd(0x0028, sx16(rw(bb + 0x0E)));
+        wd(0x0024, spd4(rw(a + 0x10)));
+        wd(0x002C, spd4(rw(bb + 0x10)));
+        if (tgt == 0x3D2B || tgt == 0x38FC)
+            skip = (int16_t)rw(0x002C) <= (int16_t)rw(0x0024);
+        else
+            skip = (int16_t)rw(0x002C) > (int16_t)rw(0x0024);
+        if (skip)
+            goto out;
+        wd(0x0020, spd4(rw(0x0020)));
+        wd(0x0028, spd4(rw(0x0028)));
+    }
+    t = rw(0x14493 + sx16(rw(0x0034)) * 2);
+    wd(0x0038, t);
+    sv = rd(0x000C);
+    wd(0x0000, 0x17F81 + t);
+    wd(0x0008, 0x1B381 + t);
+    wd(0x000C, 0x1E781 + t);
+    {
+        uint32_t P = rd(0x0000), Q = rd(0x0008), R = rd(0x000C), i;
+        uint16_t v[4];
+
+        /* (a, b) the cells 20h, 24h; (c, d) 28h, 2Ch */
+        for (i = 0; i < 2; i++) {
+            uint32_t x = 0x0020 + i * 8, y = 0x0024 + i * 8;
+
+            switch (body) {
+            case 0:
+                v[i * 2] = (uint16_t)(tw(Q, x) + tw(P, y));
+                v[i * 2 + 1] = (uint16_t)(tw(P, x) - tw(R, y));
+                break;
+            case 1:
+                v[i * 2] = (uint16_t)(tw(Q, x) - tw(P, y));
+                v[i * 2 + 1] = (uint16_t)(tw(R, y) - tw(P, x));
+                break;
+            case 2:
+                v[i * 2] = (uint16_t)(tw(P, y) - tw(R, x));
+                v[i * 2 + 1] = (uint16_t)(tw(P, x) + tw(Q, y));
+                break;
+            default:
+                v[i * 2] = (uint16_t)(tw(R, x) - tw(P, y));
+                v[i * 2 + 1] = (uint16_t)(tw(Q, y) - tw(P, x));
+                break;
+            }
+        }
+        cw(0x0030, v[0]);
+        cw(0x0034, v[1]);
+        cw(0x0038, v[2]);
+        cw(0x003C, v[3]);
+    }
+    /* CODE:142AE */
+    spd_turn(0x0020, rw(a + 0x0E), 0x0030);
+    spd_turn(0x0024, rw(a + 0x10), 0x0034);
+    spd_turn(0x0028, rw(bb + 0x0E), 0x0038);
+    spd_turn(0x002C, rw(bb + 0x10), 0x003C);
+    addw(0x0038, rw(0x0020));
+    addw(0x003C, rw(0x0024));
+    ww(a + 0x0E, rw(0x0038));
+    ww(a + 0x10, rw(0x003C));
+    addw(0x0030, rw(0x0028));
+    addw(0x0034, rw(0x002C));
+    ww(bb + 0x0E, rw(0x0030));
+    ww(bb + 0x10, rw(0x0034));
+    wd(0x000C, sv);
+out:
+    wd(0x0008, p + 4);
+}
+
 /* CODE:133BF: each ball in play moved by its speed (x 32h / FRAME_RATE
  * / 2, in 1/400h pixels), the slope under it and SLOPE_X, SLOPE_Y into
  * its speed, its spin a step toward 0 */
@@ -1038,10 +1229,17 @@ static void BALLS_MOVE(void)
             /* CODE:1356C: against the later balls */
             wd(0x0008, rd(0x0000));
             ww(st + 0x0D40, (uint16_t)(rw(st + 0x0D34) - 1));
-            if (rw(st + 0x0D40) != 0)
-                pi_stop("BALLS_MOVE: two balls (CODE:13597)");
+            if (rw(st + 0x0D40) != 0) {
+                do {
+                    BALLS_PAIR();
+                    st = rd(0x0014);
+                    ww(st + 0x0D40, (uint16_t)(rw(st + 0x0D40) - 1));
+                } while (rw(st + 0x0D40) != 0);
+            }
         }
         /* CODE:14477 */
+        wd(0x0000, list + 4);
+        st = rd(0x0014);
         n = (uint16_t)(rw(st + 0x0D34) - 1);
         ww(st + 0x0D34, n);
     } while (n != 0);
