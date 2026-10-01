@@ -1,7 +1,7 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE|FOLDER] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
+ *     pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
@@ -10,6 +10,9 @@
  * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
  * copied there (cdimage.h; -gog names the image or the folder instead of
  * looking for it).
+ * -cue is the cue sheet of the CD's audio tracks (default: without -game,
+ * the one beside the GOG release's image, game.ins or game.inst; none: a
+ * CD of one data track, no CD music, cd.c);
  * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there,
  * else the data folder's; none there: the options 0, no sound set-up, the
  * file made when the options are saved, pmax.h);
@@ -92,9 +95,31 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     return 1;
 }
 
+/* the cue sheet beside the GOG release's image (-gog's, or the one found);
+ * 1 if one was read */
+static int open_cd(const char *gog)
+{
+    static const char *const names[] = { "game.ins", "game.inst", NULL };
+    char img[SYS_PATH], dir[SYS_PATH], cue[SYS_PATH];
+    int i;
+
+    if (gog)
+        snprintf(img, sizeof img, "%s", gog);
+    else if (!gog_find(&release, img, sizeof img))
+        return 0;
+    if (sys_is_dir(img))
+        snprintf(dir, sizeof dir, "%s", img);
+    else if (!sys_parent(img, dir, sizeof dir))
+        return 0;
+    for (i = 0; names[i]; i++)
+        if (sys_find(dir, names[i], cue, sizeof cue))
+            return cd_open(cue);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
-    const char *given = NULL, *gog = NULL, *cfg = NULL;
+    const char *given = NULL, *gog = NULL, *cfg = NULL, *cue = NULL;
     char game[SYS_PATH], path[SYS_PATH], err[256];
     int i, entry = 0;
 
@@ -103,6 +128,8 @@ int main(int argc, char **argv)
             given = argv[++i];
         else if (!strcmp(argv[i], "-gog") && i + 1 < argc)
             gog = argv[++i];
+        else if (!strcmp(argv[i], "-cue") && i + 1 < argc)
+            cue = argv[++i];
         else if (!strcmp(argv[i], "-cfg") && i + 1 < argc)
             cfg = argv[++i];
         else if (!strcmp(argv[i], "-opt") && i + 1 < argc) {
@@ -115,7 +142,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-entry"))
             entry = 1;
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE|FOLDER] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
             return 2;
         }
     }
@@ -134,6 +161,10 @@ int main(int argc, char **argv)
         plat_shutdown();
         return 1;
     }
+    if (cue)
+        cd_open(cue);
+    else if (!given)
+        open_cd(gog);
     if (entry)
         pi_stop("ENTRY");
     if (!cfg) {

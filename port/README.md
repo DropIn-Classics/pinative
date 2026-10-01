@@ -122,7 +122,7 @@ of the GOG image when it is unpacked); built with build.sh on macOS
 
     sh port/build.sh          # macOS, Linux (SDL2 for the window)
     port\build.bat            # Windows (MSVC)
-    port/build/pinative -game game
+    port/build/pinative -game game [-cue ".../data/game.ins"]
     port/build/pinative-headless -game game -cfg ILLUSION.CFG [-opt LETTERS] -mem FILE [-vram FILE]
                               # the memory where the port stops (-entry:
                               # at ENTRY), for memcmp.py --base 100F30
@@ -635,6 +635,22 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
 - 2026-10-01, Windows (MSVC) by the user: built without errors (no
   run reported).
+- 2026-10-01, CD audio: the port answers MSCDEX from the GOG release's
+  cue sheet (src/cd.c over doskit's cdaudio.h; `-cue FILE`, else without
+  `-game` the `game.ins` or `game.inst` beside the image gog_find finds;
+  none: one data track as before): the table of contents (IOCTL input
+  0Ah, 0Bh), play (84h), stop (85h: a play paused, else forgotten),
+  resume (88h), the channels and volumes (IOCTL output 3); the tracks
+  mixed into the port's audio over the driver's music. Checked on Linux
+  against dosrun with `-cue data/game.ins` and NOSOUND.SDR: at the
+  chooser's 100th CODE:38FD (DK_FRAMES 5500) CODE differs only in
+  FRAME_SPINS (the track table CD_READ_TOC fills equal); at table 1's
+  700th frame (Enter at 112 and 115, `-break 12A7F5#700`, DK_KEYS 5637
+  and 5815, DK_FRAMES 6602) only in the bytes one frame apart as before
+  (FRAME_COUNT, TRACK_LEFT, ...). A scratch print in cd.c: table 1
+  plays frames 24470 (track 2's start) for 13717. The real tracks
+  decoded (a scratch program: tracks 2, 14, 26, 38, 50, RMS 4100 to
+  8200). Not listened to; the window builds not run.
 - 2026-10-01, sound: the port plays what NOSOUND.SDR mixes. The
   driver mixes the module into its DMA buffer (DMA_SEL, mono words at
   MIX_RATE, 44100) as it does under DOS, where no card reads it; the

@@ -19,7 +19,7 @@ if [ -n "$PORT_UPDATE_URL" ]; then
     CFLAGS="$CFLAGS -DPORT_UPDATE_URL=\"$PORT_UPDATE_URL\""
 fi
 GAME="src/main.c src/archive.c src/image.c src/pmax.c src/entry.c src/setup.c src/video.c src/cd.c src/sound.c src/intro.c src/hostcb.c src/nosound.c src/nsplay.c src/chooser.c src/table.c src/dotmatrix.c src/module.c src/tblvga.c src/tblinit.c src/flipper.c src/lights.c src/play.c src/codeint.c src/ball.c src/display.c src/phys.c src/events.c src/modcode.c"
-RUNTIME="$RT/sys.c $RT/cdimage.c $RT/textmode.c $RT/pad.c $RT/sha256.c $RT/pmem.c $RT/vga.c $RT/frame.c $RT/modplay.c $RT/audiofx.c $RT/fli.c $RT/shot.c $RT/update.c"
+RUNTIME="$RT/sys.c $RT/cdimage.c $RT/textmode.c $RT/pad.c $RT/sha256.c $RT/pmem.c $RT/vga.c $RT/frame.c $RT/modplay.c $RT/cdaudio.c $RT/audiofx.c $RT/fli.c $RT/shot.c $RT/update.c"
 
 mkdir -p build
 $CC $CFLAGS -o build/pinative-headless $GAME $RUNTIME $RT/plat_null.c -lm

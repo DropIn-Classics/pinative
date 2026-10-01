@@ -6,6 +6,7 @@
  * the game reaches them.
  */
 #include <stdio.h>
+#include "cdaudio.h"
 #include "frame.h"
 #include "game.h"
 #include "gen/nosound.h"
@@ -404,12 +405,14 @@ void ns_retrace(void)
 /* The port's sound: what the driver mixed (its DMA buffer, DMA_SEL: mono
  * words at MIX_RATE), sample by sample as SAMPLE_POS passes it, the way
  * the card would have played it; to the platform's audio through a FIFO.
- * The port's own, not the driver's (NOSOUND sends nothing anywhere). */
+ * The port's own, not the driver's (NOSOUND sends nothing anywhere); the
+ * CD's audio (cd.c) is mixed in. */
 #define OUT_FIFO 16384                  /* a power of 2; about 0.37 s at 44100 */
 #define OUT_KEEP 4096                   /* more waiting than this: the oldest dropped */
 static int16_t out_fifo[OUT_FIFO];
 static unsigned out_head, out_tail;    /* written by the game, read by the audio thread */
 static int out_on;
+static int rw_rate = 44100;             /* the rate the audio was started at */
 
 static void out_fill(int16_t *out, int frames, void *user)
 {
@@ -423,12 +426,16 @@ static void out_fill(int16_t *out, int frames, void *user)
             v = out_fifo[out_tail++ & (OUT_FIFO - 1)];
         out[2 * i] = out[2 * i + 1] = v;
     }
+    /* the CD's audio over it, as a card's mixer adds its CD input */
+    cda_mix(out, frames, rw_rate);
 }
 
 static void out_start(void)
 {
-    if (!out_on)
-        out_on = plat_audio_start(rw(D_MIX_RATE), out_fill, NULL) ? 1 : -1;
+    if (!out_on) {
+        rw_rate = rw(D_MIX_RATE);
+        out_on = plat_audio_start(rw_rate, out_fill, NULL) ? 1 : -1;
+    }
 }
 
 static void out_sample(void)

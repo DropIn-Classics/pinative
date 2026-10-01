@@ -36,6 +36,8 @@ uint8_t CHOOSER_START(void);
 /* CODE:7082 (sound.c): 1 (CF) when there is no CD or the driver fails */
 int SOUND_START(void);
 /* cd.c: CODE:35B52 and 35C58 return 1 for CF */
+/* the GOG release's cue sheet for the CD's audio tracks (cd.c); 1 if read */
+int cd_open(const char *cue);
 int CD_INSTALLED(void);
 void CD_LOCK(uint8_t bl);
 int CD_READ_TOC(void);

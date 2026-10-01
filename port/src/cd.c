@@ -1,11 +1,15 @@
 /* cd.c - the CD through MSCDEX: CD_INSTALLED (CODE:35B52), CD_LOCK
  * (CODE:35B7D), CD_READ_TOC (CODE:35C58), CD_STOP, CD_PLAY, CD_REQUEST (CODE:35B0D), and in
- * place of MSCDEX a drive D: with one data track, as dosrun has it without
- * a cue sheet (the GOG release's audio tracks come with the sound).
+ * place of MSCDEX a drive D: with the tracks of the GOG release's cue sheet
+ * played by doskit's cdaudio.h (cd_open), as dosrun has it with -cue; with
+ * no sheet one data track, as dosrun has it without.
  */
+#include <stdio.h>
+#include "cdaudio.h"
 #include "game.h"
 #include "names.h"
 #include "pmax.h"
+#include "platform.h"
 #include "pmem.h"
 
 /* the disc: tracks first..last, each track's start and the lead-out as
@@ -13,6 +17,28 @@
 #define CD_LETTER 3                     /* D: */
 static const uint32_t track1_start = 0x000200u;   /* 00:02:00 */
 static const uint32_t lead_out = 0x2A4200u;       /* 66:42:00 */
+static int cue_on;                      /* the tracks from a cue sheet */
+static int cd_paused;                   /* a play stopped once, for resume */
+
+int cd_open(const char *cue)
+{
+    char err[256];
+
+    cue_on = cda_open(cue, err, sizeof err) == 0;
+    if (!cue_on)
+        fprintf(stderr, "CD audio: %s\n", err);
+    return cue_on;
+}
+
+static uint32_t redbook(uint32_t f)
+{
+    return ((f / 4500) << 16) | (((f / 75) % 60) << 8) | (f % 75);
+}
+
+static uint32_t from_redbook(uint32_t r)
+{
+    return ((r >> 16) & 0xFF) * 4500 + ((r >> 8) & 0xFF) * 75 + (r & 0xFF);
+}
 
 /* INT 2Fh AX=1510h: the request at the real-mode address `rm` */
 static void mscdex(uint32_t rm)
@@ -24,10 +50,21 @@ static void mscdex(uint32_t rm)
         switch (lrb(xfer)) {
         case 0x0A:              /* audio disk info */
             lwb(xfer + 1, 1);
-            lwb(xfer + 2, 1);
-            lwd(xfer + 3, lead_out);
+            lwb(xfer + 2, cue_on ? (uint8_t)cda_tracks() : 1);
+            lwd(xfer + 3, cue_on ? redbook(cda_leadout()) : lead_out);
             break;
         case 0x0B:              /* track info */
+            if (cue_on) {
+                int t = lrb(xfer + 1);
+
+                if (t < 1 || t > cda_tracks()) {
+                    lww(rm + 3, 0x8108);        /* done, sector not found */
+                    return;
+                }
+                lwd(xfer + 2, redbook(cda_track_start(t - 1)));
+                lwb(xfer + 6, cda_track_data(t - 1) ? 0x40 : 0x00);
+                break;
+            }
             lwd(xfer + 2, lrb(xfer + 1) == 1 ? track1_start : 0);
             lwb(xfer + 6, 0x40);        /* a data track (not read by the game here) */
             break;
@@ -37,11 +74,49 @@ static void mscdex(uint32_t rm)
     } else if (cmd == 0x0C) {   /* IOCTL output */
         if (lrb(xfer) != 1 && lrb(xfer) != 3)
             pi_stop("MSCDEX: an IOCTL output the port does not answer");
-        /* 1: lock or unlock the door, 3: the audio channels' volumes:
-         * nothing to do (nothing plays) */
-    } else if (cmd == 0x85) {  /* stop audio: nothing plays */
-    } else if (cmd == 0x84) {  /* play audio: taken, nothing plays (the
-                                 * data track's frames are not sound) */
+        /* 1: lock or unlock the door: nothing to do; 3: the audio
+         * channels, input and volume for each output */
+        if (lrb(xfer) == 3 && cue_on) {
+            uint8_t in[4], vol[4];
+            int i;
+
+            for (i = 0; i < 4; i++) {
+                in[i] = lrb(xfer + 1 + 2 * i);
+                vol[i] = lrb(xfer + 2 + 2 * i);
+            }
+            plat_audio_lock();
+            cda_channels(in, vol);
+            plat_audio_unlock();
+        }
+    } else if (cmd == 0x85) {  /* stop: a play paused, else forgotten */
+        if (cue_on) {
+            plat_audio_lock();
+            cd_paused = cda_playing();
+            if (cd_paused)
+                cda_stop();
+            else
+                cda_play(0, 0);
+            plat_audio_unlock();
+        }
+    } else if (cmd == 0x84) {  /* play audio: frames from a start */
+        if (cue_on) {
+            uint32_t start = lrd(rm + 0x0E);
+
+            if (lrb(rm + 0x0D))
+                start = from_redbook(start);
+            plat_audio_lock();
+            cda_play(start, lrd(rm + 0x12));
+            cd_paused = 0;
+            plat_audio_unlock();
+        }
+        /* without a sheet: taken, nothing plays (the data track's frames
+         * are not sound) */
+    } else if (cmd == 0x88 && cue_on) {        /* resume */
+        plat_audio_lock();
+        if (cd_paused)
+            cda_resume();
+        cd_paused = 0;
+        plat_audio_unlock();
     } else {
         pi_stop("MSCDEX: a request the port does not answer");
     }

@@ -4449,7 +4449,11 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      later. Done 2026-10-01: NOSOUND mixes the music into its DMA
      buffer like any of the drivers, so the port plays that buffer as
      the timer passes it (port/README.md, "Checked", sound); not
-     listened to yet. Done 2026-09-29: the driver loaded (the port always loads
+     listened to yet. Done 2026-10-01: the CD's audio tracks from the
+     cue sheet (port/README.md, "Checked", CD audio): the chooser after
+     a table and the tables play CD tracks (track 33h there, a table's
+     own), which is what the user missed in the port (music gone after
+     a table, the table's sound thin). Done 2026-09-29: the driver loaded (the port always loads
      NOSOUND.SDR), INT 93h AH=8's alias (0Ch), CALLBACKS_CS; memory
      equal at CODE:711D (see "The driver loaded, in a run"). Done
      2026-09-29: NOSOUND's command 0 (port/src/nosound.c; see "The
