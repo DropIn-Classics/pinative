@@ -636,9 +636,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
 - 2026-10-01, Windows (MSVC) by the user: built without errors (no
   run reported).
 - 2026-10-01, CD audio: the port answers MSCDEX from the GOG release's
-  cue sheet (src/cd.c over doskit's cdaudio.h; `-cue FILE`, else without
-  `-game` the `game.ins` or `game.inst` beside the image gog_find finds;
-  none: one data track as before): the table of contents (IOCTL input
+  cue sheet (src/cd.c over doskit's cdaudio.h; `-cue FILE`, else the
+  `game.ins` or `game.inst` beside the image gog_find finds, with or
+  without `-game` since the user's Windows run with `-game` had no table
+  music; `-cue none` or none found: one data track as before, which the
+  comparisons before 2026-10-01 used): the table of contents (IOCTL input
   0Ah, 0Bh), play (84h), stop (85h: a play paused, else forgotten),
   resume (88h), the channels and volumes (IOCTL output 3); the tracks
   mixed into the port's audio over the driver's music. Checked on Linux

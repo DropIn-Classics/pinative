@@ -10,8 +10,8 @@
  * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
  * copied there (cdimage.h; -gog names the image or the folder instead of
  * looking for it).
- * -cue is the cue sheet of the CD's audio tracks (default: without -game,
- * the one beside the GOG release's image, game.ins or game.inst; none: a
+ * -cue is the cue sheet of the CD's audio tracks (default: the one beside
+ * the GOG release's image, game.ins or game.inst; "none", or none found: a
  * CD of one data track, no CD music, cd.c);
  * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there,
  * else the data folder's; none there: the options 0, no sound set-up, the
@@ -161,10 +161,10 @@ int main(int argc, char **argv)
         plat_shutdown();
         return 1;
     }
-    if (cue)
-        cd_open(cue);
-    else if (!given)
+    if (!cue)
         open_cd(gog);
+    else if (strcmp(cue, "none") != 0)
+        cd_open(cue);
     if (entry)
         pi_stop("ENTRY");
     if (!cfg) {
