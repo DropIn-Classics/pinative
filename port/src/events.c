@@ -1279,6 +1279,16 @@ static void event_op(uint32_t a)
         wd(0x0008, rd(rd(0x0004) + 2));
         RECORD_TAKE();
         break;
+    case 0x2DBAD: {                 /* opcode 14h: a module object, its +0 called */
+        uint32_t o = rd(rd(0x0004) + 2), st = rd(0x0014);
+
+        wd(0x0000, o);
+        wd(st + 0x2A70, o);
+        wb(st + 0x2A74, 0xFF);
+        wd(0x0010, 0x2CD10);
+        MOD_CALL(rd(o));
+        break;
+    }
     case 0x2D5E0:                   /* opcode 13h: an audio record */
         wd(0x0000, rd(rd(0x0004) + 2));
         MUSIC_REQUEST();
@@ -1345,21 +1355,59 @@ void EVENT_RUN(void)
     }
 }
 
+/* CODE:2CFC8: the flippers off (state+2A7Fh 0); with no event stream
+ * running and the event queue's and the ring at state+2A2Ah's next
+ * entries empty (and state+2A2Eh 0), the module object's +4
+ * (state+2A70h) with the host vector; when it is done the flippers on
+ * again and the object gone */
+static void MODE_OBJECT(void)
+{
+    uint32_t st = rd(0x0014), o;
+    uint16_t di;
+
+    wb(st + 0x2A7F, 0);
+    if (rd(st + 0x2A22) != 0)
+        return;
+    di = rw(st + 0x2A1C);
+    cw(0x0024, di);
+    wd(0x0020, rd(rd(st + 0x2A1E) + sx16(di) * 4));
+    if (rd(0x0020) != 0 || rd(st + 0x2A2E) != 0)
+        return;
+    di = rw(st + 0x2A28);
+    cw(0x0024, di);
+    wd(0x0020, rd(rd(st + 0x2A2A) + sx16(di) * 4));
+    if (rd(0x0020) != 0)
+        return;
+    o = rd(st + 0x2A70);
+    wd(0x0000, o);
+    wd(0x0010, 0x2CD10);
+    if (!MOD_UPDATE(rd(o + 4)))
+        return;
+    st = rd(0x0014);
+    wb(st + 0x2A7F, 0xFF);
+    wb(st + 0x2A74, 0);
+    wd(st + 0x2A70, 0);
+}
+
 /* CODE:2CD3C: the mode stream (state+0D5Eh), one command a call; while
  * it waits (state+0D50h, event opcode 1Ch) its timer state+0D62h counted
  * down (the seconds left, big-endian, to state+2A6Eh), on at the wait's
  * position (state+0D6Ah) when it runs out, or at once while the record
  * state+0D66h is not lit for the player; with state+0D51h set (the
- * multiball over) on at state+0D6Ch's position, or the wait's. The module
- * object's routine (state+2A74h) is not translated */
+ * multiball over) on at state+0D6Ch's position, or the wait's. While a
+ * module object runs (state+2A74h) only MODE_OBJECT */
+static void MODE_OBJECT(void);
+
 void MODE_RUN(void)
 {
     uint32_t st = rd(0x0014), m, r;
 
     wd(0x0038, sx16(rw(st + 0x0D72)));
     wd(0x003C, sx16(rw(st + 0x0D74)));
-    if (rb(st + 0x2A74) != 0)
-        pi_stop("MODE_RUN: the module object (CODE:2CFC8)");
+    if (rb(st + 0x2A74) != 0) {
+        MODE_OBJECT();
+        return;
+    }
     if (rb(st + 0x0D2E) != 0) {
         uint16_t cx = (uint16_t)(rw(st + 0x0D3A) + rw(st + 0x0D32));
 

@@ -582,6 +582,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   3, 4, 5, 6) and pushes ran before those passes; CODE but FRAME_SPINS
   and FRAME_COUNT (the run's 1 to 6 ahead), video memory and the heap
   equal as before (docs/HANDOFF.md, "The ball-ball physics in the port").
+- 2026-10-01, Linux: table 2's music chooser (event opcode 14h, module
+  object, TUNE_START/TUNE_UPDATE), forced by a poke at pass 2000 of the
+  blind game with flips every 33 frames (dosrun `-poke`, a scratch poke
+  in the port): passes 2150, 2192, 2210, 2230, 2248, 2400, 3000, CODE
+  but the runner's timing and the keys, video memory and the heap equal
+  as before (docs/HANDOFF.md, "Table 2's music chooser in the port");
+  only tune 0 chosen.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

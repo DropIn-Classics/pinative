@@ -136,6 +136,8 @@ void FRAMES_WAIT(void);
 /* modcode.c: the table module's routine at DS:`at` (a slot of its
  * header), in C per table; a RET returns, another stops the port */
 void MOD_CALL(uint32_t at);
+/* modcode.c: the module object's +4 at DS:`at`, 1 when it is done */
+int MOD_UPDATE(uint32_t at);
 /* play.c: CODE:28E5D */
 void DROP_SET(void);
 /* events.c: CODE:2E82F, 2D080, 2CD3C, 2E8CD, 2EAC9, 2CB69, 2CBCF, 2C7FC */

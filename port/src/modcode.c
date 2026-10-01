@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include "game.h"
 #include "names.h"
+#include "pmax.h"
 #include "pmem.h"
 
 static uint32_t sx16(uint16_t v)
@@ -296,6 +297,9 @@ static void next_ball_lamps(uint32_t counter, uint32_t chain, unsigned table)
 #define T2_TUNE_CHOICES   0x9D88
 #define T2_TUNE_TEMPLATES 0x9D9E
 #define T2_TUNE_RECORDS   0x1A760
+#define T2_TUNE_NAMES     0x9DAA
+#define T2_TUNE_PICNAMES  0x9DFA
+#define T2_TUNE_STREAM    0x4CBE
 
 /* the 18 words at [0000] to [0008], [0020]'s low word counting down */
 static void tune_words(void)
@@ -352,6 +356,127 @@ static void T2_TUNES_RESET(void)
     tune_words();
 }
 
+/* table 2 CODE:9A10 (TUNE_START, the opcode-14h object's +0): the
+ * player's choice 0, the timers +10h, +11h (the flippers' repeat), +12h
+ * (the picture) and +14h (its frames, 6) set, state+0F1h (the last key)
+ * cleared */
+static void T2_TUNE_START(void)
+{
+    uint32_t tc = rd(N_MODULE_BASE) + T2_TUNE_CHOICES, st = rd(0x0014);
+    uint16_t p;
+
+    wd(0x0004, tc);
+    p = rw(st + 0x0D72);
+    ww(0x0038, p);
+    ww(tc + sx16(p) * 2, 0);
+    wb(tc + 0x10, 0);
+    wb(tc + 0x11, 0);
+    ww(tc + 0x12, 0);
+    ww(tc + 0x14, 6);
+    wb(st + 0x00F1, 0);
+}
+
+/* table 2 CODE:9D4E (TUNE_PIC): picture ECX+1 of the VideoMode data's
+ * table (FS, by host +28h, which keeps the registers) to DM_ANIM's block,
+ * 160 x 16, 0FCh added to each byte */
+static void T2_TUNE_PIC(uint32_t ecx)
+{
+    uint32_t fs = pmax_base(rw(N_VM_DATA_SEL)), es = pmax_base(rw(N_DM_ANIM));
+    uint32_t ebx = lrd(fs + (ecx + 1) * 4), i;
+
+    for (i = 0; i < 160 * 16; i++)
+        lwb(es + i, (uint8_t)(lrb(fs + ebx + i) + 0xFC));
+}
+
+/* table 2 CODE:9B68 (TUNE_UPDATE, the object's +4, each frame): the
+ * display cleared (host +8), the turning picture (+12h, the next every 5
+ * frames by +14h); the left flipper (state+2A7Bh) one tune down, the
+ * right (2A7Ch) one up, again every 25 frames while held; the tune's
+ * name (host +14h); Enter (state+0F1h 1Ch): its template over records
+ * 0..2, event stream 4CBEh queued (host +1Ch) and 1 (ZF clear, done);
+ * else 0 */
+static int T2_TUNE_UPDATE(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), tc = m + T2_TUNE_CHOICES, st;
+    uint32_t keep20, keep38;
+    uint16_t c, p;
+
+    host_call(0x08);
+    wd(0x0004, tc);
+    wd(0x0008, m + T2_TUNE_PICNAMES);
+    ww(0x0038, rw(rd(0x0014) + 0x0D72));
+    T2_TUNE_PIC((rd(0x0020) & 0xFFFF0000u) | rw(tc + 0x12));
+    tc = rd(0x0004);
+    ww(tc + 0x14, (uint16_t)(rw(tc + 0x14) - 1));
+    if (rw(tc + 0x14) & 0x8000) {
+        ww(tc + 0x14, 4);
+        ww(tc + 0x12, (uint16_t)(rw(tc + 0x12) + 1));
+        if (rw(tc + 0x12) == 3)
+            ww(tc + 0x12, 0);
+    }
+    p = rw(0x0038);                                     /* CODE:9BD1 */
+    tc = rd(0x0004);
+    c = rw(tc + sx16(p) * 2);
+    ww(0x0020, c);
+    st = rd(0x0014);
+    if (rb(st + 0x2A7B) != 0 && (rb(tc + 0x10) != 0 || c != 0)) {
+        if (rb(tc + 0x10) == 0) {
+            c--;
+            ww(0x0020, c);
+            wb(tc + 0x10, 0x19);
+        }
+        wb(tc + 0x10, (uint8_t)(rb(tc + 0x10) - 1));
+    } else
+        wb(tc + 0x10, 0);
+    c = rw(0x0020);                                     /* CODE:9C2B */
+    if (rb(st + 0x2A7C) != 0 && (rb(tc + 0x11) != 0 || c < 2)) {
+        if (rb(tc + 0x11) == 0) {
+            c++;
+            ww(0x0020, c);
+            wb(tc + 0x11, 0x19);
+        }
+        wb(tc + 0x11, (uint8_t)(rb(tc + 0x11) - 1));
+    } else
+        wb(tc + 0x11, 0);
+    keep38 = rd(0x0038);                                /* CODE:9C70 */
+    keep20 = rd(0x0020);
+    c = (uint16_t)keep20;
+    ww(tc + sx16((uint16_t)keep38) * 2, c);
+    wd(0x0000, rd(m + T2_TUNE_NAMES + sx16(c) * 4));
+    host_call(0x14);
+    wd(0x0020, keep20);
+    wd(0x0038, keep38);
+    st = rd(0x0014);
+    if (rb(st + 0x00F1) != 0x1C) {
+        wd(0x0020, 0);
+        return 0;
+    }
+    wb(st + 0x00F1, 0);
+    wd(0x0000, rd(m + T2_TUNE_TEMPLATES + sx16(c) * 4));
+    wd(0x0008, m + T2_TUNE_RECORDS);
+    ww(0x0020, 0x11);
+    tune_words();
+    wd(0x0000, m + T2_TUNE_STREAM);
+    host_call(0x1C);
+    wd(0x0020, 0xFFFFFFFFu);
+    return 1;
+}
+
+/* the module object's +4 at DS:`at` (CODE:2CFC8 calls it): 1 when it
+ * returns with ZF clear (done), 0 with ZF set (called again) */
+int MOD_UPDATE(uint32_t at)
+{
+    static char name[64];
+    unsigned table = rb(N_TABLE_NUM);
+    uint32_t off = at - rd(N_MODULE_BASE);
+
+    if (table == 2 && off == 0x9B68)
+        return T2_TUNE_UPDATE();
+    snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);
+    pi_stop(name);
+    return 1;
+}
+
 void MOD_CALL(uint32_t at)
 {
     static char name[64];
@@ -375,6 +500,10 @@ void MOD_CALL(uint32_t at)
     if (table == 2 && off == 0x00BB) {
         next_ball_lamps(0x40AA, 0x994A, 2);
         T2_TUNE_COPY();
+        return;
+    }
+    if (table == 2 && off == 0x9A10) {
+        T2_TUNE_START();
         return;
     }
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);

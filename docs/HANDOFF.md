@@ -3968,7 +3968,8 @@ FRAME_COUNT matters: take handler 1Ah (the random award) and display
 opcode 1Ah read it.
 
 Not run / open: event opcode 14h's module object (table 2's music
-chooser, MODE_RUN's CODE:2CFC8 stop) was not met in that game; with
+chooser) was not met in that game (done since, see "Table 2's music
+chooser in the port"); with
 flips every 61 frames the port stops at `BALLS_MOVE: two balls`
 (CODE:13597): the multiball needs the ball-ball cases of the physics,
 which "The balls' physics" left unread. Opcodes 1Ah, 1Bh, 7, 12h, 15h,
@@ -4037,6 +4038,35 @@ and a Shift press fall at one pass (2031), the runner's two keys at a
 pass ("The objects a ball hits in the port"), not the port. Not run:
 cases 2 and 7 compared (2 ran in the 29-frame game only, 7 in none
 compared); the pushes of B (dy negative) not told apart from A's.
+
+### Table 2's music chooser in the port
+
+Event opcode 14h (CODE:2DBAD), MODE_RUN's branch for a module object
+(CODE:2CFC8, MODE_OBJECT in src/events.c) and table 2's TUNE_START and
+TUNE_UPDATE (with TUNE_PIC, src/modcode.c) are in the port since
+2026-10-01. CODE:2CFC8 clears state+2A7Fh (the flippers off) every
+frame the object runs, and calls its +4 only when no event stream runs
+and the event queue's and the ring at state+2A2Ah's next entries are
+empty; when +4 returns done (ZF clear) the flippers are on again. The
+VideoMode data (VM_DATA_SEL) starts with the dword 3 and three offsets
+(10h, A10h, 1410h), the three pictures of 160 x 16 TUNE_PIC copies.
+
+None of 90 blind table 2 games in the port (flips every 21..89 frames
+in steps of 4, Enter every 3rd, 4th, 5th, 6th or 9th) reached the
+chooser, so it was forced as in "Table 2's chooser in a run": at pass
+2000 of the blind game (flips every 33 frames, Enter every 7th) record
+927Ah's byte +1 set to 1 and zone 34E3h's eight bytes to `00 00 00 00
+50 01 3C 02`, by dosrun `-poke 12A7F5#2000` (the module at linear
+2ACEF0h in that run) and by a scratch poke in the port at the same
+pass. The chooser ran from pass 2191 to 2247 (Enter); both flippers
+were held together in it, so the right one took the tune to 1 and the
+left back to 0 (template 0 copied). Compared at passes 2150, 2192,
+2210, 2230, 2248, 2400, 3000: CODE but FRAME_SPINS, FRAME_COUNT and
+LIGHTS_DRAW_POS/DROPS_UPD_POS (the runner's timing, "Table 2's
+FRAME_COUNT") and the keys at a pass after a key equal, video memory
+equal, the heap equal but for the header word at FEE61Eh as before.
+Not run: tunes 1 and 2 chosen (templates 1 and 2), event stream 4CBEh
+compared beyond pass 3000.
 
 ## Next
 
@@ -4310,8 +4340,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      port"; the ball-ball physics done 2026-10-01, see "The ball-ball
      physics in the port"; table 2's FRAME_COUNT behind (1 to 10
      frames) found 2026-10-01 to be the runner's timing, see "Table
-     2's FRAME_COUNT"; next: event opcode 14h's module object (table
-     2's music chooser));
+     2's FRAME_COUNT"; event opcode 14h's module object (table
+     2's music chooser) done 2026-10-01, see "Table 2's music chooser in
+     the port"; next: the paths blind games did not run, and the table's
+     end after Y);
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

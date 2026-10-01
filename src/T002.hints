@@ -23,11 +23,11 @@ comment    CODE:00A8 slot 42: 0, and relocated: the module's base once loaded
 ; methods the main program calls (CODE:2DBAD, CODE:2CFC8)
 name       CODE:9A08 TUNE_OBJECT
 words      CODE:9A08 2 CODE
-code       CODE:9A10 TUNE_START    ; the object's +0: the player's choice 0, the timers, state+0F1h cleared
-code       CODE:9B68 TUNE_UPDATE   ; the object's +4: the left flipper, the name, Enter
+code       CODE:9A10 TUNE_START    ; the object's +0: the player's choice 0, the timers, state+0F1h cleared; in C in port/src/modcode.c, compared 2026-10-01
+code       CODE:9B68 TUNE_UPDATE   ; the object's +4, each frame: the display cleared, the picture (+12h, the next every 5 frames), the left flipper (state+2A7Bh) a tune down, the right (2A7Ch) up, again every 25 frames held (+10h, +11h), the name, Enter (state+0F1h 1Ch): the template over records 0..2, event stream 4CBEh queued, ZF clear; in C in port/src/modcode.c, compared 2026-10-01
 name       CODE:9ADA TUNES_RESET   ; all eight players' choices 0, template 0 copied over records 0..2
 name       CODE:9A55 TUNE_COPY     ; the current player's template (three audio records) over records 0..2
-name       CODE:9D4E TUNE_PIC      ; picture ECX+1 of the table at FS:0, 160 x 16, to the display at ES:0, 0FCh added to each byte; ES and FS from host vector +28h
+name       CODE:9D4E TUNE_PIC      ; picture ECX+1 (from TUNE_UPDATE: +12h + 1, the VideoMode data's first dword is 3, the count presumably) of the table at FS:0, 160 x 16, to the display at ES:0, 0FCh added to each byte; ES and FS from host vector +28h
 name       CODE:9D88 TUNE_CHOICES  ; a word per player (state+0D72h), the tune 0..2; the chooser's timers after them
 name       CODE:9D9E TUNE_TEMPLATES ; three pointers to the templates, records 3..5, 6..8, 9..11
 name       CODE:9DAA TUNE_NAMES    ; three pointers to the names' text records
