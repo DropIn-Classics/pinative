@@ -4131,6 +4131,40 @@ reached by play, the chooser's write at CODE:5277 (what sets
 CODE:5E1C is not looked at), the file AH=8 creates when there is none
 (the port then writes none).
 
+### The pause in the port
+
+PLAY_KEYS's pause (P, state+0E5Fh; CODE:2B51C) and Esc in it (PAUSE_QUIT,
+CODE:2B63B) are in the port since 2026-10-01 (src/play.c; DM_SAVE and
+DM_RESTORE in src/dotmatrix.c, SOUND_PAUSE and SOUND_RESUME in
+src/table.c; names in src/ILLUSION.hints). Read from the code:
+
+- The pause keeps the display's two buffers (DM_ANIM, DM_TEXT) in their
+  temps, silences the module and the CD (SOUND_PAUSE: both levels kept
+  in MOD_LEVEL_KEPT and CD_LEVEL_KEPT, SOUND_PAUSED FFh, so
+  MUSIC_COUNTDOWN holds), then steps frames of FRAME_STEP and
+  PLAY_SCROLL with "GAME PAUSED" and, by bit 8 of PAUSE_FRAMES (every 256
+  frames), "PRESS ANY BUTTON TO PLAY" or
+  "PRESS ESC TO QUIT". No physics, no flippers, no events. Any key put
+  everything back; the levels come back from the kept bytes, the module
+  only if its kept level was not 0.
+- Esc asks "REALLY QUIT TABLE?" as in the attract mode, but with
+  PLAY_SCROLL; another key goes back to the pause, Y sets state+8Dh
+  (the table's end) and leaves PLAY_KEYS with the pause still on:
+  SOUND_PAUSED stays FFh and the display's buffers are not put back
+  (GAME_SOUND clears SOUND_PAUSED at the next table).
+
+Compared (port/README.md, "Checked"), table 1 with the keys by table
+frame of "Start here": F1 at 1185, Enter 1299, P 1400 and Space 1750
+(passes 1405, 1700, 1760, 1900: in the pause on both sides of bit 8,
+and after it), and P 1400, Esc 1450, Space 1500, Esc 1550, Y 1600
+(passes 1460, 1505, 1555, and the chooser after it): equal but the
+known leftovers. In the chooser after Y the run after 600 FRAME_WAIT
+calls is equal to the port after 601 (the run one frame behind there, FRAME_COUNT
+one ahead in the table: the runner's timing as in "Table 2's
+FRAME_COUNT", presumably; not traced). Not run: a pause with a CD track
+playing or the module at a level (NOSOUND, no `-cue`), a pause during a
+display stream or an animation.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4408,7 +4442,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      the port"; the table's end after Y and the chooser again done
      2026-10-01, see "The table's end and the chooser again"; the
      high scores' file done 2026-10-01, see "The high scores' file";
-     next: the paths blind games did not run);
+     next: the paths blind games did not run; the pause done 2026-10-01,
+     see "The pause in the port");
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").

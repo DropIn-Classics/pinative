@@ -41,6 +41,30 @@ void DM_ANIM_CLEAR(void)
         lwb(base + i, 0xFC);
 }
 
+/* 1400h bytes from the block of the selector at `from` to the one at
+ * `to` (CODE:2721D and the three like it) */
+static void dm_copy(uint32_t to, uint32_t from)
+{
+    uint32_t d = pmax_base(rw(to)), s = pmax_base(rw(from)), i;
+
+    for (i = 0; i < 0x1400; i++)
+        lwb(d + i, lrb(s + i));
+}
+
+/* CODE:28388: DM_ANIM_SAVE, DM_TEXT_SAVE */
+void DM_SAVE(void)
+{
+    dm_copy(N_DM_ANIM_TEMP, N_DM_ANIM);
+    dm_copy(N_DM_TEXT_TEMP, N_DM_TEXT);
+}
+
+/* CODE:283A3: DM_ANIM_RESTORE, DM_TEXT_RESTORE */
+void DM_RESTORE(void)
+{
+    dm_copy(N_DM_ANIM, N_DM_ANIM_TEMP);
+    dm_copy(N_DM_TEXT, N_DM_TEXT_TEMP);
+}
+
 /* CODE:271BC */
 static int DM_TEXT_ALLOC(void)
 {

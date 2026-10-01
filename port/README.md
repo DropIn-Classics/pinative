@@ -602,6 +602,14 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   changed at TABLE_END (dosrun `-poke`, a scratch line in the port): the
   file written equal byte for byte to dosrun's (docs/HANDOFF.md, "The
   high scores' file"). Not run: a high score reached by play.
+- 2026-10-01, Linux: the pause (PLAY_KEYS's CODE:2B51C, PAUSE_QUIT),
+  table 1, keys by table frame as above: F1 1185, Enter 1299, P 1400,
+  Space 1750 (CODE:298C5's passes 1405, 1700, 1760, 1900) and P 1400,
+  Esc 1450, Space 1500, Esc 1550, Y 1600 (passes 1460, 1505, 1555; the
+  chooser after Y: the run after 600 FRAME_WAIT calls against the port
+  after 601): CODE but the runner's timing, video memory and the heap equal
+  as before (docs/HANDOFF.md, "The pause in the port"). Not run: a
+  pause with music playing.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

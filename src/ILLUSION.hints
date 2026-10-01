@@ -984,6 +984,10 @@ code       CODE:9B92 GAME_SOUND    ; the driver's command 0Eh with DRV_TICK, 0Fh
 code       CODE:9C1A MOD_SILENT    ; MOD_LEVEL 0, the driver's command 0Ch (MASTER_VOL) with BX 0
 code       CODE:9C34 MOD_FULL      ; MOD_LEVEL 100h, command 0Ch with BX 100h
 name       CODE:9CA0 MOD_LEVEL     ; the last level given to command 0Ch; kept at CODE:9CA2 by CODE:9C6C
+code       CODE:9C6C SOUND_PAUSE  ; SOUND_PAUSED FFh, MOD_LEVEL kept in MOD_LEVEL_KEPT and MOD_SILENT, CD_LEVEL kept in CD_LEVEL_KEPT and CD_VOLUME 0 between two SND_PAUSE (the pause)
+name       CODE:9CA2 MOD_LEVEL_KEPT
+name       CODE:9CA5 CD_LEVEL_KEPT
+code       CODE:9CA6 SOUND_RESUME ; SOUND_PAUSED 0, CD_VOLUME CD_LEVEL_KEPT between two SND_PAUSE, MOD_FULL if MOD_LEVEL_KEPT is not 0 (CD_LEVEL and MOD_LEVEL themselves left as they are)
 name       CODE:9C6B SOUND_PAUSED  ; FFh from CODE:9C6C (module level 0, CD volume 0, the levels kept; called at CODE:2B53E, presumably the pause, not run) to CODE:9CA6 (put back); while FFh MUSIC_COUNTDOWN holds at 1
 name       CODE:CB97 MUSIC_FLAGS   ; state+59h: a music record's byte +0Ah (bit 0 the track's time counted, bit 2 the CD silent for a jingle)
 name       CODE:9DBD TRACK_LEFT    ; MUSIC_TRACK's frames until the track is played again (or the module music returns), counted down by MUSIC_COUNTDOWN
@@ -1063,7 +1067,9 @@ name       CODE:2C3E7 ZONE_LEAVE   ; the object at the ball's +68h (set by zone 
 name       CODE:2B76E PLAY         ; GAME_PHASE 4, a frame: FRAME_STEP, PLAY_STEP; Esc GAME_PHASE 3 (CODE:2BAB5); state+0EC5h the first ball back to the plunger (BALL_PLACE; not run); unless state+0FC5h BALLS_PHYSICS and BALLS_LOST (none left: CODE:2B922); PLAY_EVENTS, PLAY_KEYS, DISPLAY_RUN, ANIMS_STEP; BALL_SAVE counted down, the lamp of header slot 25's second light state blinking (every 4th frame above 64h, every frame above 32h, off below: CODE:2B883); PLAYERS_KEYS; the tilt (state+2A75h) GAME_PHASE 9
 name       CODE:2B49A PLAY_STEP    ; PLAY_SCROLL, LIGHTS_STEP, CODE:30784 (DROPS_QUEUE_STEP, SLINGS_STEP, HOLE_EJECT_STEP, DROPS_RAISE_STEP); CODE:156C3, 14DE1, 14C45 are RETs
 name       CODE:2B4B9 PLAY_EVENTS  ; a frame's rules: ZONES_CHECK, OBJECT_HITS, EVENT_RUN, SERVE, FLASH_STEP, LIT_LIST_STEP, MODE_RUN, BCD_COUNTERS_STEP, COUNTER_TIMERS, OBJECT_TIMERS
-name       CODE:2B4EC PLAY_KEYS    ; M (state+0E78h, scancode 32h) flips bit 0 of CODE:9C4E (not followed); P (state+0E5Fh, 19h) the pause, "GAME PAUSED" (CODE:2B51C, not run); state+91h FFh
+name       CODE:2B4EC PLAY_KEYS    ; M (state+0E78h, scancode 32h) flips bit 0 of CODE:9C4E (not followed); P (state+0E5Fh, 19h) the pause (CODE:2B51C): DM_SAVE, SOUND_PAUSE, then frames of FRAME_STEP, PLAY_SCROLL and "GAME PAUSED" with "PRESS ANY BUTTON TO PLAY" / "PRESS ESC TO QUIT" by bit 8 of PAUSE_FRAMES, until a key (DM_RESTORE, SOUND_RESUME, state+0E5Fh 0) or Esc (PAUSE_QUIT); state+91h FFh
+name       CODE:2B6C3 PAUSE_FRAMES ; the pause's frames, counted from 0; its bit 8 picks the second line of the pause's text
+name       CODE:2B63B PAUSE_QUIT   ; Esc in the pause: "REALLY QUIT TABLE?" (CODE:2A93E) with the flippers stepped, until Y (state+8Dh FFh, out of PLAY_KEYS with state+0E5Fh still set) or another key (back to the pause)
 name       CODE:2C0C7 BALLS_LOST   ; the balls on the table and to serve: each lost one (+9 set by BALL_SAMPLE) cleared, the sound record CODE:10080, swapped with the list's last, BALL_HIDE, CODE:2994A (150h bytes of video memory at D9E0h cleared), its erase place +70h DBD8h (CODE:2996F); state+0D32h one down, while BALL_SAVE runs state+0D3Ah one up; SF (the last ball gone) when state+0D32h reaches 0
 name       CODE:2B9F6 LOST_RUNOUT
 name       CODE:2D916 RECORD_TAKE  ; the slot-15 record at [CODE:0008] taken (event opcode 5, CODE:2CB03): see CODE:2D907
@@ -1159,6 +1165,12 @@ name       CODE:30585 DEC_ONES     ; BCD words 1..15
 name       CODE:305A5 DEC_SIXTEENS ; BCD words 16..240
 name       CODE:305C5 DEC_256S     ; BCD words 256..3840
 code       CODE:2837D DM_FREE      ; CODE:27136 (the five fonts, DM_TEXT, DM_TEXT_TEMP freed) and CODE:2793C (DM_ANIMS_SEL, DM_ANIM, DM_ANIM_TEMP freed)
+code       CODE:28388 DM_SAVE      ; DM_ANIM_SAVE and DM_TEXT_SAVE (all registers kept): the display's buffers into their temps (the pause)
+code       CODE:283A3 DM_RESTORE   ; DM_ANIM_RESTORE and DM_TEXT_RESTORE: the buffers back from their temps
+code       CODE:279D2 DM_ANIM_SAVE ; DM_ANIM's 1400h bytes to DM_ANIM_TEMP
+code       CODE:279F0 DM_ANIM_RESTORE ; DM_ANIM_TEMP's 1400h bytes to DM_ANIM
+code       CODE:2721D DM_TEXT_SAVE ; DM_TEXT's 1400h bytes to DM_TEXT_TEMP
+code       CODE:2723B DM_TEXT_RESTORE ; DM_TEXT_TEMP's 1400h bytes to DM_TEXT
 
 dptr       CODE:02D1 CODE	; MOV 86Ch: a pointer (read after a jump)
 dptr       CODE:02F8 CODE	; MOV 86Ch: passed to the INT

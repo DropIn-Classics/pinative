@@ -343,6 +343,31 @@ static void cd_level(uint8_t bl)
     CD_VOLUME(bl);
 }
 
+/* CODE:9C6C: the pause's sound: the module silent, the CD at 0, both
+ * levels kept */
+void SOUND_PAUSE(void)
+{
+    wb(N_SOUND_PAUSED, 0xFF);
+    ww(N_MOD_LEVEL_KEPT, rw(N_MOD_LEVEL));
+    MOD_SILENT();
+    wb(N_CD_LEVEL_KEPT, rb(N_CD_LEVEL));
+    SND_PAUSE();
+    CD_VOLUME(0);
+    SND_PAUSE();
+}
+
+/* CODE:9CA6: the kept levels back (CD_LEVEL and MOD_LEVEL not written
+ * but by MOD_FULL) */
+void SOUND_RESUME(void)
+{
+    wb(N_SOUND_PAUSED, 0);
+    SND_PAUSE();
+    CD_VOLUME(rb(N_CD_LEVEL_KEPT));
+    SND_PAUSE();
+    if (rw(N_MOD_LEVEL_KEPT) != 0)
+        MOD_FULL();
+}
+
 /* CODE:9CEA: TRACK_LEFT counted down; at 0 (held at 1 while
  * SOUND_PAUSED) the track again, or with MUSIC_RET_ORDER the module
  * music from there */

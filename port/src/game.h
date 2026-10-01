@@ -70,6 +70,8 @@ int DM_LOAD(void);
 void DM_CLEAR(void);
 void DM_TEXT_CLEAR(void);
 void DM_ANIM_CLEAR(void);
+void DM_SAVE(void);
+void DM_RESTORE(void);
 int DM_TEXT_DRAW(void);
 /* CODE:275D7, 275E4 (1: CF), 2758B */
 int DM_HISCORE_DRAW(void);
@@ -167,6 +169,8 @@ void SFX_NOTE(void);
 /* table.c: CODE:9B92, the driver's retrace routines and the table's
  * music started; CODE:B99C and CODE:B9B9, those routines */
 void GAME_SOUND(void);
+void SOUND_PAUSE(void);
+void SOUND_RESUME(void);
 void DRV_TICK(void);
 void JINGLE_END_CB(void);
 void DRV_FRAME(void);

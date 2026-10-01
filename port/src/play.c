@@ -1525,19 +1525,97 @@ static void PLAY_EVENTS(void)
     OBJECT_TIMERS();
 }
 
-/* CODE:2B4EC: M (state+0E78h) flips CODE:9C4E's bit 0; P (state+0E5Fh)
- * the pause (not translated); state+91h FFh */
-static void PLAY_KEYS(void)
+/* CODE:2B63B: Esc in the pause: "REALLY QUIT TABLE?" (CODE:2A93E) with
+ * the flippers stepped, until Y (state+8Dh FFh; 1 back) or another key
+ * (the display cleared; 0 back, to the pause) */
+static int PAUSE_QUIT(void)
 {
     uint32_t st = rd(0x0014);
+
+    wb(st + 0x0E47, 0);
+    wb(st + 0x0E5B, 0);
+    wb(N_LAST_KEY, 0);
+    for (;;) {
+        FRAME_STEP();
+        PLAY_SCROLL();
+        /* CODE:156C3, a RET */
+        FLIPPERS_STEP();
+        DM_CLEAR();
+        wd(0x0000, 0x2A93E);
+        DM_TEXT_DRAW();
+        st = rd(0x0014);
+        if (rb(st + 0x0E5B) != 0) {
+            wb(st + 0x8D, 0xFF);
+            return 1;
+        }
+        if (rb(N_LAST_KEY) != 0)
+            break;
+    }
+    DM_CLEAR();
+    st = rd(0x0014);
+    wb(st + 0x0E5B, 0);
+    wb(N_LAST_KEY, 0);
+    return 0;
+}
+
+/* CODE:2B4EC: M (state+0E78h) flips CODE:9C4E's bit 0; P (state+0E5Fh)
+ * the pause (CODE:2B51C): the display's buffers and the sound's levels
+ * kept, frames of "GAME PAUSED" until a key (put back) or Esc
+ * (PAUSE_QUIT; on Y out without state+91h); state+91h FFh */
+static void PLAY_KEYS(void)
+{
+    uint32_t st = rd(0x0014), s14, s18;
 
     if (rb(st + 0x0E78) != 0) {
         wb(st + 0x0E78, 0);
         wb(0x9C4E, (uint8_t)(rb(0x9C4E) ^ 1));
     }
     st = rd(0x0014);
-    if (rb(st + 0x0E5F) != 0)
-        pi_stop("PLAY_KEYS: the pause (CODE:2B51C)");
+    if (rb(st + 0x0E5F) != 0) {
+        ww(N_PAUSE_FRAMES, 0);
+        wb(N_LAST_KEY, 0);
+        wb(rd(0x0014) + 0x91, 0);
+        DM_SAVE();
+        SOUND_PAUSE();
+        for (;;) {                                      /* CODE:2B543 */
+            ww(N_PAUSE_FRAMES, (uint16_t)(rw(N_PAUSE_FRAMES) + 1));
+            st = rd(0x0014);
+            if (rb(st + 0x0EC5) != 0) {
+                wb(st + 0x0EC5, 0);
+                /* CODE:26A6D, a RET */
+                wb(N_LAST_KEY, 0);
+            }
+            st = rd(0x0014);
+            if (rb(st + 0x0E47) != 0) {
+                if (PAUSE_QUIT())
+                    return;
+                continue;
+            }
+            if (rb(N_LAST_KEY) != 0)
+                break;
+            s18 = rd(0x0018);
+            s14 = rd(0x0014);
+            /* CODE:26A6D, a RET */
+            wd(0x0014, s14);
+            wd(0x0018, s18);
+            FRAME_STEP();
+            PLAY_SCROLL();
+            /* CODE:156C3, a RET */
+            DM_CLEAR();
+            wd(0x0000, 0x2B6C5);                        /* "GAME PAUSED" */
+            DM_TEXT_DRAW();
+            /* [CODE:0020]'s low word PAUSE_FRAMES AND 100h */
+            wd(0x0020, (rd(0x0020) & 0xFFFF0000u)
+                       | (rw(N_PAUSE_FRAMES) & 0x100));
+            wd(0x0000, (rw(N_PAUSE_FRAMES) & 0x100) == 0
+                       ? 0x2B6DA    /* "PRESS ANY BUTTON TO PLAY" */
+                       : 0x2B6FC);  /* "PRESS ESC TO QUIT" */
+            DM_TEXT_DRAW();
+        }
+        DM_RESTORE();                                   /* CODE:2B616 */
+        SOUND_RESUME();
+        wb(rd(0x0014) + 0x0E5F, 0);
+    }
     wb(rd(0x0014) + 0x91, 0xFF);
 }
 
