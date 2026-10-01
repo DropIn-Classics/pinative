@@ -198,6 +198,17 @@ void DRV_TICK(void)
     pm_ds = save;
 }
 
+/* CODE:9CD4, handed with command 11h, called by the driver's command 6
+ * once a jingle has ended: JINGLE_ENDED FFh */
+void JINGLE_END_CB(void)
+{
+    uint32_t save = pm_ds;
+
+    pm_ds = PI_IMAGE_BASE;
+    wb(N_JINGLE_ENDED, 0xFF);
+    pm_ds = save;
+}
+
 /* the CRTC's start address from BX */
 static void crt_start(uint16_t bx)
 {

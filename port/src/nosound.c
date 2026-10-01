@@ -716,11 +716,13 @@ static int CMD_MIX(NsRegs *r)
     if (rb(D_SONG_END_CB) == 0xFF) {
         wb(D_SONG_END_CB, 0);
         if (rd(D_CMD11_PTR) != 0xFFFFFFFFu)
-            pi_stop("NOSOUND: command 11h's pointer called (CMD_MIX)");
+            ns_far_call(rw(D_CMD11_PTR + 4), rd(D_CMD11_PTR));
     }
     (void)r;
     return 0;                   /* CODE:0975 */
 }
+
+static int order_start(uint32_t ebx, uint8_t ah);
 
 /* CODE:0F17: command 8, the module of slot CL from its order BL; with
  * C2D64 FFh (command 0Ah's, a jingle playing presumably) only kept for
@@ -741,7 +743,12 @@ static int CMD_ORDER(NsRegs *r)
         return 0;
     }
     wb(0x2D64, 0);
-    /* CODE:0F79 */
+    return order_start(ebx, ah);
+}
+
+/* CODE:0F79: the module of NEXT_SLOT from its order `ebx` (pattern `ah`) */
+static int order_start(uint32_t ebx, uint8_t ah)
+{
     wd(D_ORDER_POS, ebx);
     wb(D_CUR_PATTERN, ah);
     wd(D_SLOT_OFF, rd(D_NEXT_SLOT));
@@ -750,6 +757,26 @@ static int CMD_ORDER(NsRegs *r)
     wb(D_SPEED, 6);
     wb(D_TICK_COUNT, 1);
     return 0;
+}
+
+/* CODE:0FBE: command 0Ah, a jingle: the module of slot CL from its order
+ * BL as command 8 does, the music's place (SLOT_OFF, PAT_OFFSET,
+ * ORDER_POS, SPEED) kept first (CODE:0FEE) unless a jingle plays
+ * already; C2D64 FFh until SONG_RESTORE takes the music back */
+static int CMD_JINGLE(NsRegs *r)
+{
+    uint32_t ebx = (uint8_t)r->ebx, ecx = (uint8_t)r->ecx * 0x275u;
+
+    wb(D_STOPPED, 0);
+    if (rb(D_C2D64) != 0xFF) {
+        wd(D_SAVED_SLOT, rd(D_SLOT_OFF));
+        ww(0x21BB, rw(D_PAT_OFFSET));
+        wd(0x21BD, rd(D_ORDER_POS));
+        wb(D_SAVED_SPEED, rb(D_SPEED));
+    }
+    wb(D_C2D64, 0xFF);
+    wd(D_NEXT_SLOT, ecx);
+    return order_start(ebx, rb(ecx + ebx + D_ORDERS));
 }
 
 int ns_call(uint16_t cs, NsRegs *r)
@@ -793,6 +820,9 @@ int ns_call(uint16_t cs, NsRegs *r)
         break;
     case 9:
         cf = CMD_SFX(r);
+        break;
+    case 0x0A:
+        cf = CMD_JINGLE(r);
         break;
     case 0x0B:
         cf = CMD_END(r);

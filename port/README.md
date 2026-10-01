@@ -85,8 +85,9 @@ M key, the flippers' masks and surfaces in src/phys.c, the bumpers'
 and slingshots' kicks, the objects a ball hits (OBJECT_HITS: type 0
 with its light and points, drop targets, type 2's record taken), the
 holes (a ball taken, held and ejected with the hole's picture
-flickering), more of the records' take handlers and of the display's
-opcodes (numbers, the bonus, blinking text), a
+flickering), the records' take handlers (but two no table uses), the modes
+(a mode stream started, its timed waits), more of the display's
+opcodes (numbers, the bonus, blinking text), the driver's jingles, a
 zone's light flashed, a module's note through the driver's command 7),
 a lost ball
 served again under the ball save (GAME_PHASE 7, "DON'T MOVE"), a lost
@@ -557,6 +558,18 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   heap equal as before, but at 4300 FRAME_COUNT one behind and
   LIGHTS_DRAW_POS 0 for the run's 30h (a frame where the run's
   LIGHTS_DRAW was cut by the retrace; equal again at 5490).
+- 2026-10-01, Linux: blind games as above with flips every 33 frames
+  (Enter every 7th), table 1 (passes 1600, 2400, 3000, 5000, 7000,
+  9000, 11000, 13000; game over between 5000 and 7000) and table 4
+  (`-key 113 down -key 113.5 down -key 114 down` in the chooser, F1 at
+  frame 1241; passes 2500, 4500, 6500, 8841, 9500, 11000, 13000,
+  15000; game over between 11000 and 13000): CODE but FRAME_SPINS,
+  video memory and the heap equal as before, but at a pass right after
+  a key the port has taken and the run not yet (KEY_DOWN, LAST_KEY).
+  Ran (dosrun `-cover`): a mode started and waiting (event opcodes 9,
+  1Ch), a jingle and its end, take handlers 5, 6, 7, 0Bh, 10h, 11h,
+  14h, 15h, 16h, DROP_HIT and OBJECT_TYPE2 (docs/HANDOFF.md, "The modes
+  and the take handlers in the port", for what did not).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

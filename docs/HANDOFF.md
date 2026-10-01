@@ -3891,6 +3891,50 @@ light state (ZONE_TYPE4's byte +2), TAKE_COUNT_STREAM's threshold
 stream, TAKE_RAISE's cap, display opcodes 5, 8, 0Ch, 0Eh, 10h, 12h,
 1Ah (read, translated, not compared).
 
+### The modes and the take handlers in the port
+
+Blind flipper games (keys by table frame as in "The objects a ball
+hits in the port") on tables 1, 3 and 4 run in the port since 2026-10-01 without a stop
+to the headless build's frame limit (34098 table frames; that each
+game had ended by then was looked at in the three compared games
+only) for every flipper period tried (29, 33, 37, 41,
+45, 49, 53 and 61 frames, Enter every 7th).
+Translated for them (src/events.c, src/nosound.c, src/table.c; names
+in src/ILLUSION.hints):
+
+- Event opcodes 3 (OP_BLOCK), 9 (OP_MODE_START), 0Ah (a jump), 0Bh
+  (OP_BALL_SAVE), 0Ch, 0Fh, 10h, 11h and 1Ch (OP_MODE_WAIT), and
+  MODE_RUN's wait: the mode stream's timer state+0D62h counted down
+  with its seconds left (big-endian) in state+2A6Eh, which display
+  opcode 0Eh shows; on at the wait's position when the timer runs out,
+  at once when the record state+0D66h is no longer lit for the player.
+- Take handlers 1, 2, 3, 4, 5, 8, 9, 0Ah, 0Ch, 0Eh, 0Fh, 11h, 12h,
+  13h, 16h, 17h, 18h, 1Ah and 1Bh (all but 0Dh and 19h, which are in no
+  record of the four tables).
+- The driver's command 0Ah (a jingle: the music's place kept, the
+  jingle's order started) and the call of command 11h's pointer when a
+  jingle has ended (JINGLE_END_CB, CODE:9CD4: JINGLE_ENDED FFh).
+
+All tables start their table frames at the same picture: the port's
+FRAME_STEP count is the picture less 5902 on each of the four (F1 at
+t=150 is frame 1161, 1185, 1200, 1241 on tables 2, 1, 3, 4).
+
+Compared (port/README.md, "Checked", 2026-10-01): table 1 with flips
+every 33 frames (game over between frames 5000 and 7000) and table 4
+with flips every 33 frames (game over between 11000 and 13000), equal
+at every pass looked at but for keys the run takes after the pass
+(a key given at pass N is read in the run's frame N, the break stops
+before its interrupt). What ran in these games and the 45-frame game
+on table 1 (dosrun `-cover`): take handlers 5, 6, 7, 0Bh, 10h, 11h,
+14h, 15h, 16h; event opcodes 3, 9, 0Ah, 0Bh, 0Ch, 11h, 18h, 1Ch and
+MODE_RUN's three wait paths; display opcodes 8, 0Ch, 0Eh, 10h;
+DROP_HIT, OBJECT_TYPE2, the jingle and its end. Not run: take handlers
+1, 2, 3, 8, 9, 0Ah, 0Ch, 0Eh, 0Fh, 12h, 13h, 17h, 18h, 1Ah, 1Bh;
+event opcodes 0Fh, 10h; display opcodes 5, 12h, 1Ah (translated from
+the listing, not compared). Table 2 still stops at GAME_START (its
+module's slot 40); the module object of event opcode 14h (MODE_RUN,
+CODE:2CFC8) is still a stop, not met on tables 1, 3, 4.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4157,7 +4201,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      see "The objects a ball hits in the port"; the holes and what a
      whole blind game on table 1 needed done 2026-10-01, see "The holes
      and a whole game in the port"; next: games on tables 2, 3 and 4,
-     and table 1 with other keys, for the paths not run yet);
+     and table 1 with other keys, for the paths not run yet; tables 1, 3
+     and 4 done 2026-10-01 as far as blind games go, see "The modes and
+     the take handlers in the port"; next table 2's slot 40);
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

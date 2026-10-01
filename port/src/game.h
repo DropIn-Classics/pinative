@@ -161,6 +161,7 @@ void SFX_NOTE(void);
  * music started; CODE:B99C and CODE:B9B9, those routines */
 void GAME_SOUND(void);
 void DRV_TICK(void);
+void JINGLE_END_CB(void);
 void DRV_FRAME(void);
 /* table.c: CODE:298EF, MUSIC_UPDATE and the driver's command 6 */
 void FRAME_MUSIC(void);

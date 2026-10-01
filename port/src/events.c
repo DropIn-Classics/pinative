@@ -377,6 +377,267 @@ static void TAKE_TIMER(void)
     ww(c + 0x26, (uint16_t)v);
 }
 
+/* the current player's record (state+0D76h) to [0000] */
+static uint32_t player_rec(void)
+{
+    uint32_t pl = rd(rd(0x0014) + 0x0D76);
+
+    wd(0x0000, pl);
+    return pl;
+}
+
+/* CODE:2E2E1, take handler 1: an extra ball: the first light state of
+ * header slot 25 (state+290Ah) gets byte +5 FFh, the player's byte +10h
+ * one more */
+static void TAKE_EXTRA_BALL(void)
+{
+    uint32_t l = rd(rd(rd(0x0014) + 0x290A)), pl;
+
+    wd(0x0020, l);
+    if (l != 0) {
+        wd(0x0004, l);
+        wb(l + 5, 0xFF);
+    }
+    pl = player_rec();
+    wb(pl + 0x10, (uint8_t)(rb(pl + 0x10) + 1));
+}
+
+/* CODE:2E31C, take handler 2: byte +0 of [+34h] FFh when that is not 0,
+ * the player's bit [003C] into byte +0 of the light state at +8, the
+ * player's byte +11h FFh (the bonus held) */
+static void TAKE_HOLD_BONUS(void)
+{
+    uint32_t r = rd(0x0008), x = rd(r + 0x34), pl;
+
+    wd(0x0020, x);
+    if (x != 0) {
+        wd(0x0004, x);
+        wb(x, 0xFF);
+    }
+    pl = player_rec();
+    x = rd(rd(0x0008) + 8);
+    wd(0x0020, x);
+    if (x != 0) {
+        wd(0x0004, x);
+        wb(x, (uint8_t)(rb(x) | (uint8_t)rd(0x003C)));
+    }
+    wb(rd(0x0000) + 0x11, 0xFF);
+    (void)pl;
+}
+
+/* CODE:2E6AB, take handler 3 (the player's +10h added to his +8) and
+ * CODE:2E2C0, handler 9 (the player's +8 added to itself), `off` the
+ * number's +10h or +8 */
+static void TAKE_ADD_OWN(uint32_t off)
+{
+    wd(0x000C, player_rec() + off);
+    SCORE_ADD();
+}
+
+/* CODE:2E43A, take handler 5: the player's word +12h (the bonus
+ * multiplier, presumably) = the record's word +34h */
+static void TAKE_MULTIPLIER(void)
+{
+    uint32_t pl = player_rec();
+
+    ww(pl + 0x12, rw(rd(0x0008) + 0x34));
+}
+
+/* CODE:2E37F, take handler 8: the player's byte +14h FFh (the multiplier
+ * held) */
+static void TAKE_HOLD_MULT(void)
+{
+    wb(player_rec() + 0x14, 0xFF);
+}
+
+/* CODE:2E6EA, take handler 0Ah: the counter at +34h's value (the word
+ * +38h, the dword +3Ch) added to the player's score as many times as the
+ * record's word +38h, or the player's count (+6) when that is less, the
+ * count then 0 */
+static void TAKE_SCORE_TIMES(void)
+{
+    uint32_t r = rd(0x0008), c = rd(r + 0x34), k;
+    uint16_t bp = rw(r + 0x38), dx;
+
+    wd(0x0000, c);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | bp);
+    k = c + sx16(rw(0x0038)) * 2 + 6;
+    dx = rw(k);
+    ww(0x0028, dx);
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | (uint16_t)(dx - bp));
+    if ((uint16_t)(dx - bp) & 0x8000) {
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(0x0028));
+        ww(k, 0);
+    }
+    cw(0x0020, (uint16_t)(rw(0x0020) - 1));             /* CODE:2E747 */
+    if (rw(0x0020) & 0x8000)
+        return;
+    for (;;) {
+        uint16_t n;
+
+        wd(0x000C, rd(0x0000) + 0x40);
+        SCORE_ADD();
+        n = rw(0x0020);
+        ww(0x0020, (uint16_t)(n - 1));
+        if (n == 0)
+            break;
+    }
+}
+
+/* CODE:2E778, take handler 0Eh: the counter at +34h's step (+30h, +34h)
+ * added to the player's score */
+static void TAKE_SCORE_STEP(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34);
+
+    wd(0x0000, c);
+    wd(0x000C, c + 0x38);
+    SCORE_ADD();
+}
+
+/* CODE:2E46B: the counter at the record's +34h, its step (the word +30h,
+ * the dword +34h) raised by the number before [0004] (the word at -8,
+ * the dword at -4) */
+static void take_step_add(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34), src, dst;
+    int cf = 0, i;
+
+    wd(0x0000, c);
+    wd(0x0008, c + 0x38);
+    src = rd(0x0004);
+    dst = c + 0x38;
+    for (i = 0; i < 4; i++)
+        adc_daa(dst - 4 + (uint32_t)i, src - 4 + (uint32_t)i, &cf);
+    for (i = 0; i < 2; i++)
+        adc_daa(dst - 8 + (uint32_t)i, src - 8 + (uint32_t)i, &cf);
+    wd(0x0004, rd(0x0004) - 6);
+    wd(0x0008, rd(0x0008) - 6);
+}
+
+/* CODE:2E796, take handler 13h: the slot-26 BCD counter at +34h, its
+ * current value (+2, +6) kept in +22h, +26h and added to the player's
+ * score */
+static void TAKE_BCD_SCORE(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34);
+
+    wd(0x0000, c);
+    wd(c + 0x22, rd(c + 2));
+    wd(c + 0x26, rd(c + 6));
+    wd(0x000C, c + 0x0A);
+    SCORE_ADD();
+}
+
+/* CODE:2E5B7, take handler 16h: the counter at +34h's threshold whose
+ * word equals the player's count +16h: the player's bit [003C] into its
+ * +2 when the counter's flag bit 2 is set, its lamp (+8) put out when
+ * flag bit 1 is set, its event stream (+4) queued */
+static void TAKE_LEVEL_STREAM(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34), a, l;
+    uint16_t di;
+
+    wd(0x0000, c);
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(c + sx16(rw(0x0038)) * 2 + 0x16));
+    wd(0x0004, c + 0x50);
+    for (;;) {
+        a = rd(0x0004);
+        di = rw(a);
+        cw(0x0024, di);
+        if ((di & 0x8000) || rw(0x0020) < di)
+            return;
+        if (rw(0x0020) == di)
+            break;
+        wd(0x0004, a + 0x0C);
+    }
+    if (rb(rd(0x0000)) & 4)                             /* CODE:2E630 */
+        wb(a + 2, (uint8_t)(rb(a + 2) | (uint8_t)rd(0x003C)));
+    if (rb(rd(0x0000)) & 2) {
+        l = rd(a + 8);
+        wd(0x0020, l);
+        if (l != 0) {
+            wd(0x0008, l);
+            wb(l, (uint8_t)(rb(l) & ~(1u << pbit())));
+            wb(l + 2, (uint8_t)(rb(l + 2) & 0xFD));
+            wb(l + 1, 0xFF);
+            wb(l + 3, 0);
+            wb(l + 4, 0);
+        }
+    }
+    wd(0x0000, rd(rd(0x0004) + 4));                     /* CODE:2E696 */
+    EVENT_QUEUE();
+}
+
+/* CODE:2E21D, take handler 17h: while the mode stream waits with a timer
+ * (state+0D50h set, 0D62h not negative) the timer set to the smaller of
+ * the record's words +34h and +36h times FRAME_RATE (state+50h) */
+static void TAKE_MODE_TIME(void)
+{
+    uint32_t st = rd(0x0014), r = rd(0x0008), ecx, edx;
+    uint16_t di;
+
+    if (rb(st + 0x0D50) == 0)
+        return;
+    di = rw(st + 0x0D62);
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | di);
+    if (di & 0x8000)
+        return;
+    ecx = (uint32_t)rw(r + 0x34) * rw(st + 0x50);
+    wd(0x0020, ecx);
+    edx = (uint32_t)rw(r + 0x36) * rw(st + 0x50);
+    wd(0x0028, edx);
+    wd(0x0024, (rd(0x0024) & 0xFFFF0000u) | (uint16_t)(di + (uint16_t)ecx));
+    if ((uint16_t)ecx > (uint16_t)edx)
+        wd(0x0020, (ecx & 0xFFFF0000u) | (uint16_t)edx);
+    ww(rd(0x0014) + 0x0D62, rw(0x0020));
+}
+
+/* CODE:2E7FC, take handler 18h: the counter at +34h, the player's words
+ * +6 and +16h one less, unless +6 is 0 */
+static void TAKE_UNCOUNT(void)
+{
+    uint32_t c = rd(rd(0x0008) + 0x34), k;
+
+    wd(0x0000, c);
+    k = c + sx16(rw(0x0038)) * 2;
+    if (rw(k + 6) == 0)
+        return;
+    ww(k + 6, (uint16_t)(rw(k + 6) - 1));
+    ww(k + 0x16, (uint16_t)(rw(k + 0x16) - 1));
+}
+
+/* CODE:2E51D, take handler 1Ah: a random award: a number 0..FFh from
+ * FRAME_COUNT's low byte; the first 8-byte entry of the list at +34h
+ * (flags word, limit word, event stream) whose limit is above it has its
+ * stream queued, unless its flag bit 0 is set and bit 1 set already (set
+ * here), then the number plus 5Dh again */
+static void TAKE_RANDOM(void)
+{
+    uint32_t e;
+
+    wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | rw(N_FRAME_COUNT));
+    for (;;) {
+        wd(0x0000, rd(rd(0x0008) + 0x34));              /* CODE:2E530 */
+        wd(0x0020, rd(0x0020) & 0xFFFF00FFu);
+        for (;;) {
+            e = rd(0x0000);
+            if (rw(0x0020) < rw(e + 2))
+                break;
+            wd(0x0000, e + 8);
+        }
+        if (!(rb(e) & 1))
+            break;
+        if (!(rb(e) & 2)) {
+            wb(e, (uint8_t)(rb(e) | 2));
+            break;
+        }
+        ww(0x0020, (uint16_t)(rw(0x0020) + 0x5D));
+    }
+    wd(0x0000, rd(rd(0x0000) + 4));                     /* CODE:2E58D */
+    EVENT_QUEUE();
+}
+
 static void take_handler(uint32_t a)
 {
     static char why[64];
@@ -398,6 +659,64 @@ static void take_handler(uint32_t a)
         break;
     case 0x2E7C8:
         TAKE_TIMER();
+        break;
+    case 0x2E2E1:
+        TAKE_EXTRA_BALL();
+        break;
+    case 0x2E31C:
+        TAKE_HOLD_BONUS();
+        break;
+    case 0x2E6AB:
+        TAKE_ADD_OWN(0x10);
+        break;
+    case 0x2E2C0:
+        TAKE_ADD_OWN(8);
+        break;
+    case 0x2E37D:                                       /* handlers 4 and 0Ch, RETs */
+    case 0x2E37E:
+        break;
+    case 0x2E43A:
+        TAKE_MULTIPLIER();
+        break;
+    case 0x2E37F:
+        TAKE_HOLD_MULT();
+        break;
+    case 0x2E6EA:
+        TAKE_SCORE_TIMES();
+        break;
+    case 0x2E778:
+        TAKE_SCORE_STEP();
+        break;
+    case 0x2E45C:                                       /* handler 0Fh: the record's +38h/+3Ch */
+        wd(0x0004, rd(0x0008) + 0x40);
+        take_step_add();
+        break;
+    case 0x2E506:                                       /* handler 1Bh: the number before [+38h]+8 */
+        wd(0x0004, rd(rd(0x0008) + 0x38) + 8);
+        take_step_add();
+        break;
+    case 0x2DC86:                                       /* handler 12h: 0Bh, 6 */
+        TAKE_RAISE();
+        TAKE_COUNT_STREAM();
+        break;
+    case 0x2E796:
+        TAKE_BCD_SCORE();
+        break;
+    case 0x2E5B7:
+        TAKE_LEVEL_STREAM();
+        break;
+    case 0x2E21D:
+        TAKE_MODE_TIME();
+        break;
+    case 0x2E7FC:
+        TAKE_UNCOUNT();
+        break;
+    case 0x2E51D:
+        TAKE_RANDOM();
+        break;
+    case 0x2E5A2:                                       /* handler 11h: +34h an event stream */
+        wd(0x0000, rd(rd(0x0008) + 0x34));
+        EVENT_QUEUE();
         break;
     case 0x2DC91:                                       /* handler 10h: 0Bh, 6, 7 */
         TAKE_RAISE();
@@ -681,6 +1000,103 @@ static void OP_HOLE2(void)
     wd(st + 0x2A64, p);
 }
 
+/* CODE:2D67E, event opcode 3 (a slot-15 record): blocked for the
+ * player (its byte +2): its lamp off, unlit when its timer runs (+2Eh not
+ * negative) and flag bit 1 is clear, the timer stopped (+2Eh -1) */
+static void OP_BLOCK(void)
+{
+    uint32_t r = rd(rd(0x0004) + 2);
+
+    wd(0x0008, r);
+    LAMP_OFF();
+    r = rd(0x0008);
+    wb(r + 2, (uint8_t)(rb(r + 2) | (uint8_t)rd(0x003C)));
+    if (!(rw(r + 0x2E) & 0x8000) && !(rb(r) & 2))
+        wb(r + 1, (uint8_t)(rb(r + 1) & ~(1u << pbit())));
+    ww(r + 0x2E, 0xFFFF);
+}
+
+/* CODE:2D210, event opcode 0Bh (a word): the ball save, BALL_SAVE = the
+ * word times FRAME_RATE (state+50h) */
+static void OP_BALL_SAVE(void)
+{
+    uint32_t st = rd(0x0014), v = (uint32_t)rw(rd(0x0004) + 2) * rw(st + 0x50);
+
+    wd(0x0020, v);
+    ww(st + 0x0D3E, (uint16_t)v);
+}
+
+/* CODE:2DA7B, event opcode 9 (an event stream): unless a mode runs
+ * (state+0D4Fh), the stream becomes the mode stream (state+0D5Eh, from
+ * its start; state+0D4Fh FFh, the mode's wait, loop and animations
+ * cleared), and the lit records (the list at state+2A32h, linked by +30h)
+ * with flag bit 4 get the player's bit cleared in their light state +4 */
+static void OP_MODE_START(void)
+{
+    uint32_t st = rd(0x0014), m, r, l;
+
+    if (rb(st + 0x0D4F) != 0)
+        return;
+    ww(st + 0x0D6C, 0);
+    wb(st + 0x0D2E, 0);
+    m = rd(rd(0x0004) + 2);
+    wd(0x0000, m);
+    ww(m + 2, 0);
+    wd(st + 0x0D5E, m);
+    ww(st + 0x0D62, 0);
+    wd(st + 0x0D66, 0);
+    ww(st + 0x0D6E, 0);
+    wb(st + 0x0D50, 0);
+    wb(st + 0x0D4F, 0xFF);
+    wb(st + 0x0D51, 0);
+    wd(st + 0x2A5C, 0);
+    wd(st + 0x2A58, 0);
+    r = rd(st + 0x2A32);
+    wd(0x0020, r);
+    while (r != 0) {                                    /* CODE:2DB0F */
+        wd(0x0000, r);
+        if (rb(r) & 0x10) {
+            l = rd(r + 4);
+            wd(0x0020, l);
+            if (l != 0) {
+                wd(0x0004, l);
+                wb(l, (uint8_t)(rb(l) & ~(1u << pbit())));
+            }
+        }
+        r = rd(rd(0x0000) + 0x30);                      /* CODE:2DB48 */
+        wd(0x0020, r);
+    }
+}
+
+/* CODE:2DBDF, event opcode 1Ch (a slot-15 record or 0, a word, a
+ * position): the mode stream waits (state+0D50h FFh, MODE_RUN): the
+ * record, when lit for the player, to state+0D66h; the word times
+ * FRAME_RATE to state+0D62h (0: left as it is; negative: no timer, kept
+ * as given); the position to state+0D6Ah */
+static void OP_MODE_WAIT(void)
+{
+    uint32_t c = rd(0x0004), r = rd(c + 2), st;
+    uint16_t si;
+
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        if (!bit_of(r + 1, pbit()))
+            wd(0x0020, 0);
+    }
+    st = rd(0x0014);                                    /* CODE:2DC18 */
+    wd(st + 0x0D66, rd(0x0020));
+    si = rw(c + 6);
+    cw(0x0020, si);
+    if (si != 0) {
+        if (!(si & 0x8000))
+            wd(0x0020, (uint32_t)si * rw(st + 0x50));
+        ww(st + 0x0D62, rw(0x0020));                    /* CODE:2DC52 */
+    }
+    ww(st + 0x0D6A, rw(c + 8));                         /* CODE:2DC65 */
+    wb(st + 0x0D50, 0xFF);
+}
+
 /* one command of a stream: its handler by its address (CODE:2D193 plus
  * the table's offset) */
 static void event_op(uint32_t a)
@@ -708,6 +1124,48 @@ static void event_op(uint32_t a)
         break;
     case 0x2D785:
         OP_HOLE();
+        break;
+    case 0x2D67E:
+        OP_BLOCK();
+        break;
+    case 0x2DA7B:
+        OP_MODE_START();
+        break;
+    case 0x2DBDF:
+        OP_MODE_WAIT();
+        break;
+    case 0x2DB8E: {                 /* opcode 0Ch: a slot-15 record unblocked for the player */
+        uint32_t r = rd(rd(0x0004) + 2);
+
+        wd(0x0008, r);
+        wb(r + 2, (uint8_t)(rb(r + 2) & ~(1u << pbit())));
+        break;
+    }
+    case 0x2DB5C: {                 /* opcode 0Fh: a slot-26 BCD counter started */
+        uint32_t c = rd(rd(0x0004) + 2);
+
+        wd(0x0008, c);
+        wd(c + 2, rd(c + 0x0A));
+        wd(c + 6, rd(c + 0x0E));
+        wb(c, 0xFF);
+        break;
+    }
+    case 0x2DB7B: {                 /* opcode 10h: a slot-26 BCD counter stopped */
+        uint32_t c = rd(rd(0x0004) + 2);
+
+        wd(0x0008, c);
+        wb(c, 0);
+        break;
+    }
+    case 0x2D5F4:                   /* opcode 0Ah: a jump to the position */
+        ww(rd(0x0000) + 2, rw(rd(0x0004) + 2));
+        break;
+    case 0x2D210:
+        OP_BALL_SAVE();
+        break;
+    case 0x2D6F9:                   /* opcode 11h: a display stream queued */
+        wd(0x0000, rd(rd(0x0004) + 2));
+        DISPLAY_QUEUE();
         break;
     case 0x2D7BE:
         OP_HOLE2();
@@ -784,12 +1242,16 @@ void EVENT_RUN(void)
     }
 }
 
-/* CODE:2CD3C: the mode stream (state+0D5Eh), one command a call; the
- * module object's routine (state+2A74h) and opcode 1Ch's wait (state+
- * 0D50h) are not translated */
+/* CODE:2CD3C: the mode stream (state+0D5Eh), one command a call; while
+ * it waits (state+0D50h, event opcode 1Ch) its timer state+0D62h counted
+ * down (the seconds left, big-endian, to state+2A6Eh), on at the wait's
+ * position (state+0D6Ah) when it runs out, or at once while the record
+ * state+0D66h is not lit for the player; with state+0D51h set (the
+ * multiball over) on at state+0D6Ch's position, or the wait's. The module
+ * object's routine (state+2A74h) is not translated */
 void MODE_RUN(void)
 {
-    uint32_t st = rd(0x0014), m;
+    uint32_t st = rd(0x0014), m, r;
 
     wd(0x0038, sx16(rw(st + 0x0D72)));
     wd(0x003C, sx16(rw(st + 0x0D74)));
@@ -805,22 +1267,81 @@ void MODE_RUN(void)
         }
     }
     st = rd(0x0014);                                    /* CODE:2CD9F */
-    if (rb(st + 0x0D50) != 0)
-        pi_stop("MODE_RUN: opcode 1Ch's wait (CODE:2CDB1)");
-    m = rd(st + 0x0D5E);                                /* CODE:2CED1 */
-    wd(0x0020, m);
-    if (m != 0) {
-        wd(0x0000, m);
-        wb(st + 0x0D50, 0);                             /* CODE:2CEF1 */
-        wd(st + 0x0D66, 0);
-        if (stream_step())
-            return;
-        ww(rd(0x0000) + 2, 0);                          /* CODE:2CF60 */
-        st = rd(0x0014);
-        wd(st + 0x0D5E, 0);
-        wd(st + 0x2A5C, 0);
-        wd(st + 0x2A58, 0);
+    if (rb(st + 0x0D50) == 0)
+        goto next;
+    if (rb(st + 0x0D51) != 0) {                         /* CODE:2CE4F */
+        uint16_t di = rw(st + 0x0D6C);
+
+        cw(0x0024, di);
+        if (di != 0) {
+            m = rd(st + 0x0D5E);
+            wd(0x0020, m);
+            if (m == 0)
+                goto done;
+            wd(0x0000, m);
+            ww(m + 2, di);
+            ww(st + 0x0D6C, 0);
+            goto step;
+        }
+        goto at_wait;
     }
+    {
+        uint16_t di = rw(st + 0x0D62);
+
+        cw(0x0024, di);
+        if (di == 0)
+            goto at_wait;
+        if (!(di & 0x8000)) {
+            uint32_t edx;
+            uint16_t q;
+
+            di = (uint16_t)(di - 1);
+            ww(st + 0x0D62, di);
+            q = (uint16_t)(di / rw(st + 0x50));
+            edx = (uint32_t)(di % rw(st + 0x50)) << 16 | q;
+            wd(0x0024, edx);
+            wb(st + 0x2A6F, (uint8_t)q);
+            wb(st + 0x2A6E, (uint8_t)(q >> 8));
+        }
+    }
+    st = rd(0x0014);                                    /* CODE:2CE18 */
+    r = rd(st + 0x0D66);
+    wd(0x0020, r);
+    if (r == 0)
+        return;
+    wd(0x0004, r);
+    if (bit_of(r + 1, pbit()))
+        return;
+    goto next;
+at_wait:
+    st = rd(0x0014);                                    /* CODE:2CE98 */
+    m = rd(st + 0x0D5E);
+    wd(0x0020, m);
+    if (m == 0)
+        goto done;
+    wd(0x0000, m);
+    ww(m + 2, rw(st + 0x0D6A));
+    ww(st + 0x0D6A, 0);
+    goto step;
+next:
+    st = rd(0x0014);                                    /* CODE:2CED1 */
+    m = rd(st + 0x0D5E);
+    wd(0x0020, m);
+    if (m == 0)
+        goto done;
+    wd(0x0000, m);
+step:
+    st = rd(0x0014);                                    /* CODE:2CEF1 */
+    wb(st + 0x0D50, 0);
+    wd(st + 0x0D66, 0);
+    if (stream_step())
+        return;
+    ww(rd(0x0000) + 2, 0);                              /* CODE:2CF60 */
+    st = rd(0x0014);
+    wd(st + 0x0D5E, 0);
+    wd(st + 0x2A5C, 0);
+    wd(st + 0x2A58, 0);
+done:
     st = rd(0x0014);                                    /* CODE:2CF90 */
     wd(st + 0x0D66, 0);
     ww(st + 0x0D62, 0);
