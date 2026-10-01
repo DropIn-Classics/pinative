@@ -678,4 +678,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   by `timeout` after 120 s), no file written; `-opt s` stops at
   SOUND_SETUP. The file made by a first save not tried; not run on
   Windows since.
+- 2026-10-01, Linux, headless: the tilt (GAME_PHASE 9, CODE:2B716;
+  docs/HANDOFF.md, "GAME_PHASE 9 in the port"), which stopped the port
+  before: three Space presses 6 pictures apart in play on table 1 tilt,
+  "TILT" shown, the ball lost, the next ball served. Not compared with
+  the original's memory; the window builds not tried.
 - Not built on macOS since.

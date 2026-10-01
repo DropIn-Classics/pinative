@@ -4244,6 +4244,28 @@ Looked at 2026-10-01; both port stops stay.
   4494h 1, 4500h 0; table 4: 44A6h, 44DEh, 459Eh, 460Ch, 4678h, 46D2h
   1; offsets in the module). Holes reached otherwise not looked for.
 
+### GAME_PHASE 9 in the port
+
+The tilt's phase (CODE:2B716) is in the port since 2026-10-01
+(src/play.c, TILT). Before, a tilt stopped the port with "Stopped
+before CODE:2B716" (the user met it on Windows by nudging fast and took
+it for a bug of the nudges). Read from the listing: state+2A7Fh and
+state+0D3Ah set 0 each frame, then FRAME_STEP, PLAY_STEP,
+BALLS_PHYSICS, BALLS_LOST (a lost ball straight to LOST_RUNOUT, no ball
+save), PLAY_EVENTS and "TILT" (CODE:2B761) on the display. No
+PLAY_KEYS, DISPLAY_RUN, ANIMS_STEP or PLAYERS_KEYS. State+2A7Fh is the
+byte FLIPPERS_MOVE asks before it moves a flipper up, so the flippers
+stay down (read, as in "The tilt in a run" not seen in the original).
+
+One headless run (table 1, F1 and Enter pressed every 60 pictures
+until the game ran, since the table's start moved by up to 200
+pictures between runs; Space at 8300, 8306 and 8312, a scratch print
+of the phases, since removed): GAME_PHASE 9 at table frame 1226 with
+the nudge count F8h (the original's run: F3h at the third nudge),
+"TILT" on the display, the ball lost 149 frames later, GAME_PHASE 5
+and 6 in the same frame, the tilt flag 0 again. Not compared with a run
+of the original byte by byte; the bonus not seen (it was 0).
+
 ### The take handlers forced in a run
 
 The take handlers the blind games did not run, each forced 2026-10-01 by

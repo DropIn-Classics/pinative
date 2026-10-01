@@ -1870,6 +1870,29 @@ static void SAVE_SERVE(void)
         ww(st + 0x8E, 4);
 }
 
+/* CODE:2B716: GAME_PHASE 9, the tilt: state+2A7Fh 0 (the flippers go
+ * down and stay down), state+0D3Ah 0, a frame of play without the keys
+ * and the display's streams, "TILT" (CODE:2B761); a lost ball to
+ * LOST_RUNOUT */
+static void TILT(void)
+{
+    uint32_t st = rd(0x0014);
+
+    wb(st + 0x2A7F, 0);
+    ww(st + 0x0D3A, 0);
+    FRAME_STEP();
+    PLAY_STEP();
+    BALLS_PHYSICS();
+    if (BALLS_LOST()) {
+        LOST_RUNOUT();
+        return;
+    }
+    PLAY_EVENTS();
+    DM_CLEAR();
+    wd(0x0000, 0x2B761);
+    DM_TEXT_DRAW();
+}
+
 /* CODE:2C037, host vector +0Ch: [0020] fiftieths of a second of frames
  * (x FRAME_RATE / 50, CODE:2C0C3) with the scroll, the flippers, the
  * flashes and the lights stepped; after the first half second
@@ -2609,6 +2632,10 @@ void TABLE_GAME(void)
         }
         if (ph == 8) {
             EXTRA_BALL();
+            continue;
+        }
+        if (ph == 9) {
+            TILT();
             continue;
         }
         snprintf(name, sizeof name, "CODE:%X", (unsigned)rd(N_PHASES + ph * 4u));
