@@ -30,6 +30,27 @@ void adc_daa(uint32_t dst, uint32_t src, int *cf)
     *cf = c;
 }
 
+/* SBB AL,src and DAS on the byte at DS:`dst`; *cf borrows (DAS keeps
+ * the borrow of its first step, as the 386 and the runner do) */
+void sbb_das(uint32_t dst, uint32_t src, int *cf)
+{
+    uint8_t a = rb(dst), b = rb(src), al, old;
+    int d = (int)a - b - *cf;
+    int af = (int)(a & 0xF) - (b & 0xF) - *cf < 0, oc = d < 0, c = 0;
+
+    old = al = (uint8_t)d;
+    if ((al & 0xF) > 9 || af) {
+        c = oc || al < 6;
+        al = (uint8_t)(al - 6);
+    }
+    if (old > 0x99 || oc) {
+        al = (uint8_t)(al - 0x60);
+        c = 1;
+    }
+    wb(dst, al);
+    *cf = c;
+}
+
 /* the game's 12-digit packed-BCD add: the number whose end is DS:`src`
  * added to the one whose end is DS:`dst` (the low four bytes before the
  * end, then the two high bytes 8 before it, as the original's code does

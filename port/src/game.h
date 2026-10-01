@@ -84,6 +84,7 @@ void DM_SCORE_IDLE(void);
 int TABLE_MODULE(void);
 /* ADC AL,[src] and DAA into the byte at `dst`, *cf the carry */
 void adc_daa(uint32_t dst, uint32_t src, int *cf);
+void sbb_das(uint32_t dst, uint32_t src, int *cf);
 void bcd12_add(uint32_t dst, uint32_t src);
 void DEC_TEXT(void);
 

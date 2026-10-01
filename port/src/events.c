@@ -1590,10 +1590,16 @@ next:                                                   /* CODE:2EAA9 */
 }
 
 /* CODE:2EAC9: the slot-26 BCD counters (state+290Eh, 0 ends): one that
- * runs (byte +0) is stepped toward its end (not translated) */
+ * runs (byte +0) has its step added to (byte +1 bit 0: taken from) its
+ * value, byte by byte as the code does it (the ends +0Ah and +22h less
+ * 4: bytes +6..+9 and +2, +3 from +1Eh..+21h and +1Ah, +1Bh); added, it
+ * ends when the value's two dwords +2, +6 have reached +12h, +16h;
+ * taken, on a borrow or when they are no longer above them.  At its end the value is +12h..+19h
+ * and byte +0 0 */
 void BCD_COUNTERS_STEP(void)
 {
-    uint32_t p = rd(rd(0x0014) + 0x290E), e;
+    uint32_t p = rd(rd(0x0014) + 0x290E), e, d, s, v;
+    int cf, i, sub;
 
     wd(0x0000, p);
     for (;;) {
@@ -1604,8 +1610,37 @@ void BCD_COUNTERS_STEP(void)
         if (e == 0)
             return;
         wd(0x0004, e);
-        if (rb(e) != 0)
-            pi_stop("BCD_COUNTERS_STEP: a counter running (CODE:2EAFD)");
+        if (rb(e) == 0)
+            continue;
+        sub = rb(e + 1) & 1;
+        wd(0x0008, e + 0x0A);
+        wd(0x000C, e + 0x22);
+        d = e + 0x0A - 4;
+        s = e + 0x22 - 4;
+        cf = 0;
+        for (i = 0; i < 4; i++)
+            (sub ? sbb_das : adc_daa)(d + (uint32_t)i, s + (uint32_t)i, &cf);
+        for (i = 0; i < 2; i++)
+            (sub ? sbb_das : adc_daa)(d - 4 + (uint32_t)i, s - 4 + (uint32_t)i, &cf);
+        wd(0x000C, rd(0x000C) - 6);
+        wd(0x0008, rd(0x0008) - 6);
+        e = rd(0x0004);
+        if (!sub) {
+            v = e + 2;
+            wd(0x0020, rd(v));
+            wd(0x0024, rd(v + 4));
+            if (rd(v) < rd(e + 0x12) || rd(v + 4) < rd(e + 0x16))
+                continue;
+        } else if (!cf) {
+            v = e + 2;
+            wd(0x0020, rd(v));
+            wd(0x0024, rd(v + 4));
+            if (rd(v) > rd(e + 0x12) || rd(v + 4) > rd(e + 0x16))
+                continue;
+        }
+        wd(e + 2, rd(e + 0x12));                        /* CODE:2ECB3 */
+        wd(e + 6, rd(e + 0x16));
+        wb(e, 0);
     }
 }
 

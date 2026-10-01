@@ -610,6 +610,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   after 601): CODE but the runner's timing, video memory and the heap equal
   as before (docs/HANDOFF.md, "The pause in the port"). Not run: a
   pause with music playing.
+- 2026-10-01, Linux: BCD_COUNTERS_STEP (CODE:2EAC9), table 1, a
+  subtracting counter started by a poke at CODE:298C5's pass 1400 in
+  both (docs/HANDOFF.md, "The BCD counters in the port"): passes 1401
+  to 3100 and, with a start below the end, 1480 to 1500: CODE but
+  FRAME_SPINS, video memory, the counter and the heap equal as before.
+  Not run: an adding counter.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

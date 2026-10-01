@@ -4165,6 +4165,33 @@ FRAME_COUNT", presumably; not traced). Not run: a pause with a CD track
 playing or the module at a level (NOSOUND, no `-cue`), a pause during a
 display stream or an animation.
 
+### The BCD counters in the port
+
+BCD_COUNTERS_STEP (CODE:2EAC9) is in the port since 2026-10-01
+(src/events.c, with sbb_das in src/module.c). Event opcode 0Fh starts
+such a counter only in mode streams the blind games did not reach, so
+the run was forced: table 1 (F1 at table frame 1185, Enter 1299), at
+CODE:298C5's pass 1400 the counter at linear 2DC63Ch (the first of
+table 1's two, both subtracting: byte +1 bit 0 set) poked to running
+with a start value (dosrun `-poke 12A7F5#1400 2DC63C ...`, the same
+bytes by a scratch line in the port).
+
+- The step goes byte by byte as the code adds it: +6..+9 from
+  +1Eh..+21h, then +2, +3 from +1Ah, +1Bh (bytes +4, +5 untouched); on
+  table 1 12340h (BCD) a frame. It ends on a borrow, or when the value's
+  dwords +2, +6 are no longer above the end's +12h, +16h (added: have
+  reached them); then the end value and byte +0 0.
+- DAS as the runner and the 386 do it: the borrow of its first step
+  stays in CF.
+
+Compared: value 20000000h in the top byte, passes 1401, 1500, 2000,
+3010, 3030, 3100 (it stopped counting after 3010: PLAY_EVENTS not
+running then, presumably the ball lost, not looked at); value 01h,
+passes 1480 to 1500 (ended in its first frame, by the compare): CODE
+but FRAME_SPINS, video memory, the counter's bytes and the heap equal
+as before. Not run: an adding counter (none on table 1; table 3's
+fourteen bcd_start not looked at), the end by a borrow alone.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4443,7 +4470,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2026-10-01, see "The table's end and the chooser again"; the
      high scores' file done 2026-10-01, see "The high scores' file";
      next: the paths blind games did not run; the pause done 2026-10-01,
-     see "The pause in the port");
+     see "The pause in the port"; the BCD counters done 2026-10-01, see
+     "The BCD counters in the port");
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").
