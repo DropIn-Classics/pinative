@@ -4213,6 +4213,22 @@ FFFFh. So the game's data does not reach it. Not looked at: records
 handed to MUSIC_REQUEST by other ways (the callers that set [CODE:0000]
 otherwise were not followed).
 
+### Two more stops out of reach
+
+Looked at 2026-10-01; both port stops stay.
+
+- DROPS_QUEUE_STEP's kind above 1 (CODE:308C0): the queue state+2A60h
+  is written by one routine only (CODE:2CA4D on, a drop target hit),
+  which stores the kind as the constant 1; the other writers set the
+  queue back to CF920h. So no kind above 1 is queued.
+- HOLE_EJECT_STEP's level above 1 (CODE:30D6F): every hole named by an
+  `eject` or `eject_at` opcode in tools/event_streams.py's lists, in the
+  runs' memory of the four tables (as in "MUSIC_REQUEST's word below
+  FFFEh"), has the level +0Eh 0 or 1 (table 1: 4D78h 1, 4DB0h 1, 4EAEh
+  0, 4F18h 0; table 2: 4AA8h, 4B26h, 4BBEh, 4CDAh 0, 4C50h 1; table 3:
+  4494h 1, 4500h 0; table 4: 44A6h, 44DEh, 459Eh, 460Ch, 4678h, 46D2h
+  1; offsets in the module). Holes reached otherwise not looked for.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4493,7 +4509,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      next: the paths blind games did not run; the pause done 2026-10-01,
      see "The pause in the port"; the BCD counters done 2026-10-01, see
      "The BCD counters in the port"; MUSIC_REQUEST's stop found out of
-     the data's reach, see "MUSIC_REQUEST's word below FFFEh");
+     the data's reach, see "MUSIC_REQUEST's word below FFFEh"; the drop kind and the
+     hole level too, see "Two more stops out of reach");
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").
