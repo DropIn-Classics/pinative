@@ -65,3 +65,41 @@ int SOUND_START(void)
     wd(N_SOUND_JUMP, 0x4CF2);
     return 0;
 }
+
+/* CODE:7182, after a table: the driver loaded and started again as in
+ * SOUND_START (the header read then), CHOOSER_MOD_NAME into slot 0,
+ * MASTER_VOL 0 (command 0Ch) */
+void DRIVER_RELOAD(void)
+{
+    uint16_t sel;
+    NsRegs r;
+
+    pmax_name(0x7075, 0x1C);         /* "Sound Driver" */
+    sel = pmax_load("NOSOUND.SDR", NULL);
+    if (!sel)
+        pi_stop("DRIVER_RELOAD: NOSOUND.SDR not loaded");
+    ww(N_DRIVER_SEL, sel);
+    wd(N_DRIVER_ENTRY, 0);
+    ww(N_DRIVER_ENTRY + 4, pmax_alias(sel));
+    CALLBACKS_CS();
+    hcb_use_table(0);
+
+    memset(&r, 0, sizeof r);
+    r.fs = r.es = pi_image.desc[ILLUSION_CODE].sel;
+    r.edi = N_HOST_CALLBACKS;
+    r.ebx = N_DRIVER_CFG;
+    r.ds = sel;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+
+    memset(&r, 0, sizeof r);
+    r.eax = 4;
+    r.ebx = 0;
+    r.es = pi_image.desc[ILLUSION_CODE].sel;
+    r.edx = N_CHOOSER_MOD_NAME;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0C;
+    r.ebx = 0;
+    ns_call(rw(N_DRIVER_ENTRY + 4), &r);
+}

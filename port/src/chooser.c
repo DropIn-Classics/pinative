@@ -47,6 +47,8 @@ static void KBD_INSTALL(void)
     ww(N_KBD_OLD + 4, 0x30);
     frame_set_keyboard(KBD_IRQ);
     pic_out21((uint8_t)(pic_in21() & 0xFD));
+    wb(N_KEY_READ + 1, 0);
+    wb(N_KEY_READ, 0);
 }
 
 /* CODE:23CA */
@@ -154,14 +156,28 @@ static void VIDEO_CLEAR(void)
         vga_write((uint16_t)i, 0);
 }
 
-/* CODE:2869 (menuchar.rix loaded by CHOOSER_LOAD): CHAR_STRIDE, CHAR_OFFS */
+/* INT 94h AH=1 with the block's name at CODE:`esi`; the original does
+ * not look at CF, the port stops */
+static uint16_t chooser_file(uint32_t esi, const char *name)
+{
+    uint16_t sel;
+
+    pmax_name(esi, 0x1C);
+    sel = pmax_load(name, NULL);
+    if (!sel)
+        pi_stop("the chooser: a file not loaded (CODE:2840, 4E98)");
+    return sel;
+}
+
+/* CODE:2810: menuchar.rix loaded unless CHOOSER_LOADED (the first
+ * chooser: CHOOSER_LOAD did), then CHAR_STRIDE, CHAR_OFFS */
 static void MENUCHAR_INIT(void)
 {
     uint16_t bx = 0x3A, dl;
     int i;
 
     if (rw(N_CHOOSER_LOADED) != 1)
-        pi_stop("MENUCHAR_INIT: menuchar.rix not loaded yet (CODE:2840)");
+        ww(N_MENUCHAR_SEL, chooser_file(0x281B, "chooser\\menuchar.rix"));
     ww(N_CHAR_STRIDE, (uint16_t)(lrw(pmax_base(rw(N_MENUCHAR_SEL)) + 4) >> 3));
     dl = rw(N_CHAR_STRIDE) & 0xFF;
     for (i = 0; i < 0x80; i++) {
@@ -635,8 +651,25 @@ static void FRAME_WAIT(void)
             pi_stop(why);
         }
     chooser_frames++;
-    if (rb(0x1534) == 1)
-        pi_stop("FRAME_WAIT with CODE:1534 1 (the driver's commands 8, 0Dh, 0Ch)");
+    if (rb(0x1534) == 1) {
+        /* the chooser after a table: the module from order 0 of slot 0
+         * (command 8) each frame until the driver's TICKS (command 0Dh)
+         * reach 280Ah, then MASTER_VOL 100h (command 0Ch) */
+        NsRegs r = { 0 };
+
+        r.eax = 8;
+        driver(&r);
+        memset(&r, 0, sizeof r);
+        r.eax = 0x0D;
+        driver(&r);
+        if ((int32_t)r.eax >= 0x280A) {
+            wb(0x1534, 0);
+            memset(&r, 0, sizeof r);
+            r.eax = 0x0C;
+            r.ebx = 0x100;
+            driver(&r);
+        }
+    }
 }
 
 /* CODE:381C */
@@ -1741,7 +1774,17 @@ uint8_t CHOOSER_START(void)
     CAPTIONS_MAKE();
     pmax_free(rw(N_BITMAP_SEL));        /* BITMAP_FREE */
     wb(0x1534, 0);
-    if (rw(N_CHOOSER_LOADED) != 1)
-        pi_stop("CODE:4E98 (the chooser's files loaded again)");
+    if (rw(N_CHOOSER_LOADED) != 1) {
+        /* CODE:4E98: after a table the chooser's files loaded again
+         * (INT 94h AH=1, each block named), CD_VOLUME FFh and track 33h */
+        ww(N_CUBE_SEL, chooser_file(0x4E80, "chooser\\cube.rix"));
+        ww(N_TUBE_SEL, chooser_file(0x4EC3, "chooser\\tube.rix"));
+        ww(N_TORUS_SEL, chooser_file(0x4F06, "chooser\\torus.rix"));
+        ww(N_TINYFONT_SEL, chooser_file(0x4F49, "chooser\\tinyfont.fnt"));
+        ww(N_INFODATA_SEL, chooser_file(0x4F92, "chooser\\infodata.mgl"));
+        CD_VOLUME(0xFF);
+        CD_PLAY(0x33);
+        wb(0x1534, 1);
+    }
     return CHOOSER();
 }

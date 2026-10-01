@@ -502,6 +502,123 @@ static int TABLE_SOUND(void)
     return 0;
 }
 
+/* CODE:A6B4: 32 pictures from the stage's palette toward TBL_PALETTE
+ * (the first one 31/32 of the way back), the driver's command 6 after
+ * each (its BX, FFh less 8 a picture, not read by NOSOUND) */
+static void TABLE_FADE_OUT(void)
+{
+    uint8_t cl;
+    NsRegs r;
+
+    for (cl = 0x20; cl != 0; cl--) {
+        FADE_MIX(N_TBL_PALETTE, rd(N_MODULE_HEADER + 0x50), cl);
+        frame_wait();                               /* CODE:3D372 */
+        FADE_PAL_SET();
+        memset(&r, 0, sizeof r);
+        r.eax = 6;
+        r.ebx = (uint16_t)(0xFF - 8 * (0x21 - cl));
+        tbl_driver(&r);
+    }
+}
+
+/* CODE:9FB1: the CD stopped (between the two command 2s), the driver's
+ * player stopped (command 3), its modules freed (command 5, slot 1 not
+ * on table 4), its end (command 0Bh); the code alias freed (INT 93h
+ * AH=0Dh) */
+static void TABLE_SOUND_END(void)
+{
+    NsRegs r;
+
+    SND_PAUSE();
+    CD_STOP();
+    SND_PAUSE();
+    memset(&r, 0, sizeof r);
+    r.eax = 3;
+    tbl_driver(&r);
+    memset(&r, 0, sizeof r);
+    r.eax = 5;
+    r.ebx = 0;
+    tbl_driver(&r);
+    if (rb(N_TABLE_NUM) != 4) {
+        memset(&r, 0, sizeof r);
+        r.eax = 5;
+        r.ebx = 1;
+        tbl_driver(&r);
+    }
+    memset(&r, 0, sizeof r);
+    r.eax = 0x0B;
+    tbl_driver(&r);
+    pmax_free_sel(rw(N_TBL_DRIVER_ENTRY + 4));
+}
+
+/* CODE:B3A1 (HISCORES_PUT): the table's high scores back to HISCORES (50 bytes at
+ * TABLE_INDEX), when they changed, and the file written (INT 94h AH=6,
+ * not in the port yet) */
+static void HISCORES_PUT(void)
+{
+    uint32_t d = N_HISCORES + (uint32_t)rb(N_TABLE_INDEX) * 0x32, i;
+
+    for (i = 0; i < 0x32; i++)
+        if (rb(N_TABLE_HISCORES + i) != rb(d + i))
+            break;
+    if (i == 0x32)
+        return;
+    for (i = 0; i < 0x32; i++)
+        wb(d + i, rb(N_TABLE_HISCORES + i));
+    pi_stop("HISCORES_PUT: the file written (CODE:B3D1, INT 94h AH=6)");
+}
+
+/* CODE:A448, TABLE after the game: the keyboard's vector back, the
+ * fade out, the sound's end, the high scores, then every block of the
+ * table freed (INT 92h AH=5; the ALLOCS list's by address, AH=2), last
+ * the selectors made at the start (INT 93h AH=0Dh: the driver's
+ * selector too, whose block pMAX leaves allocated, as the run's heap at
+ * CODE:7182 shows) and the code selector back (CODE:A499) */
+static void TABLE_END(void)
+{
+    uint32_t p;
+    int i;
+
+    frame_set_keyboard(NULL);                       /* CODE:A01E */
+    TABLE_FADE_OUT();
+    TABLE_SOUND_END();
+    HISCORES_PUT();
+    pmax_free(rw(N_LIGHTS_SEL));                    /* CODE:28D17 */
+    pmax_free(rw(N_DROPS_SEL));
+    if (rb(N_TABLE_NUM) != 2)
+        pmax_free(rw(N_MASKS_SEL));
+    for (i = 0; i < 5; i++)                         /* DM_FREE */
+        pmax_free(rw(N_DM_FONTS + 2 * i));
+    pmax_free(rw(N_DM_TEXT));
+    pmax_free(rw(N_DM_TEXT_TEMP));
+    pmax_free(rw(N_DM_ANIMS_SEL));
+    pmax_free(rw(N_DM_ANIM));
+    pmax_free(rw(N_DM_ANIM_TEMP));
+    if (rb(N_TABLE_NUM) != 3)
+        pmax_free(rw(N_VM_DATA_SEL));
+    pmax_free(rw(N_SPOOKY_SEL));                    /* CODE:A4E1 */
+    pmax_free(rw(N_MODULE_SEL));
+    pmax_free(rw(N_HIDELIGHTS_SEL));
+    pmax_free(rw(N_MODULE_REL_SEL));
+    /* CODE:A55E and A52E, last first; an empty list would run the
+     * LOOP from ECX 0, and a failed free (CF) ends the list: neither
+     * followed */
+    if (rd(N_BLOCKS_END) == N_BLOCKS || rd(N_ALLOCS_END) == N_ALLOCS)
+        pi_stop("TABLE_END: an empty BLOCKS or ALLOCS list (CODE:A55E, A52E)");
+    for (p = rd(N_BLOCKS_END); p >= N_BLOCKS + 2; p -= 2) {
+        if (!pmax_base(rw(p - 2)))
+            pi_stop("TABLE_END: a BLOCKS entry not a block (CODE:A584)");
+        pmax_free(rw(p - 2));
+    }
+    for (p = rd(N_ALLOCS_END); p >= N_ALLOCS + 4; p -= 4)
+        pmax_free_linear(rd(p - 4));
+    wd(N_TABLE_BACK, 0xA4A9);                       /* CODE:A499 */
+    pmax_set_code_sel(rw(N_TABLE_OLD_CS));
+    pmax_free_sel(rw(N_TBL_DRIVER_SEL));
+    pmax_free_sel(rw(N_TABLE_DS));
+    pmax_free_sel(rw(N_TABLE_JUMP + 4));
+}
+
 /* CODE:A5EB */
 static int TABLE_LOAD(void)
 {
@@ -586,6 +703,6 @@ int TABLE(uint8_t al)
     pic_out21((uint8_t)(pic_in21() & 0xFD));
     TABLE_GAME();
     pic_out21((uint8_t)(pic_in21() | 2));
-    pi_stop("TABLE: after the game (CODE:A3FF)");
-    return 1;
+    TABLE_END();
+    return 0;
 }

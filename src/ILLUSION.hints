@@ -70,7 +70,7 @@ name       CODE:6358 DRIVER_SEL    ; the sound driver's block (INT 94h AH=1 by t
 name       CODE:6360 DRIVER_CFG    ; the configuration header again (INT 94h AH=5): the driver's name first; the driver's command 0 gets it as ES:EBX
 name       CODE:8134 DRIVER_ENTRY  ; a far pointer: offset 0, the selector INT 93h AH=8 makes of DRIVER_SEL (run: 0Ch)
 name       CODE:80BC INTRO_MOD_NAME ; "intro\MOD.INT", the module SOUND_START has the driver load into slot 0 (command 4, its result not looked at)
-name       CODE:5DCF CHOOSER_LOADED ; a word: 1 once CHOOSER_LOAD has loaded the chooser's files (CODE:75B6); CMPed with 1 at CODE:2810, 36C8 (ATTRACT_START), 4E71, set 0 at CODE:5040: presumably so that the first chooser does not load them again (not followed)
+name       CODE:5DCF CHOOSER_LOADED ; a word: 1 once CHOOSER_LOAD has loaded the chooser's files (CODE:75B6); CMPed with 1 at CODE:2810, 36C8 (ATTRACT_START), 4E71, set 0 at CODE:5040: so that the first chooser does not load them again; after a table the chooser loads menuchar.rix (CODE:2840) and its other files (CODE:4E98) itself (in the port since 2026-10-01)
 name       CODE:1311 CUBE_SEL      ; chooser\cube.rix's selector (INT 94h AH=1 in CHOOSER_LOAD; run 2026-09-29: 44h, MOD.INT's freed one); CUBE_SEL, TUBE_SEL, TORUS_SEL are read as a table by EBX*2 (CODE:3778, 469B, 4A05; not followed)
 name       CODE:1313 TUBE_SEL      ; chooser\tube.rix's (run: 134h)
 name       CODE:1315 TORUS_SEL     ; chooser\torus.rix's (run: 13Ch)
@@ -402,7 +402,11 @@ rwords     CODE:2C8BC 3            ; CODE:2C887
 rwords     CODE:2F91C 2            ; CODE:2F903; index the complement of the word at CODE:0020 (the record's word +2: FFFFh 0, FFFEh 1); the two arms are the same code
 rwords     CODE:300B9 8            ; CODE:300A0; index the low three bits of a byte (CODE:30099)
 rwords     CODE:308C7 2            ; CODE:308AD
-code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, with the selector saved from CS at CODE:A36A
+name       CODE:A448 TABLE_END     ; TABLE after the game: IRQ 1's vector back (CODE:A01E), TABLE_FADE_OUT, TABLE_SOUND_END, HISCORES_PUT, CODE:28D17 (LIGHTS_SEL, DROPS_SEL, MASKS_SEL but on table 2 freed), DM_FREE, VM_DATA_FREE (not on table 3), CODE:A4E1, the BLOCKS list (CODE:A55E) and the ALLOCS list (CODE:A52E, INT 92h AH=2) freed last first, then CODE:A499; in C in port/src/table.c, compared 2026-10-01 (docs/HANDOFF.md, "The table's end and the chooser again")
+name       CODE:A6B4 TABLE_FADE_OUT ; 32 pictures from the stage's palette toward TBL_PALETTE, the driver's command 6 after each with BX FFh less 8 a picture
+name       CODE:9FB1 TABLE_SOUND_END ; CD_STOP between two SND_PAUSEs (command 2, a toggle), the driver's commands 3, 5 (slot 0; slot 1 but on table 4) and 0Bh, the code alias at CODE:98A4 freed (INT 93h AH=0Dh)
+name       CODE:7182 DRIVER_RELOAD ; after a table (ENTRY's loop): the driver of the configuration header loaded and started again, CHOOSER_MOD_NAME into slot 0, command 0Ch with 0; in C in port/src/sound.c
+code       CODE:A4A9               ; far jump at CODE:A4A3 through CODE:A2C1, with the selector saved from CS at CODE:A36A; then TBL_DRIVER_SEL, TABLE_DS and CS's alias freed with INT 93h AH=0Dh: the driver's block stays allocated (the run's heap at CODE:7182)
 code       CODE:4DB7               ; pushed at CODE:4D90 as the return address of the routine that ends in XCHG [ESP],EBX (CODE:4DB3); RET
 words      CODE:29912 4 CODE       ; called in turn at CODE:298A7 through the pointer at CODE:2982E, which holds 29912h in the file; CODE:29873 (not reached yet) sets it to 29922h, a like table of four after this one
 words      CODE:7AC0 0C0 CODE stride=8 ; records of 8 bytes from CODE:7ABC to 80BCh, a dword ascending (presumably a time) and a handler: CODE:704E calls [ESI+4] while [CODE:8124] reaches the first dword ([CODE:8128] set to 7ABCh at CODE:789A)
@@ -684,7 +688,7 @@ name       CODE:1548 VSYNC_COUNT   ; a dword VSYNC_CB counts, once a retrace
 name       CODE:1323 CRT_START     ; the start address CRT_START_CB sets (E60h from SCROLL_INIT)
 name       CODE:191A CRT_START_ON  ; 1 from CHOOSER_MODE
 ; CHOOSER_WAIT's loop (CODE:38FD), read 2026-09-30
-code       CODE:25BB FRAME_WAIT    ; waits for VSYNC_COUNT to change, counting FRAME_SPINS; with CODE:1534 1 (set at CODE:4FF1, the path that loads the chooser's files again) the driver's command 8 (BL 0, CL 0), and once command 0Dh gives 280Ah or more CODE:1534 0 and command 0Ch with EBX 100h (not followed)
+code       CODE:25BB FRAME_WAIT    ; waits for VSYNC_COUNT to change, counting FRAME_SPINS; with CODE:1534 1 (set at CODE:4FF1, the path that loads the chooser's files again) the driver's command 8 (BL 0, CL 0), and once command 0Dh gives 280Ah or more CODE:1534 0 and command 0Ch with EBX 100h (in the port since 2026-10-01)
 name       CODE:154C FRAME_SPINS   ; a dword FRAME_WAIT counts while it waits; read by no instruction
 code       CODE:2389 MUSIC_MIX     ; the sound driver's command 6
 code       CODE:237C MUSIC_STOP    ; the sound driver's command 3
@@ -1142,7 +1146,7 @@ name       CODE:B5B2 DATALOAD2_KEY ; the header's value for two joined files (bi
 name       CODE:B721 DATALOAD2_TEMP1 ; the first file's selector ("TEMP DATALOAD 1", policy 1), freed after
 name       CODE:B723 DATALOAD2_TEMP2 ; the second's ("TEMP DATALOAD 2")
 code       CODE:B366 HISCORES_GET  ; the table's 32h bytes of HISCORES (TABLE_INDEX) to TABLE_HISCORES; CF when its first byte is 0
-code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94h AH=6 EDX 9Dh (the options saved, presumably; not followed)
+code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94h AH=6 EDX 9Dh (the options saved, presumably; not followed; the port stops there)
 name       CODE:D83A TABLE_HISCORES
 code       CODE:30368 DEC_TEXT     ; host vector +18h (see the comment there)
 name       CODE:30581 DEC_BCD      ; the BCD word DEC_TEXT adds up

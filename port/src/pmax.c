@@ -426,7 +426,14 @@ void pmax_free(uint16_t sel)
 
 void pmax_free_sel(uint16_t sel)
 {
+    int k;
+
     sels_init();
     if ((sel & 7) == 4 && sel / 8 < MAX_SELS)
         sels[sel / 8].used = 0;
+    /* a block's own selector: the block stays (the table's driver, seen
+     * in the run's heap at CODE:7182), no longer reached by it */
+    for (k = 0; k < MAX_BLOCKS; k++)
+        if (blocks[k].used && sel && blocks[k].sel == sel)
+            blocks[k].sel = 0;
 }

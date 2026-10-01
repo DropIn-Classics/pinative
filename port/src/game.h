@@ -136,6 +136,11 @@ void FRAMES_WAIT(void);
 /* modcode.c: the table module's routine at DS:`at` (a slot of its
  * header), in C per table; a RET returns, another stops the port */
 void MOD_CALL(uint32_t at);
+/* sound.c: CODE:7182, the chooser's driver loaded again after a table */
+void DRIVER_RELOAD(void);
+/* play.c: CODE:A704, CODE:B02B */
+void FADE_MIX(uint32_t src, uint32_t dst, uint8_t cl);
+void FADE_PAL_SET(void);
 /* modcode.c: the module object's +4 at DS:`at`, 1 when it is done */
 int MOD_UPDATE(uint32_t at);
 /* play.c: CODE:28E5D */

@@ -4068,6 +4068,50 @@ equal, the heap equal but for the header word at FEE61Eh as before.
 Not run: tunes 1 and 2 chosen (templates 1 and 2), event stream 4CBEh
 compared beyond pass 3000.
 
+### The table's end and the chooser again
+
+TABLE after the game (TABLE_END, CODE:A448), DRIVER_RELOAD (CODE:7182)
+and the chooser's second start are in the port since 2026-10-01
+(src/table.c, sound.c, chooser.c); ENTRY's loop (CODE:033F) goes round:
+chooser, table, chooser.
+
+Read from the listing: the table's end fades the stage's palette out in
+32 pictures (the driver's command 6 after each), stops the CD and the
+driver (commands 2, 2, 3, 5, 0Bh), puts the high scores back
+(HISCORES_PUT, CODE:B3A1: the file is written with INT 94h AH=6 only
+when they changed; the port stops there, not run), frees every block the
+table took and last the selectors made at its start with INT 93h AH=0Dh.
+TBL_DRIVER_SEL is one of them: pMAX frees the selector but not the
+block. The run's heap at CODE:7182 holds exactly one block, the table's
+"Sound Driver" (3500h bytes at 1473C0h); the chooser's driver loaded
+again goes after it (14A8D0h), and so does the next table's. Each
+round through a table thus loses 3500h bytes of pMAX's heap
+(presumably; one round seen). The port's pmax_free_sel keeps such a
+block.
+
+The second chooser: CHOOSER_LOADED is 0 then (set 0 at CODE:5040), so
+MENUCHAR_INIT loads menuchar.rix (CODE:2840) and CHOOSER_START its other
+five files (CODE:4E98), then CD_VOLUME FFh and track 33h; CODE:1534 1
+makes FRAME_WAIT restart the module (command 8) every frame until the
+driver's TICKS reach 280Ah, then MASTER_VOL 100h. KBD_INSTALL zeroes
+the ring's indices (CODE:1903, KEY_READ), which the port had left out
+(0 at the first chooser anyway).
+
+Compared (table 1: Esc in the attract mode at t=150, Y at 152, the
+port's pictures 7087 and 7157; Enter at 162 and 165, the port's 7406
+and 7580): at CODE:7182, at the second chooser's CHOOSER (CODE:4FF9),
+at FRAME_WAIT calls 300, 460, 550, 650, at the second TABLE (CODE:A323)
+and at passes 1300, 1500, 2000, 3000 of the table's frame (the second
+visit to table 1, the passes counted over both): CODE but FRAME_SPINS,
+FRAME_COUNT (one ahead) equal, video memory equal, pMAX's heap equal
+but the free space, the drivers' SAVED_61 and mixer positions and one
+header's last word, as before. The run's seconds and the port's
+pictures do not map simply: Enter at 162 needed picture 7406 (found by
+trying; 7475 left CAPTION_TIME 7 apart). Not run: a table's end with
+changed high scores, the driver's block lost again in a second round
+(heap after two tables), Esc from the second chooser (the program's
+end).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4342,11 +4386,13 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      frames) found 2026-10-01 to be the runner's timing, see "Table
      2's FRAME_COUNT"; event opcode 14h's module object (table
      2's music chooser) done 2026-10-01, see "Table 2's music chooser in
-     the port"; next: the paths blind games did not run, and the table's
-     end after Y);
+     the port"; the table's end after Y and the chooser again done
+     2026-10-01, see "The table's end and the chooser again"; next: the
+     high scores' file (HISCORES_PUT's INT 94h AH=6), the paths blind
+     games did not run);
      later table 2's slot 40, and the
-     other phases as a game reaches them; the table's end after Y (TABLE
-     from CODE:A3FF, then the chooser again, CODE:7182).
+     other phases as a game reaches them; the table's end after Y (done
+     2026-10-01, see "The table's end and the chooser again").
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte
      headers `01, used FFh/00, selector, size rounded to 16, name offset,
      name selector, policy`): a chain from 1473B0h to FEFFF0h, first fit

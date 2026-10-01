@@ -122,7 +122,7 @@ static void DM_SHOW(void)
 
 /* CODE:A704: TBL_FADE_PAL mixed from the palette at `src` and the one at
  * `dst`: (src x (20h - cl) + dst x cl) / 20h, a byte at a time */
-static void FADE_MIX(uint32_t src, uint32_t dst, uint8_t cl)
+void FADE_MIX(uint32_t src, uint32_t dst, uint8_t cl)
 {
     uint32_t b;
 
@@ -131,7 +131,7 @@ static void FADE_MIX(uint32_t src, uint32_t dst, uint8_t cl)
 }
 
 /* CODE:B02B: TBL_FADE_PAL to the DAC from colour 0, shifted right 2 */
-static void FADE_PAL_SET(void)
+void FADE_PAL_SET(void)
 {
     uint32_t i;
 

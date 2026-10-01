@@ -90,10 +90,11 @@ void ENTRY(void)
     {
         uint8_t al = CHOOSER_START();
 
-        if (al < 4) {
+        while (al < 4) {
             VGA_INIT();
             TABLE((uint8_t)(al + 1));
-            pi_stop("the chooser again (CODE:7182)");
+            DRIVER_RELOAD();
+            al = CHOOSER_START();
         }
     }
     CD_LOCK(0);

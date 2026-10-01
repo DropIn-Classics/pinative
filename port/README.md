@@ -589,6 +589,15 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   but the runner's timing and the keys, video memory and the heap equal
   as before (docs/HANDOFF.md, "Table 2's music chooser in the port");
   only tune 0 chosen.
+- 2026-10-01, Linux: the table's end and the chooser again (table 1:
+  Esc and Y in the attract mode, the port's pictures 7087 and 7157,
+  then Enter at 7406 and 7580, dosrun's t=150, 152, 162, 165): at
+  CODE:7182, the second chooser's CODE:4FF9, its FRAME_WAIT calls 460,
+  550, 650, the second CODE:A323 and passes 1300, 1500, 2000, 3000 of
+  the second visit: CODE but the runner's timing, video memory and the
+  heap equal as before (docs/HANDOFF.md, "The table's end and the
+  chooser again"). Not run: changed high scores (the port stops at
+  their file's write).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
