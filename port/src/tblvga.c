@@ -126,6 +126,52 @@ static void MODE_VGA360(void)
     mode_cells(0x7F, 0x11A, 0xE898, 2, 0x46);
 }
 
+/* CODE:97A4 (MODE_SVGA640, `w800` 0) and CODE:9822 (MODE_SVGA800):
+ * OPT_SVGA_MODE set (up to 13h the VESA mode 100h + it, else a BIOS
+ * mode), then planar as VGA 360 (CODE:95F3, 957E), the line 336 pixels
+ * (CODE:95A1), the horizontal retrace moved by half the width taken off
+ * (CODE:95B5), 84 bytes a line, the split at 448 or 568 */
+static void MODE_SVGA(int w800)
+{
+    uint32_t m = rb(N_OPT_SVGA_MODE);
+    uint8_t bl = w800 ? 0x64 : 0x50, al, ah;
+    int twice;
+
+    wb(N_MODE_SVGA800_FLAG, (uint8_t)w800);
+    if (m <= 0x13)
+        vga_set_mode_vesa((int)(0x100 + m), 1);         /* AX=4F02h, a failure not looked at */
+    else
+        vga_set_mode((int)m);                           /* AH=0 */
+    crtc_mod(0x11, 0x7F, 0);                            /* CODE:95F3 */
+    vga_outw(0x3C4, 0x0604);                            /* CODE:957E */
+    crtc_mod(0x17, 0xFF, 0x40);
+    crtc_mod(0x14, 0xBF, 0);
+    vga_outb(0x3D4, 1);                                 /* CODE:95A1 */
+    vga_outb(0x3D5, vga_inb(0x3D5) > 0x96 ? 0x53 : 0x29);
+    bl = (uint8_t)((uint8_t)(bl - 0x2A) >> 1);          /* CODE:95B5 */
+    vga_outb(0x3D4, 4);
+    al = vga_inb(0x3D5);
+    twice = al >= 0x96;
+    if (twice)
+        al = (uint8_t)(al - bl);
+    vga_outb(0x3D5, (uint8_t)(al - bl));
+    vga_outb(0x3D4, 5);
+    al = vga_inb(0x3D5);
+    ah = (uint8_t)(al & 0xE0);
+    al = (uint8_t)(al - bl);
+    if (twice)
+        al = (uint8_t)(al - bl);
+    vga_outb(0x3D5, (uint8_t)((al & 0x1F) | ah));
+    vga_outw(0x3D4, 0x2A13);
+    if (w800) {
+        TBL_SPLIT_SET(0x238);
+        mode_cells(0xE3, 0x20, 0xF258, 2, 0x3C);
+    } else {
+        TBL_SPLIT_SET(0x1C0);
+        mode_cells(0xB3, 0x98, 0xEEEE, 2, 0x3C);
+    }
+}
+
 /* CODE:9265: one picture timed with PIT channel 0 (mode 0 from 0); FRAME_RATE
  * 1234DCh / the ticks, at most 3Dh.  The port takes the ticks of one
  * picture of the mode set (vga_refresh_hz, as the retraces are timed);
@@ -249,8 +295,12 @@ void TBL_VGA_INIT(void)
         MODE_VGA360();
     else if (mode == N_MODE_VGA320)
         MODE_VGA320();
+    else if (mode == N_MODE_SVGA640)
+        MODE_SVGA(0);
+    else if (mode == N_MODE_SVGA800)
+        MODE_SVGA(1);
     else
-        pi_stop("TBL_VGA_INIT: an SVGA mode (CODE:97A4, CODE:9822)");
+        pi_stop("TBL_VGA_INIT: a mode routine not in MODE_ROUTINES");
     MEASURE_RATE();
     MAP_MASK(0x0F);
     vram_clear();

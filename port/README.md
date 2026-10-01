@@ -16,7 +16,7 @@ archive as tools/illfiles.py reads it; both unpack as pMAX does since
 the SHA-256 of src/gen/names.h checked). Translated: ENTRY and
 SETUP_ARGS (src/entry.c, src/setup.c; the configuration file and
 SETSOUND.DAT through src/pmax.c, in place of pMAX's services) and
-SVGA_CHECK for VGA, VGA_INIT (the "Loading" picture) and HISCORE_INIT
+SVGA_CHECK (the SVGA modes as a VESA card answers, since 2026-10-01), VGA_INIT (the "Loading" picture) and HISCORE_INIT
 (src/video.c), CHOOSER_LOAD's start and SOUND_START (src/sound.c; the
 CD check in src/cd.c) and the sound driver's commands 0 and 4
 (src/nosound.c, NOSOUND.SDR's commands in C, command 4 loading
@@ -155,8 +155,9 @@ gives the game a header of its own naming NOSOUND.SDR and the options
 all 0 (the port loads NOSOUND.SDR whatever is named, so a set-up
 would change nothing), and makes the file at that place when the options are first
 saved (the high scores). This is the port's behaviour, not the game's
-(since 2026-10-01). `-opt s` still stops at SOUND_SETUP; a file with an
-SVGA mode stops the port at SVGA_CHECK.
+(since 2026-10-01). `-opt s` still stops at SOUND_SETUP. A file with an
+SVGA mode shows the table at 640x480 or 800x600 through doskit's VESA
+modes (since 2026-10-01).
 
 ## Releases
 
@@ -683,4 +684,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   before: three Space presses 6 pictures apart in play on table 1 tilt,
   "TILT" shown, the ball lost, the next ball served. Not compared with
   the original's memory; the window builds not tried.
+- 2026-10-01, Linux, headless: the SVGA resolutions (OPT_RESOLUTION 1
+  and 2; SVGA_CHECK, MODE_SVGA640, MODE_SVGA800 and doskit's VESA modes;
+  docs/HANDOFF.md, "The SVGA modes in the port"), which stopped the
+  port before: the table in 640x480 and 800x600 pictures, the 336
+  pixels in the middle; on 800x600 a game of three balls. Not compared
+  with the original's memory; the window builds not tried.
 - Not built on macOS since.

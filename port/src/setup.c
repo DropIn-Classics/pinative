@@ -100,13 +100,23 @@ done:
 }
 
 /* CODE:0753: the SVGA mode checked and found for OPT_RESOLUTION 1 and 2;
- * nothing for VGA (0, 3) */
+ * nothing for VGA (0, 3).  The port is a VESA card with no S3 BIOS and
+ * the modes 101h and 103h (doskit's vga.c, as the runner's):
+ * - a mode kept in OPT_SVGA_MODE is set with INT 10h AH=0 (AL the
+ *   number, a BIOS text mode for 1 or 3) and checked (CODE:0649): the
+ *   BIOS's state block (AH=1Bh, CODE:065C) the runner does not fill, and
+ *   the registers (CODE:06B1) want chain-4, which a text mode has not, so
+ *   the check fails as in the runs (the port sets no mode there: the
+ *   next mode set comes before a picture, presumably; not traced);
+ * - SVGA_FIND (CODE:05FF): no "S3" at C0000h, VESA answers (AX=4F00h,
+ *   "VESA"): CL - 2, 1 for 640x480 or 3 for 800x600, into OPT_SVGA_MODE;
+ * - the options written back (INT 94h AH=6). */
 void SVGA_CHECK(void)
 {
     uint8_t r = rb(N_OPT_RESOLUTION);
 
     if (r == 0 || r == 3)
         return;
-    /* INT 10h with OPT_SVGA_MODE, CODE:0649, SVGA_FIND, INT 94h AH=6 */
-    pi_stop("SVGA_CHECK's SVGA modes");
+    wb(N_OPT_SVGA_MODE, (uint8_t)(2 * r + 1 - 2));
+    pmax_cfg_write(N_OPTIONS);
 }

@@ -4266,6 +4266,38 @@ the nudge count F8h (the original's run: F3h at the third nudge),
 and 6 in the same frame, the tilt flag 0 again. Not compared with a run
 of the original byte by byte; the bonus not seen (it was 0).
 
+### The SVGA modes in the port
+
+SVGA_CHECK (CODE:0753) and the mode routines MODE_SVGA640 (CODE:97A4) and
+MODE_SVGA800 (CODE:9822) are in the port since 2026-10-01 (src/setup.c,
+src/tblvga.c); before, OPT_RESOLUTION 1 or 2 stopped it at SVGA_CHECK.
+doskit's runtime vga.c got the VESA modes 100h, 101h and 103h for it
+(vga_set_mode_vesa, the runner's register tables, 8 pixels a character
+clock, 40 MHz for clock selects 2 and 3; pictures up to 800x600).
+
+- The port answers as the runner's card does (see "The SVGA modes in a
+  run"): no S3 BIOS, VESA there, so OPT_SVGA_MODE becomes 1 (640x480) or
+  3 (800x600) and the options are written back, also when a mode was
+  kept (the kept mode's check fails on the runner: its INT 10h AH=1Bh
+  fills nothing, and AH=0 with 1 or 3 sets a text mode without chain-4).
+  The port sets no mode in SVGA_CHECK; that the next mode set comes
+  before a picture is presumed, not traced.
+- The picture: the game narrows the line to 336 pixels and moves the
+  horizontal retrace by half the width taken off. vga.c gives the
+  mode's whole width with those pixels in the middle and the overscan
+  colour on both sides, as a monitor presumably shows it (not seen on
+  one). So the window shows the table narrow and tall, square pixels.
+
+Runs 2026-10-01, Linux, headless, a copy of the runner's ILLUSION.CFG
+with OPT_RESOLUTION set (`build/run/state/ILLUSION.CFG`, re-chained by
+a scratch script): 640x480 and 800x600 pictures with the table above
+and the display below the split; the file afterwards had OPT_SVGA_MODE
+1 and 3. On 800x600 a game with Enter every 300 pictures played three
+balls through GAME_PHASE 4, 5, 6 and 7 (3706 table frames, stopped by
+DK_FRAMES). Not compared with the runner's memory; the window builds
+not tried; an S3 card's or a BIOS mode (OPT_SVGA_MODE above 13h) not
+run.
+
 ### The take handlers forced in a run
 
 The take handlers the blind games did not run, each forced 2026-10-01 by
