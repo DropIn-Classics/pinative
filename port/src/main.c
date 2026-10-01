@@ -10,7 +10,9 @@
  * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
  * copied there (cdimage.h; -gog names the image or the folder instead of
  * looking for it).
- * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there);
+ * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there,
+ * else the data folder's; none there: the options 0, no sound set-up, the
+ * file made when the options are saved, pmax.h);
  * -opt the letters after the '/' of the command line (the GOG release's
  * ILLUSION.BAT passes its own arguments there: o the options screen, s the
  * sound set-up, r the options cleared, ? the help).
@@ -135,6 +137,12 @@ int main(int argc, char **argv)
         pi_stop("ENTRY");
     if (!cfg) {
         sys_join(path, sizeof path, game, "ILLUSION.CFG");
+        if (!sys_is_file(path)) {
+            char data[SYS_PATH];
+
+            sys_data_dir(data, sizeof data);
+            sys_join(path, sizeof path, data, "ILLUSION.CFG");
+        }
         cfg = path;
     }
     pmax_cfg_open(cfg);

@@ -147,8 +147,16 @@ The runtime is in the doskit submodule: after a clone or a pull,
 otherwise). Any `ILLUSION.CFG` the game's set-up wrote will do for
 `-cfg`, whatever driver it names: the port always loads NOSOUND.SDR
 (only dosrun's comparison runs need a file naming it). Without `-cfg`
-the port stops at SOUND_SETUP; a file with an SVGA mode stops it at
-SVGA_CHECK.
+the port takes `ILLUSION.CFG` in the game's folder, else the one in the
+data folder (`%LOCALAPPDATA%\Pinball Illusions`, `~/.local/share/pinative`,
+`~/Library/Application Support/Pinball Illusions`). With no file the
+port does not run the game's sound set-up, as the original would: it
+gives the game a header of its own naming NOSOUND.SDR and the options
+all 0 (the port sounds through doskit's Sound Blaster and needs no
+set-up), and makes the file at that place when the options are first
+saved (the high scores). This is the port's behaviour, not the game's
+(since 2026-10-01). `-opt s` still stops at SOUND_SETUP; a file with an
+SVGA mode stops the port at SVGA_CHECK.
 
 ## Releases
 
@@ -627,4 +635,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
 - 2026-10-01, Windows (MSVC) by the user: built without errors (no
   run reported).
+- 2026-10-01, Windows by the user: with no ILLUSION.CFG the port
+  stopped at SOUND_SETUP. Since then (Linux, headless, `-cfg` naming a
+  missing file): it runs past SETUP_ARGS into the attract mode (stopped
+  by `timeout` after 120 s), no file written; `-opt s` stops at
+  SOUND_SETUP. The file made by a first save not tried; not run on
+  Windows since.
 - Not built on macOS since.

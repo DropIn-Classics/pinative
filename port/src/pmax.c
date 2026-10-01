@@ -53,10 +53,15 @@ void pmax_cfg_open(const char *path)
     uint8_t *f = path ? sys_load(path, &n) : NULL;
 
     cfg_there = f && n == CFG_SIZE;
-    if (cfg_there) {
+    if (cfg_there)
         memcpy(cfg, f, CFG_SIZE);
-        snprintf(cfg_path, sizeof cfg_path, "%s", path);
+    else {
+        /* the port's own header, not the sound set-up's: the driver named
+         * (the port loads NOSOUND.SDR whatever is named), the rest 0 */
+        memset(cfg, 0, 0x20);
+        memcpy(cfg, "NOSOUND.SDR", 11);
     }
+    snprintf(cfg_path, sizeof cfg_path, "%s", path ? path : "");
     free(f);
 }
 
@@ -80,7 +85,7 @@ void pmax_cfg_write(uint32_t off)
     FILE *f;
     uint32_t i;
 
-    if (!cfg_there)
+    if (!cfg_path[0])
         return;
     for (i = 0; i < 0x200; i++)
         s[i] = (uint8_t)(rb(off + i) ^ (i < 4 ? key[i] : s[i - 4]));
@@ -88,6 +93,7 @@ void pmax_cfg_write(uint32_t off)
     if (!f || fwrite(cfg, 1, CFG_SIZE, f) != CFG_SIZE)
         pi_stop("INT 94h AH=6: the configuration file not written");
     fclose(f);
+    cfg_there = 1;
 }
 
 int pmax_cfg_header(uint32_t off)
@@ -95,7 +101,7 @@ int pmax_cfg_header(uint32_t off)
     uint32_t i;
 
     for (i = 0; i < 0x20; i++)
-        wb(off + i, cfg_there ? cfg[i] : 0xFF);
+        wb(off + i, cfg[i]);
     return 0;
 }
 

@@ -29,16 +29,19 @@ uint16_t pmax_code_sel(void);
 void pmax_set_code_sel(uint16_t sel);
 
 /* INT 94h AH=8: the configuration file.  The port reads the player's file
- * at `path` (NULL or missing: none, the options all 0 and the header all
- * FFh; the original then creates it and runs the sound set-up, which the
- * port does not). */
+ * at `path`.  Missing (or NULL): the options all 0 and a header of the
+ * port's own naming NOSOUND.SDR, so that the sound set-up is not called
+ * (the original's header is all FFh then and the set-up runs; the port
+ * sounds through doskit and needs none); the file is made at `path` by the
+ * first AH=6. */
 void pmax_cfg_open(const char *path);
 /* INT 94h AH=7: its 200h bytes of options to `off` in CODE (at pm_ds) */
 void pmax_cfg_read(uint32_t off);
 /* INT 94h AH=6: the 200h bytes of options at `off` in CODE stored back,
  * chained as AH=7 reads them, the header left as it was (run 2026-10-01,
- * docs/HANDOFF.md, "The high scores' file").  Without a file the port
- * writes none (the original's file made by AH=8 is not looked at). */
+ * docs/HANDOFF.md, "The high scores' file"); with no file before, the
+ * port's header with them (the original's file made by AH=8 is not looked
+ * at).  A NULL path: nothing written. */
 void pmax_cfg_write(uint32_t off);
 /* INT 94h AH=5: its first 20h bytes to `off` in CODE; 0 (CF clear) */
 int pmax_cfg_header(uint32_t off);
