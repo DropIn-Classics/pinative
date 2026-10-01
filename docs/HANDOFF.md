@@ -3793,6 +3793,58 @@ The pictures were found by counting passes (the wait's by `-log
 12C14E`, ATTRACT's by `-log 12B428`, the port's frames by a scratch
 print) as in "GAME_PHASE 3 and 8 in the port".
 
+### The objects a ball hits in the port
+
+OBJECT_HITS (CODE:2C7FC) is in the port with its three object types
+(src/events.c, 2026-10-01): type 0 (OBJECT_TYPE0, CODE:2C8C2), type 1
+(DROP_HIT, CODE:2C9D4) and type 2 (OBJECT_TYPE2, CODE:2CB03); names in
+src/ILLUSION.hints. Blind games on table 1 with the flipper keys
+tapped every 20..53 frames all stopped there (`OBJECT_HITS: an object
+of type 0`) or at zone type 4.
+
+What was learned (from the listing; the run below agrees where it ran):
+
+- The ball's +6Ch is the surface number less 20h (BALL_COLLIDE) for
+  surfaces 20h and above. OBJECT_TYPE0 debounces only the objects
+  below index 20h (surfaces 20h..3Fh): byte +2 set to 6 and counted
+  down by OBJECT_TIMERS; the others are handled every frame the ball
+  touches them.
+- Type 0 is zone_pay with other offsets: the light state at +4, the
+  points record at +0Ch (TAKE_PAY from its +12h, SCORE_ADD from +1Ah
+  when the player's light bit was set already), the object's record +8
+  (RECORD_DISPATCH), two event streams (the record's +1Ah dword and
+  the object's +10h).
+- Type 2 sets the ball's speed (+0Eh, +10h) to the object's words +6,
+  +8 when the slot-15 record at +2 is lit for the player, and takes the
+  record (RECORD_TAKE). Not run: which object of which table is of
+  type 2 was not looked for.
+
+Input by frames: doskit's runner has `-keyat ADDR[#N] KEY+|KEY-`
+since 2026-10-01 (a key down or up at the Nth pass of an address;
+doskit's selftest checks it on HELLO.EXE), so a run and the port get
+the same keys at the same frame without matching times. On table 1 the
+port's FRAME_STEP count is the picture less 5902 (the chooser's Enter
+at pictures 5637 and 5815 as before), and a key the port takes in
+frame F's retrace wait is read in that frame as in a run with the key
+at CODE:298C5's pass F + 1 (linear 12A7F5): F1 at 1185 and Enter at
+1299 gave the states of "A game's start" and "GAME_PHASE 6 in the
+port" (equal at pass 1250 and on). Two keys at the same pass do not
+work so: the run took the second key's IRQ 1 about 6.2 ms later
+(KBD_IRQ at t=156.560334 and 156.566489 for Left and Right Shift at
+pass 1450), after that frame's flipper reads (CODE:14757 at 156.5629),
+so the right flipper (the fourth record) moved a frame later than in
+the port (its +10h, +12h, +1Ah one frame behind from pass 1451 on) and
+the ball, hit by it, parted at pass 1454. Why the
+second interrupt waits is not followed (presumably IRQ 0 in service
+under it: KBD_IRQ's non-specific EOI would then end IRQ 0's instead;
+not checked). Keys one frame apart compare.
+
+Compared: see port/README.md, "Checked" (2026-10-01). Not run:
+DROP_HIT (table 1's drop targets were not hit in that game; the
+earlier reading of 2026-09-29 is all there is), OBJECT_TYPE2, type 0's
+branch of a light already set, an index of 20h and above, a timer
+running.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4055,7 +4107,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      (CODE:2A557) done 2026-09-30, see "GAME_PHASE 3 and 8 in the
      port"; the headers of pMAX's heap done 2026-09-30, see "pMAX's heap
      headers"; the bumpers' and slingshots' kicks done 2026-09-30, see
-     "The kicks in the port"); later table 2's slot 40, and the
+     "The kicks in the port"; the objects a ball hits done 2026-10-01,
+     see "The objects a ball hits in the port"; next zone type 4, the
+     holes, CODE:2C719, where blind flipper games stop now);
+     later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).
    - pMAX's heap, needed for that (walked in -mem dumps with 10h-byte

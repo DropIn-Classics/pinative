@@ -81,8 +81,11 @@ bounce with its friction, the move and the slope; the zones of types
 n"), play (GAME_PHASE 4, CODE:2B76E, src/play.c and src/events.c:
 the event streams with the opcodes met so far, the lit records' timers
 and lamps, the counters' and objects' timers, the ball save's lamp, the
-M key, the flippers' masks and surfaces in src/phys.c, a zone's light
-flashed, a module's note through the driver's command 7), a lost ball
+M key, the flippers' masks and surfaces in src/phys.c, the bumpers'
+and slingshots' kicks, the objects a ball hits (OBJECT_HITS: type 0
+with its light and points, drop targets, type 2's record taken), a
+zone's light flashed, a module's note through the driver's command 7),
+a lost ball
 served again under the ball save (GAME_PHASE 7, "DON'T MOVE"), a lost
 ball without it (GAME_PHASE 5, CODE:2BBC6: the bonus with its
 multiplier, the table module's bonus display, slot 32, and table 1's
@@ -520,6 +523,24 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   slingshot 1 and bumpers 3, 1 and 2: CODE but FRAME_SPINS, video
   memory equal, the heap but the driver's clock and the top's free
   space; both kicks and CODE:28E7B ran whole (dosrun `-cover`).
+- 2026-10-01, Linux: OBJECT_HITS (CODE:2C7FC) with its three object
+  types, in a blind game on table 1 with the flippers: the keys given
+  by table frame to both (the port's DK_KEYS picture = the frame +
+  5902; dosrun `-keyat 12A7F5#N KEY+` / `KEY-` at the Nth pass of
+  CODE:298C5, N = the frame + 1): F1 at frame 1185, Enter 1299, then
+  every 45 frames Left Shift and one frame later Right Shift, each held
+  8 frames. Compared at CODE:298C5's passes 1700, 1791, 1794, 1850 and
+  1911 (the port stopped there by a scratch stop; at 1911 it stops in
+  ZONES_CHECK, zone type 4): CODE but FRAME_SPINS, video memory equal,
+  the heap (1473B0h..FF0000h, compared by a scratch script) but the
+  driver's block at 1473C0h, the top's free space and the last word of
+  "table bin file relocation table"'s header. The ball hit an object
+  of type 0 (index 1) in frame 1792; OBJECT_TYPE0 ran but for the
+  branch of a light already set (dosrun `-cover`); DROP_HIT and
+  OBJECT_TYPE2 did not run. Both shifts in the same frame do not
+  compare: the run took the second key's interrupt about 6 ms later,
+  after that frame's flipper reads (docs/HANDOFF.md, "The objects a ball
+  hits in the port").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

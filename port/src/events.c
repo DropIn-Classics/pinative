@@ -889,12 +889,165 @@ void OBJECT_TIMERS(void)
     objects_down(rd(rd(0x0014) + 0x28CE));
 }
 
+/* CODE:2C8C2: object type 0, [0000] the object, [0020]'s low word its
+ * index: below 20h only when its timer (byte +2) has run out, then set to
+ * 6 (OBJECT_TIMERS counts it down). With a light state at +4 the player's
+ * bit set in it; when it was set already the light flashed 8 times and
+ * the points of the record at +0Ch to the score only (SCORE_ADD from
+ * +1Ah), else flashed 0Ch times and, as without a light, its points
+ * (TAKE_PAY from +12h); the object's record +8 (RECORD_DISPATCH), the
+ * record's event stream +1Ah and the object's +10h */
+static void OBJECT_TYPE0(void)
+{
+    uint32_t o = rd(0x0000), r;
+
+    if (rw(0x0020) < 0x20) {
+        if (rb(o + 2) != 0)
+            return;
+        wb(o + 2, 6);
+    }
+    wd(0x0004, rd(o + 0x0C));
+    r = rd(o + 4);
+    wd(0x0020, r);
+    if (r != 0) {
+        uint16_t cx = rw(rd(0x0014) + 0x0D72);
+        unsigned b = cx & 7;
+        int was = rb(r) >> b & 1;
+
+        wd(0x0008, r);
+        wd(0x0020, (r & 0xFFFF0000u) | cx);
+        wb(r, (uint8_t)(rb(r) | 1u << b));
+        if (was) {
+            wd(0x0020, (r & 0xFFFF0000u) | 8);
+            LIGHT_QUEUE();
+            wd(0x000C, rd(0x0004) + 0x1A);
+            SCORE_ADD();
+            goto rest;
+        }
+        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) | 0x0C);
+        LIGHT_QUEUE();
+    }
+    wd(0x000C, rd(0x0004) + 0x12);
+    TAKE_PAY();
+rest:                                                   /* CODE:2C973 */
+    o = rd(0x0000);
+    wd(0x000C, o);
+    r = rd(o + 8);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        RECORD_DISPATCH();
+    }
+    r = rd(rd(0x0004) + 0x1A);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        EVENT_QUEUE();
+    }
+    r = rd(rd(0x000C) + 0x10);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        EVENT_QUEUE();
+    }
+}
+
+/* CODE:2C9D4: a drop target hit, [0000] the target, its bank at +22h: the
+ * player's bit in the light state +2, the bank's points (TAKE_PAY from
+ * +16h), the sound record +6, the target down (+0Bh FFh) and queued for
+ * DROP_SET (state+2A60h); when every target of the bank (a chain by +1Eh
+ * from the bank's +0) is down, the bank's event stream +16h, and unless
+ * the bank's +4 bit 0 is set the bank onto the stack at state+2AD0h to
+ * be raised (DROPS_RAISE_STEP) */
+static void DROP_HIT(void)
+{
+    uint32_t o = rd(0x0000), r, st, p;
+
+    wd(0x0004, rd(o + 0x22));
+    r = rd(o + 2);
+    wd(0x0020, r);
+    if (r != 0) {
+        uint16_t cx = rw(rd(0x0014) + 0x0D72);
+
+        wd(0x0008, r);
+        wd(0x0020, (r & 0xFFFF0000u) | cx);
+        wb(r, (uint8_t)(rb(r) | 1u << (cx & 7)));
+    }
+    wd(0x000C, rd(0x0004) + 0x16);
+    TAKE_PAY();
+    o = rd(0x0000);
+    r = rd(o + 6);
+    wd(0x0020, r);
+    if (r != 0) {
+        wd(0x0000, r);
+        SFX_PLAY();
+        wd(0x0000, o);
+    }
+    o = rd(0x0000);                                     /* CODE:2CA4D */
+    wb(o + 0x0B, 0xFF);
+    st = rd(0x0014);
+    p = rd(st + 0x2A60) - 4;
+    wd(p, o);
+    p -= 2;
+    wd(0x0008, p);
+    ww(p, 1);
+    wd(st + 0x2A60, p);
+    wd(0x0020, rd(rd(0x0004)));
+    for (;;) {                                          /* CODE:2CA8E */
+        uint32_t t = rd(0x0020);
+
+        wd(0x0008, t);
+        if (rb(t + 0x0B) == 0)
+            return;
+        wd(0x0020, rd(t + 0x1E));
+        if (rd(0x0020) == 0)
+            break;
+    }
+    r = rd(0x0004);
+    wd(0x000C, r);
+    wd(0x0020, rd(r + 0x16));
+    if (rd(0x0020) != 0) {
+        wd(0x0000, rd(0x0020));
+        EVENT_QUEUE();
+    }
+    r = rd(0x000C);                                     /* CODE:2CAD4 */
+    if (rb(r + 4) & 1)
+        return;
+    st = rd(0x0014);
+    p = rd(st + 0x2AD0) - 4;
+    wd(0x0008, p);
+    wd(p, r);
+    wd(st + 0x2AD0, p);
+}
+
+/* CODE:2CB03: object type 2, [0000] the object: when the slot-15 record
+ * at +2 is lit for the player (its byte +1), the ball's speed (+0Eh,
+ * +10h) set to the object's words +6, +8 and the record taken
+ * (RECORD_TAKE) */
+static void OBJECT_TYPE2(void)
+{
+    uint32_t o = rd(0x0000), r = rd(o + 2), st = rd(0x0014), b;
+
+    wd(0x0008, r);
+    wd(0x0038, (uint32_t)sx16(rw(st + 0x0D72)));
+    wd(0x003C, (uint32_t)sx16(rw(st + 0x0D74)));
+    if (!bit_of(r + 1, pbit()))
+        return;
+    wd(0x0020, (uint32_t)sx16(rw(o + 6)));
+    wd(0x0024, (uint32_t)sx16(rw(o + 8)));
+    b = rd(0x0010);
+    ww(b + 0x0E, rw(o + 6));
+    ww(b + 0x10, rw(o + 8));
+    RECORD_TAKE();
+}
+
 /* CODE:2C7FC: each ball in play whose +6Ch picks an object in the table
- * at its +60h: the object handled by its type (none translated yet) */
+ * at its +60h: the object handled by its type (the switch at CODE:2C8BC;
+ * [0008] kept across) */
 void OBJECT_HITS(void)
 {
-    uint32_t st = rd(0x0014), b, o;
-    uint16_t n = rw(st + 0x0D32), bp;
+    uint32_t st = rd(0x0014), b, o, keep8;
+    uint16_t n = rw(st + 0x0D32), bp, t;
     static char why[64];
 
     wd(0x0008, st + 0x1046);
@@ -914,9 +1067,21 @@ void OBJECT_HITS(void)
                 wd(0x0024, o);
                 if (o != 0) {
                     wd(0x0000, o);
-                    snprintf(why, sizeof why, "OBJECT_HITS: an object of type %u (CODE:2C8BC)",
-                             (unsigned)rw(o));
-                    pi_stop(why);
+                    t = rw(o);
+                    cw(0x0028, rw(0x2C8BC + (uint32_t)t * 2));  /* the switch's entry */
+                    keep8 = rd(0x0008);
+                    if (t == 0)
+                        OBJECT_TYPE0();
+                    else if (t == 1)
+                        DROP_HIT();
+                    else if (t == 2)
+                        OBJECT_TYPE2();
+                    else {
+                        snprintf(why, sizeof why, "OBJECT_HITS: an object of type %u (CODE:2C8BC)",
+                                 (unsigned)t);
+                        pi_stop(why);
+                    }
+                    wd(0x0008, keep8);
                 }
             }
         }
