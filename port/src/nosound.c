@@ -11,6 +11,7 @@
 #include "gen/nosound.h"
 #include "nosound.h"
 #include "pmax.h"
+#include "platform.h"
 #include "pmem.h"
 
 enum {
@@ -400,6 +401,48 @@ void ns_retrace(void)
     pm_ds = save;
 }
 
+/* The port's sound: what the driver mixed (its DMA buffer, DMA_SEL: mono
+ * words at MIX_RATE), sample by sample as SAMPLE_POS passes it, the way
+ * the card would have played it; to the platform's audio through a FIFO.
+ * The port's own, not the driver's (NOSOUND sends nothing anywhere). */
+#define OUT_FIFO 16384                  /* a power of 2; about 0.37 s at 44100 */
+#define OUT_KEEP 4096                   /* more waiting than this: the oldest dropped */
+static int16_t out_fifo[OUT_FIFO];
+static unsigned out_head, out_tail;    /* written by the game, read by the audio thread */
+static int out_on;
+
+static void out_fill(int16_t *out, int frames, void *user)
+{
+    int i;
+
+    (void)user;
+    for (i = 0; i < frames; i++) {
+        int16_t v = 0;
+
+        if (out_tail != out_head)
+            v = out_fifo[out_tail++ & (OUT_FIFO - 1)];
+        out[2 * i] = out[2 * i + 1] = v;
+    }
+}
+
+static void out_start(void)
+{
+    if (!out_on)
+        out_on = plat_audio_start(rw(D_MIX_RATE), out_fill, NULL) ? 1 : -1;
+}
+
+static void out_sample(void)
+{
+    if (out_on != 1)
+        return;
+    plat_audio_lock();
+    out_fifo[out_head++ & (OUT_FIFO - 1)] =
+        (int16_t)lrw(pmax_base(rw(D_DMA_SEL)) + 2 * (uint16_t)rd(D_SAMPLE_POS));
+    if (out_head - out_tail > OUT_KEEP)
+        out_tail = out_head - OUT_KEEP;
+    plat_audio_unlock();
+}
+
 static void TIMER_IRQ(void)
 {
     uint32_t save = pm_ds;
@@ -409,6 +452,7 @@ static void TIMER_IRQ(void)
         RETRACE();
     timer_due += 1193182.0 / rw(D_PIT_DIV) / vga_refresh_hz();
     for (; timer_due >= 1.0; timer_due -= 1.0) {
+        out_sample();
         wd(D_SAMPLE_POS, rd(D_SAMPLE_POS) + 1);
         if ((uint16_t)rd(D_SAMPLE_POS) >= rw(D_MIX_SIZE))
             wd(D_SAMPLE_POS, 0);
@@ -516,6 +560,7 @@ static void TIMER_START(void)
     timer_ds = pm_ds;
     timer_due = 0;
     frame_set_tick(TIMER_IRQ);
+    out_start();
 }
 
 /* CODE:0B96: NBUF from CX (2..0Fh); the buffers made again for another;

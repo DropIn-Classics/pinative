@@ -153,7 +153,7 @@ data folder (`%LOCALAPPDATA%\Pinball Illusions`, `~/.local/share/pinative`,
 port does not run the game's sound set-up, as the original would: it
 gives the game a header of its own naming NOSOUND.SDR and the options
 all 0 (the port loads NOSOUND.SDR whatever is named, so a set-up
-would change nothing; it has no sound output yet), and makes the file at that place when the options are first
+would change nothing), and makes the file at that place when the options are first
 saved (the high scores). This is the port's behaviour, not the game's
 (since 2026-10-01). `-opt s` still stops at SOUND_SETUP; a file with an
 SVGA mode stops the port at SVGA_CHECK.
@@ -635,6 +635,19 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
 - 2026-10-01, Windows (MSVC) by the user: built without errors (no
   run reported).
+- 2026-10-01, sound: the port plays what NOSOUND.SDR mixes. The
+  driver mixes the module into its DMA buffer (DMA_SEL, mono words at
+  MIX_RATE, 44100) as it does under DOS, where no card reads it; the
+  port (src/nosound.c, `out_sample`, its own, not the driver's) takes
+  each word as the timer's SAMPLE_POS passes it, as a card's DMA would,
+  and hands it through a FIFO (at most 4096 samples kept, the oldest
+  dropped) to the platform's audio, both stereo channels alike. Checked
+  on Linux, headless, by a scratch build writing the words to a file:
+  the intro's first 2500 pictures give 41.7 s of samples, rising from
+  peaks of 912 to 31040, no jump over 30000 between two samples (no
+  16-bit wrap), about 1600 zero crossings a second. Not listened to;
+  the window builds (SDL, Win32) not run; the pause (command 2, the
+  timer stopped) gives silence by the FIFO running dry, not checked.
 - 2026-10-01, Linux, headless: the chooser's caption, which flickered
   (every other picture without it, a white line at the right; the user
   saw it on Windows), shown in every picture since the port uses

@@ -4446,7 +4446,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
    - chosen by the user 2026-09-29: a silent stand-in driver first, the
      translation of NOSOUND.SDR (src/NOSOUND.hints, rebuilt identical
      since doskit's `bin` kind), compared with NOSOUND runs; real sound
-     later. Done 2026-09-29: the driver loaded (the port always loads
+     later. Done 2026-10-01: NOSOUND mixes the music into its DMA
+     buffer like any of the drivers, so the port plays that buffer as
+     the timer passes it (port/README.md, "Checked", sound); not
+     listened to yet. Done 2026-09-29: the driver loaded (the port always loads
      NOSOUND.SDR), INT 93h AH=8's alias (0Ch), CALLBACKS_CS; memory
      equal at CODE:711D (see "The driver loaded, in a run"). Done
      2026-09-29: NOSOUND's command 0 (port/src/nosound.c; see "The
