@@ -4298,6 +4298,17 @@ DK_FRAMES). Not compared with the runner's memory; the window builds
 not tried; an S3 card's or a BIOS mode (OPT_SVGA_MODE above 13h) not
 run.
 
+800x600 played at half speed in the port (reported on Linux, the
+original fine): the driver's FRAME_MEASURE (src/nosound.c) took the
+dot clock from a fixed table, 25.175 MHz for clock select 2, while
+vga.c times mode 103h's pictures at 40 MHz. So the frame the driver
+counted was 1.59 pictures long and DRV_FRAME came every second picture
+(headless, table 1, 9000 pictures: 1548 table frames against 3098 in
+VGA 360 and SVGA 640). FRAME_MEASURE now takes the clock from
+vga_refresh_hz (2026-10-01): 3098 table frames at 800x600 too; VGA 360
+and SVGA 640 unchanged (VGA 360's memory at the stop 0 bytes differ
+from the build before). The window build not played after the change.
+
 ### The take handlers forced in a run
 
 The take handlers the blind games did not run, each forced 2026-10-01 by

@@ -176,7 +176,10 @@ would change nothing), and makes the file at that place when the options are fir
 saved (the high scores). This is the port's behaviour, not the game's
 (since 2026-10-01). `-opt s` still stops at SOUND_SETUP. A file with an
 SVGA mode shows the table at 640x480 or 800x600 through doskit's VESA
-modes (since 2026-10-01).
+modes (since 2026-10-01). At 800x600 the driver's frame measure took a
+25.175 MHz dot clock for the mode's 40 MHz and the table ran at half
+speed; fixed 2026-10-01 (checked headless: as many table frames as in
+VGA 360 for the same pictures).
 
 ## Releases
 

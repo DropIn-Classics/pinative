@@ -497,10 +497,12 @@ static uint16_t TICKS_TO_IRQS(uint16_t ax)
  * from the CRTC's timing as dosrun has it (tools/run/vga.c, vga_timing),
  * CX and BP the whole ticks of the retrace's lines and of the frame, DX
  * two ticks after BP as the run had it (docs/HANDOFF.md, "The chooser's
- * timer"; the two are fitted, not derived).  Two retraces waited. */
+ * timer"; the two are fitted, not derived).  Two retraces waited.  The
+ * dot clock is the one vga.c times the pictures with (vga_refresh_hz):
+ * 40 MHz for clock selects 2 and 3 in the VESA modes, which a fixed
+ * 25.175 MHz made 1.59 times too slow, a retrace every second picture. */
 static void FRAME_MEASURE(void)
 {
-    static const double clocks[4] = { 25175000.0, 28322000.0, 25175000.0, 25175000.0 };
     uint8_t cr[0x19], seq1;
     double dotclk, line;
     int i, vtotal, vrs, vre;
@@ -512,11 +514,9 @@ static void FRAME_MEASURE(void)
     }
     vga_outb(0x3C4, 1);
     seq1 = vga_inb(0x3C5);
-    dotclk = clocks[vga_inb(0x3CC) >> 2 & 3];
-    if (seq1 & 0x08)
-        dotclk /= 2;
-    line = (cr[0] + 5) * ((seq1 & 0x01) ? 8 : 9) / dotclk * 1193182.0;
     vtotal = (cr[6] | (cr[7] & 0x01) << 8 | (cr[7] & 0x20) << 4) + 2;
+    dotclk = vga_refresh_hz() * (cr[0] + 5) * ((seq1 & 0x01) ? 8 : 9) * vtotal;
+    line = (cr[0] + 5) * ((seq1 & 0x01) ? 8 : 9) / dotclk * 1193182.0;
     vrs = cr[0x10] | (cr[7] & 0x04) << 6 | (cr[7] & 0x80) << 2;
     vre = (vrs & ~0x0F) | (cr[0x11] & 0x0F);
     if (vre <= vrs)
