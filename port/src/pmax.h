@@ -35,6 +35,11 @@ void pmax_set_code_sel(uint16_t sel);
 void pmax_cfg_open(const char *path);
 /* INT 94h AH=7: its 200h bytes of options to `off` in CODE (at pm_ds) */
 void pmax_cfg_read(uint32_t off);
+/* INT 94h AH=6: the 200h bytes of options at `off` in CODE stored back,
+ * chained as AH=7 reads them, the header left as it was (run 2026-10-01,
+ * docs/HANDOFF.md, "The high scores' file").  Without a file the port
+ * writes none (the original's file made by AH=8 is not looked at). */
+void pmax_cfg_write(uint32_t off);
 /* INT 94h AH=5: its first 20h bytes to `off` in CODE; 0 (CF clear) */
 int pmax_cfg_header(uint32_t off);
 

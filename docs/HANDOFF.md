@@ -4112,6 +4112,25 @@ changed high scores, the driver's block lost again in a second round
 (heap after two tables), Esc from the second chooser (the program's
 end).
 
+### The high scores' file
+
+HISCORES_PUT's INT 94h AH=6 (CODE:B3D1, EDX 9Dh = OPTIONS; CODE:5277 and
+CODE:07AA make the same call) run 2026-10-01 on Linux: table 1 (keys
+`100 space`, `106 enter`, `112 enter`, `118 enter`, `150 esc`, `153 y`,
+no `-cue`; the chooser took the Enter at 106 neither here nor with
+`-cue`), HISCORES' first byte poked to 58h at TABLE_END (`-poke 10B378
+100FD4 58`) so that the table's scores differ and are copied back. The
+file in `build/run/state` afterwards: its 20h-byte header and its size
+(220h) unchanged, the 200h bytes at +20h OPTIONS (`-dump 100FCD 512` at
+CODE:B3D7) stored by the chained rule of "The configuration file's
+options", equal byte for byte. The port (pmax_cfg_write) does the same
+and writes the file `-cfg` named; with the same poke as a scratch line
+and the keys at pictures 5757 (Space), 6076, 6236 (Enter), 7087 (Esc),
+7157 (Y) its file was identical to the run's. Not run: a high score
+reached by play, the chooser's write at CODE:5277 (what sets
+CODE:5E1C is not looked at), the file AH=8 creates when there is none
+(the port then writes none).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4387,9 +4406,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      2's FRAME_COUNT"; event opcode 14h's module object (table
      2's music chooser) done 2026-10-01, see "Table 2's music chooser in
      the port"; the table's end after Y and the chooser again done
-     2026-10-01, see "The table's end and the chooser again"; next: the
-     high scores' file (HISCORES_PUT's INT 94h AH=6), the paths blind
-     games did not run);
+     2026-10-01, see "The table's end and the chooser again"; the
+     high scores' file done 2026-10-01, see "The high scores' file";
+     next: the paths blind games did not run);
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").

@@ -553,7 +553,7 @@ static void TABLE_SOUND_END(void)
 
 /* CODE:B3A1 (HISCORES_PUT): the table's high scores back to HISCORES (50 bytes at
  * TABLE_INDEX), when they changed, and the file written (INT 94h AH=6,
- * not in the port yet) */
+ * EDX 9Dh: OPTIONS) */
 static void HISCORES_PUT(void)
 {
     uint32_t d = N_HISCORES + (uint32_t)rb(N_TABLE_INDEX) * 0x32, i;
@@ -565,7 +565,7 @@ static void HISCORES_PUT(void)
         return;
     for (i = 0; i < 0x32; i++)
         wb(d + i, rb(N_TABLE_HISCORES + i));
-    pi_stop("HISCORES_PUT: the file written (CODE:B3D1, INT 94h AH=6)");
+    pmax_cfg_write(N_OPTIONS);
 }
 
 /* CODE:A448, TABLE after the game: the keyboard's vector back, the

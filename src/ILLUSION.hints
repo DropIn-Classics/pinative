@@ -1146,7 +1146,7 @@ name       CODE:B5B2 DATALOAD2_KEY ; the header's value for two joined files (bi
 name       CODE:B721 DATALOAD2_TEMP1 ; the first file's selector ("TEMP DATALOAD 1", policy 1), freed after
 name       CODE:B723 DATALOAD2_TEMP2 ; the second's ("TEMP DATALOAD 2")
 code       CODE:B366 HISCORES_GET  ; the table's 32h bytes of HISCORES (TABLE_INDEX) to TABLE_HISCORES; CF when its first byte is 0
-code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94h AH=6 EDX 9Dh (the options saved, presumably; not followed; the port stops there)
+code       CODE:B3A1 HISCORES_PUT  ; the other way, when they differ, and INT 94h AH=6 EDX 9Dh: OPTIONS' 200h bytes stored back into the configuration file, chained as AH=7 reads them, its header left (run 2026-10-01, docs/HANDOFF.md "The high scores' file"; in the port)
 name       CODE:D83A TABLE_HISCORES
 code       CODE:30368 DEC_TEXT     ; host vector +18h (see the comment there)
 name       CODE:30581 DEC_BCD      ; the BCD word DEC_TEXT adds up

@@ -1733,8 +1733,10 @@ static uint8_t CHOOSER(void)
     pic_out21((uint8_t)(pic_in21() | 2));
     frame_set_keyboard(NULL);
     al = rb(N_ESC_KEY) == 1 ? 0xFF : rb(N_MENU_ROW);
-    if (rb(0x5E1C) == 1)
-        pi_stop("CODE:5277 (INT 94h AH=6)");
+    if (rb(0x5E1C) == 1) {                          /* CODE:5277 */
+        pmax_cfg_write(N_OPTIONS);
+        wb(0x5E1C, 0);
+    }
     return al;
 }
 

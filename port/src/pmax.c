@@ -1,4 +1,5 @@
 /* pmax.c - see pmax.h */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "game.h"
@@ -44,6 +45,7 @@ void pmax_set_code_sel(uint16_t sel)
 
 static uint8_t cfg[CFG_SIZE];
 static int cfg_there;
+static char cfg_path[1024];
 
 void pmax_cfg_open(const char *path)
 {
@@ -51,8 +53,10 @@ void pmax_cfg_open(const char *path)
     uint8_t *f = path ? sys_load(path, &n) : NULL;
 
     cfg_there = f && n == CFG_SIZE;
-    if (cfg_there)
+    if (cfg_there) {
         memcpy(cfg, f, CFG_SIZE);
+        snprintf(cfg_path, sizeof cfg_path, "%s", path);
+    }
     free(f);
 }
 
@@ -67,6 +71,23 @@ void pmax_cfg_read(uint32_t off)
         const uint8_t *s = cfg + 0x20;
         wb(off + i, cfg_there ? (uint8_t)(s[i] ^ (i < 4 ? key[i] : s[i - 4])) : 0);
     }
+}
+
+void pmax_cfg_write(uint32_t off)
+{
+    static const uint8_t key[4] = { 'S', 'N', '9', '5' };
+    uint8_t *s = cfg + 0x20;
+    FILE *f;
+    uint32_t i;
+
+    if (!cfg_there)
+        return;
+    for (i = 0; i < 0x200; i++)
+        s[i] = (uint8_t)(rb(off + i) ^ (i < 4 ? key[i] : s[i - 4]));
+    f = fopen(cfg_path, "wb");
+    if (!f || fwrite(cfg, 1, CFG_SIZE, f) != CFG_SIZE)
+        pi_stop("INT 94h AH=6: the configuration file not written");
+    fclose(f);
 }
 
 int pmax_cfg_header(uint32_t off)
