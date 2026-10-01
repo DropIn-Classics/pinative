@@ -750,6 +750,13 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   doskit's tests/launcher/dialogtest.c only: pinative's window, its
   first start and the copy from a GOG release not run with this
   change, Linux and macOS not built.
+- 2026-10-01: the setup screen's title bar as the dialog's: "Pinball
+  Illusions Setup" at the left, "pinative" and the release's version
+  at the right, where the game's name stood in the middle (doskit's
+  launcher_run takes the names, main.c's pi_app, as the dialog does).
+  Built on Windows with MSVC, check.py all ok; the bar seen in a
+  screenshot of doskit's tests/launcher/launchtest.c, pinative's own
+  screen not looked at.
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),

@@ -268,8 +268,7 @@ int pi_launch(int show)
     plat_set_fullscreen(fullscreen);
     apply_sound();
     {
-        r = launcher_run("Pinball Illusions",
-                         NULL,
+        r = launcher_run(&pi_app, NULL,
                          pages, NPAGES, changed);
         pi_settings_save();
         for (i = 0; i < 6; i++)

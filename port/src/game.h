@@ -4,6 +4,7 @@
 #define PI_GAME_H
 
 #include <stdint.h>
+#include "launcher.h"
 
 /* Where the port stops: a routine not translated yet.  With a memory file
  * set (and a video memory file), the memory is written there first (for tools/memcmp.py against the
@@ -12,6 +13,10 @@ extern const char *pi_stop_mem, *pi_stop_vram;
 void pi_stop(const char *name);
 /* the program's end: the memory files written, the platform shut down */
 void pi_end(void);
+
+/* main.c: the names in the title bar of the setup screen and of the dialog
+ * about the game's files (doskit's launcher.h) */
+extern const LauncherApp pi_app;
 
 /* launch.c, the port's own: the setup screen (shown when `show`) and its
  * settings applied; 0, or -1 when the player quit there */

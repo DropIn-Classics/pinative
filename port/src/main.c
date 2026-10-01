@@ -56,11 +56,12 @@ static const GogRelease release = {
 /* what earlier versions wrote beside the program (sys_data_migrate) */
 static const char *const old_files[] = { "game", NULL };
 
-/* the names on the dialog about the game's files (doskit's launcher.h) */
+/* the names in the title bar of the setup screen and of the dialog about
+ * the game's files (doskit's launcher.h) */
 #ifndef PORT_VERSION
 #define PORT_VERSION ""
 #endif
-static const LauncherApp app = { "Pinball Illusions", "pinative", PORT_VERSION };
+const LauncherApp pi_app = { "Pinball Illusions", "pinative", PORT_VERSION };
 
 /* 1 once the player agreed to a copy from the GOG release (open_cd then
  * takes the CD along without asking again) */
@@ -87,7 +88,7 @@ static int (*progress(void))(void *, const char *, long, long)
 static int get_game(const char *given, const char *gog, char *out, size_t n)
 {
     char from[SYS_PATH], data[SYS_PATH], cd[SYS_PATH], cue[SYS_PATH], err[256];
-    LauncherCopy copy = { &app, LAUNCHER_GAME, 0, 0 };
+    LauncherCopy copy = { &pi_app, LAUNCHER_GAME, 0, 0 };
     int dialog = plat_has_window(), with_cd, r;
 
     if (sys_find_game(given, "PINATIVE_GAME", "ILLUSION.EXE", out, n))
@@ -97,7 +98,7 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     else if (given || (!gog_find(&release, from, sizeof from) &&
                        !gog_find_folder(&release, from, sizeof from))) {
         if (dialog)
-            launcher_no_game(&app, "-gog FILE (the release's CD image, or its folder) or "
+            launcher_no_game(&pi_app, "-gog FILE (the release's CD image, or its folder) or "
                                    "-game FOLDER (the game's files)");
         else
             plat_message("The game's files were not found. This program needs an installed "
@@ -109,7 +110,7 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     sys_join(cd, sizeof cd, data, "cd");
     with_cd = !sys_is_dir(cd) && gog_cue(gog, cue, sizeof cue);
     if (dialog && !gog) {
-        if (!launcher_offer_copy(&app, with_cd ? LAUNCHER_GAME_AND_CD : LAUNCHER_GAME, from,
+        if (!launcher_offer_copy(&pi_app, with_cd ? LAUNCHER_GAME_AND_CD : LAUNCHER_GAME, from,
                                  with_cd ? data : out))
             return 0;
         agreed = 1;
@@ -123,7 +124,7 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     if (copy.closed)
         return 0;
     if (dialog)
-        launcher_copy_failed(&app, from, err);
+        launcher_copy_failed(&pi_app, from, err);
     else
         plat_message(err);
     return 0;
@@ -157,7 +158,7 @@ static int gog_cue(const char *gog, char *cue, size_t n)
 static int open_cd(const char *gog)
 {
     char data[SYS_PATH], dir[SYS_PATH], cue[SYS_PATH], from[SYS_PATH], err[256];
-    LauncherCopy copy = { &app, LAUNCHER_CD, 0, 0 };
+    LauncherCopy copy = { &pi_app, LAUNCHER_CD, 0, 0 };
     int i;
 
     sys_data_dir(data, sizeof data);
@@ -166,7 +167,7 @@ static int open_cd(const char *gog)
      * get_game asked for both); "Not now" plays from the release's sheet */
     if (!sys_is_dir(dir) && gog_cue(gog, from, sizeof from) &&
         (agreed || gog || !plat_has_window() ||
-         launcher_offer_copy(&app, LAUNCHER_CD, from, dir))) {
+         launcher_offer_copy(&pi_app, LAUNCHER_CD, from, dir))) {
         if (cd_copy_disc(from, dir, progress(), &copy, err, sizeof err) != 0) {
             if (copy.closed) {
                 closed = 1;
