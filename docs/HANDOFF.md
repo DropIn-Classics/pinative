@@ -4200,6 +4200,19 @@ A first try with 0Fh there ended at once in both: DAA makes the
 invalid digit 15h, above the end. Table 3 has three adding counters
 (2C14AAh, 2C14D4h, 2C14FEh) and six subtracting ones.
 
+### MUSIC_REQUEST's word below FFFEh
+
+The port's stop at CODE:2F906 (a music record's word +2 negative but
+not FFFFh or FFFEh) stays: the original then reads past its table of
+two at CODE:2F91C and jumps to an address made of code bytes. Looked
+at 2026-10-01 in the runs' memory (table 1, 2, 3, 4 at CODE:298C5's
+pass 1300 or later; module base from [CODE:A11D]): every record named
+by a `music` opcode in tools/event_streams.py's lists and the three
+header records at state+292Eh, 293Ah, 293Eh have +2 = 2, FFFEh or
+FFFFh. So the game's data does not reach it. Not looked at: records
+handed to MUSIC_REQUEST by other ways (the callers that set [CODE:0000]
+otherwise were not followed).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4479,7 +4492,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      high scores' file done 2026-10-01, see "The high scores' file";
      next: the paths blind games did not run; the pause done 2026-10-01,
      see "The pause in the port"; the BCD counters done 2026-10-01, see
-     "The BCD counters in the port");
+     "The BCD counters in the port"; MUSIC_REQUEST's stop found out of
+     the data's reach, see "MUSIC_REQUEST's word below FFFEh");
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").
