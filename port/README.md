@@ -635,6 +635,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.
 - 2026-10-01, Windows (MSVC) by the user: built without errors (no
   run reported).
+- 2026-10-01, Linux, headless: the chooser's caption, which flickered
+  (every other picture without it, a white line at the right; the user
+  saw it on Windows), shown in every picture since the port uses
+  doskit's `frame_set_scanout_end` (main.c; docs/HANDOFF.md,
+  "CHOOSER_WAIT's loop"): pictures 5600..5603 looked at, the intro's
+  1500 and table 1's 6600 as before. The window build not tried.
 - 2026-10-01, Windows by the user: with no ILLUSION.CFG the port
   stopped at SOUND_SETUP. Since then (Linux, headless, `-cfg` naming a
   missing file): it runs past SETUP_ARGS into the attract mode (stopped

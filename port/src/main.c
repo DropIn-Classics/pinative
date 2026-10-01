@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "cdimage.h"
+#include "frame.h"
 #include "game.h"
 #include "image.h"
 #include "pmax.h"
@@ -146,6 +147,10 @@ int main(int argc, char **argv)
         cfg = path;
     }
     pmax_cfg_open(cfg);
+    /* the start address taken at the retrace, the picture at the frame's end:
+     * the chooser draws its caption into the page on show after the retrace
+     * (docs/HANDOFF.md, "CHOOSER_WAIT's loop") */
+    frame_set_scanout_end(1);
     ENTRY();
     pi_end();
     return 0;

@@ -2698,6 +2698,21 @@ their wave with "Pinball Illusions", then the purple stage. Not
 checked: the arrows and F1..F4 in CHOOSER_WAIT (they only set bytes
 there), KEY_HISTORY's greetings path, the window build.
 
+The caption flickered in the window (the user, Windows, 2026-10-01; seen
+in the headless pictures 5600..5605 too: every other one without the
+caption, a white line at the right). Why, as read from the loop above:
+CRT_START_CB writes the start address a tenth of the display after the
+retrace, which a VGA takes only at the next retrace; and the caption is
+drawn into the page on show after the retrace, ahead of the beam. doskit
+scanned the picture out at the tick, after the callback's write and
+before the caption. Since 2026-10-01 the port turns on doskit's
+`frame_set_scanout_end` (the start address latched at the retrace, the
+picture scanned out at the frame's end): the headless pictures 5600..5603
+all show the caption and no line; the intro (1500) and table 1 (6600)
+looked at, as before. The white line's cause not looked into further (it
+went with the change). Not compared with a run's pictures; the window
+build not tried.
+
 ### The chooser's end
 
 From CODE:505C (names in src/ILLUSION.hints, "the chooser's end"): with
