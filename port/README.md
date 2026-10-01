@@ -757,6 +757,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Built on Windows with MSVC, check.py all ok; the bar seen in a
   screenshot of doskit's tests/launcher/launchtest.c, pinative's own
   screen not looked at.
+- 2026-10-01: the title bar's left side is the game's name alone,
+  "Pinball Illusions", without "Setup", on the setup screen and in the
+  dialog about the game's files (doskit's launcher.c). Seen in a
+  screenshot of launchtest again; pinative not built again for it (the
+  change is in the kit's file only).
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),
