@@ -625,7 +625,7 @@ static void BONUS_CLEAR(void)
  * (state+2946h), the tilt count 0, GAME_PHASE 6 */
 static void GAME_START(void)
 {
-    uint32_t st = rd(0x0014), e, hook;
+    uint32_t st = rd(0x0014), e;
     uint16_t n;
 
     ww(st + 0x0D36, rw(st + 0x0E38));
@@ -667,9 +667,7 @@ static void GAME_START(void)
     st = rd(0x0014);
     wb(st + 0x2A7F, 0xFF);
     /* the module's slot 40: a RET but on table 2 (docs/bpc-module.md) */
-    hook = rd(st + 0x2946);
-    if (rb(hook) != 0xC3)
-        pi_stop("GAME_START: the module's slot 40 is not a RET (CODE:2AA6D)");
+    MOD_CALL(rd(st + 0x2946));
     st = rd(0x0014);
     ww(st + 0x2A78, 0);
     ww(st + 0x8E, 6);

@@ -14,7 +14,7 @@ words      CODE:0080 1 CODE        ; slot 32
 words      CODE:009C 3 CODE        ; slots 39..41
 code       CODE:381D MOD_BALL_BONUS ; slot 32: the end-of-ball bonus (docs/bpc-module.md): the audio record to host +04h; the player's bonus shown over eight rounds of "BONUS" (every other round the multiplier's text record, by the player's word +12h n/2 - 1), the combos (none: the count is 0), then "TOTAL BONUS" and the total (the number ending at state+2AC8h) or "NO BONUS"; in C in port/src/modcode.c, one routine for the four tables (docs/HANDOFF.md, "GAME_PHASE 5 in the port"); not run (table 2 stops at GAME_START)
 code       CODE:00B4 MOD_LOADED    ; slot 39: called once the module is loaded (main program CODE:B287)
-code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D): TUNES_RESET
+code       CODE:00B5 MOD_GAME_START ; slot 40: called at a game's start (main program CODE:2AA6D): TUNES_RESET; in C in port/src/modcode.c (T2_TUNES_RESET), compared 2026-10-01
 code       CODE:00BB MOD_NEXT_BALL ; slot 41: called at the next player's ball (main program CODE:2BD61): the lamps of the list at 994Ah relit by the player's word +12h (the bonus multiplier, presumably), then TUNE_COPY
 comment    CODE:00A8 slot 42: 0, and relocated: the module's base once loaded
 

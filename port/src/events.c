@@ -1097,6 +1097,68 @@ static void OP_MODE_WAIT(void)
     wb(st + 0x0D50, 0xFF);
 }
 
+/* the slot-16 counter of the command [0004] to [0008] */
+static uint32_t cmd_counter(void)
+{
+    uint32_t c = rd(rd(0x0004) + 2);
+
+    wd(0x0008, c);
+    return c;
+}
+
+/* CODE:2D60A, event opcode 1Ah (a hole): its ball (byte +1 less one, an
+ * index into state+107Ah) let go (the hole's bit 1 and byte +1 cleared,
+ * +34h 0), taken off and put at the plunger (BALL_PLACE); balls on the
+ * table one less, to be served one more */
+static void OP_HOLE_SERVE(void)
+{
+    uint32_t h = rd(rd(0x0004) + 2), b, st;
+    uint16_t bx;
+
+    wd(0x0000, h);
+    wb(h, (uint8_t)(rb(h) & ~2));
+    wd(h + 0x34, 0);
+    bx = (uint16_t)(rb(h + 1) - 1);
+    wd(0x0020, bx);
+    b = rd(rd(0x0014) + 0x107A + sx16(bx) * 4);
+    wd(0x0010, b);
+    wb(b + 1, (uint8_t)(rb(b + 1) & 0x7F));
+    wb(h + 1, 0);
+    BALL_HIDE();
+    st = rd(0x0014);
+    ww(st + 0x0D32, (uint16_t)(rw(st + 0x0D32) - 1));
+    BALL_PLACE();
+    st = rd(0x0014);
+    ww(st + 0x0D3A, (uint16_t)(rw(st + 0x0D3A) + 1));
+}
+
+/* CODE:2D70E, event opcode 1Bh (a word, at most 0Dh): a multiball: balls
+ * to be served (state+0D3Ah) added, each its record's +9 0 and +0Bh FFh,
+ * until they and those on the table (state+0D32h) are the word; state+
+ * 0D2Eh FFh (MODE_RUN watches it) */
+static void OP_MULTIBALL(void)
+{
+    uint32_t st, b;
+    uint16_t want = rw(rd(0x0004) + 2), di;
+
+    cw(0x0024, want);
+    if (want <= 0x0D) {
+        for (;;) {                                      /* CODE:2D72A */
+            st = rd(0x0014);
+            di = (uint16_t)(rw(st + 0x0D32) + rw(st + 0x0D3A));
+            cw(0x0020, di);
+            if (di >= rw(0x0024))
+                break;
+            ww(st + 0x0D3A, (uint16_t)(rw(st + 0x0D3A) + 1));
+            b = rd(st + 0x1046 + sx16(di) * 4);
+            wd(0x0010, b);
+            wb(b + 9, 0);
+            wb(b + 0x0B, 0xFF);
+        }
+    }
+    wb(rd(0x0014) + 0x0D2E, 0xFF);
+}
+
 /* one command of a stream: its handler by its address (CODE:2D193 plus
  * the table's offset) */
 static void event_op(uint32_t a)
@@ -1133,6 +1195,47 @@ static void event_op(uint32_t a)
         break;
     case 0x2DBDF:
         OP_MODE_WAIT();
+        break;
+    case 0x2D827: {                 /* opcode 6: the counter's step from +28h, +2Ch */
+        uint32_t c = cmd_counter();
+
+        wd(c + 0x30, rd(c + 0x28));
+        wd(c + 0x34, rd(c + 0x2C));
+        break;
+    }
+    case 0x2D8A6: {                 /* opcode 7: the counter's step from the two dwords */
+        uint32_t c = cmd_counter(), k = rd(0x0004);
+
+        wd(c + 0x30, rd(k + 6));
+        wd(c + 0x34, rd(k + 0x0A));
+        break;
+    }
+    case 0x2D843: {                 /* opcode 12h: the counter's value from the two dwords */
+        uint32_t c = cmd_counter(), k = rd(0x0004);
+
+        wd(c + 0x38, rd(k + 6));
+        wd(c + 0x3C, rd(k + 0x0A));
+        break;
+    }
+    case 0x2D85F: {                 /* opcode 15h: the player's counts +6, +16h = the word */
+        uint32_t c = cmd_counter(), k = c + sx16(rw(0x0038)) * 2;
+
+        ww(k + 6, rw(rd(0x0004) + 6));
+        ww(k + 0x16, rw(rd(0x0004) + 6));
+        break;
+    }
+    case 0x2D7F9: {                 /* opcode 16h: the player's counts +6, +16h = the counter's +2 */
+        uint32_t c = cmd_counter(), k = c + sx16(rw(0x0038)) * 2;
+
+        ww(k + 6, rw(c + 2));
+        ww(k + 0x16, rw(c + 2));
+        break;
+    }
+    case 0x2D60A:
+        OP_HOLE_SERVE();
+        break;
+    case 0x2D70E:
+        OP_MULTIBALL();
         break;
     case 0x2DB8E: {                 /* opcode 0Ch: a slot-15 record unblocked for the player */
         uint32_t r = rd(rd(0x0004) + 2);

@@ -86,7 +86,7 @@ and slingshots' kicks, the objects a ball hits (OBJECT_HITS: type 0
 with its light and points, drop targets, type 2's record taken), the
 holes (a ball taken, held and ejected with the hole's picture
 flickering), the records' take handlers (but two no table uses), the modes
-(a mode stream started, its timed waits), more of the display's
+(a mode stream started, its timed waits), table 2's tunes, more of the display's
 opcodes (numbers, the bonus, blinking text), the driver's jingles, a
 zone's light flashed, a module's note through the driver's command 7),
 a lost ball
@@ -570,6 +570,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   1Ch), a jingle and its end, take handlers 5, 6, 7, 0Bh, 10h, 11h,
   14h, 15h, 16h, DROP_HIT and OBJECT_TYPE2 (docs/HANDOFF.md, "The modes
   and the take handlers in the port", for what did not).
+- 2026-10-01, Linux: table 2 (`-key 114 down`, F1 at frame 1161),
+  the same blind keys, passes 2000, 4000, 6000, 8000: CODE but
+  FRAME_SPINS and FRAME_COUNT (the run's 10 ahead at all four, not
+  found yet) equal, video memory and the heap equal as before.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

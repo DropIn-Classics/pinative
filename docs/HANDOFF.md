@@ -132,6 +132,18 @@ is marked there as to be checked again in the hints.
   there on its first start (`sys_data_migrate`), so `port/build/game`
   moves too. Checked on Linux with a copy and `DK_DATA_DIR`: moved,
   found, the run went to ENTRY. Not checked on Windows or the Mac.
+- Comparing play (since 2026-10-01): give both the same keys by table
+  frame: the port's DK_KEYS picture = frame + 5902 (all tables; the
+  chooser's Enter at 5637 and 5815, Down at 5696, 5740, 5780), the run
+  `-keysat 12A7F5 FILE` with lines "frame+1 KEY+" / "KEY-" (CODE:298C5's
+  pass) and the chooser's `-key 112 enter -key 115 enter` (Down at 114;
+  113, 114; 113, 113.5, 114 for tables 2, 3, 4); stop the port at a
+  frame with a scratch check of FRAME_STEP's count after its wait and
+  the run with `-break 12A7F5#frame`; compare CODE with memcmp.py and
+  the heap 1473B0h..FF0000h by a small script (the driver's block at
+  1473C0h and the free top differ by design). One key per frame only
+  (see "The objects a ball hits in the port"). The scripts used lived
+  in build/p7 (not kept).
 - RELEASE.md point 7 (newer releases made known, asked once on the
   setup screen, `update.h`) is not in the port: the port has no setup
   screen of its own yet, the game's SETSOUND is not the place. The
@@ -3935,6 +3947,34 @@ the listing, not compared). Table 2 still stops at GAME_START (its
 module's slot 40); the module object of event opcode 14h (MODE_RUN,
 CODE:2CFC8) is still a stop, not met on tables 1, 3, 4.
 
+### Table 2 in the port
+
+Table 2 plays in the port since 2026-10-01: its module's slot 40
+(MOD_GAME_START, TUNES_RESET: all players' tune choices 0, template 0
+over the audio records 0..2 at the module's 1A760h) and slot 41
+(MOD_NEXT_BALL: table 1's lamps by the multiplier with the counter at
+40AAh and the chain at 994Ah, then TUNE_COPY), in src/modcode.c
+(next_ball_lamps now serves tables 1 and 2); event opcodes 6, 7, 12h,
+15h, 16h (slot-16 counters), 1Ah (OP_HOLE_SERVE) and 1Bh
+(OP_MULTIBALL) in src/events.c.
+
+Compared: a blind game (flips every 33 frames, Enter every 7th; F1 at
+frame 1161, chooser Down `-key 114 down`) at passes 2000, 4000, 6000,
+8000 (still GAME_PHASE 4 at 8000): CODE but FRAME_SPINS equal except
+FRAME_COUNT, the run's 10 ahead at every one of the four (4Ah against
+40h at 8000); video memory equal, the heap as before. Where the 10
+frames come from is not found (not in the earlier table-2 comparisons
+up to GAME_PHASE 6, presumably later; the music chooser's module
+object or a jingle on table 2, not checked). FRAME_COUNT matters: take
+handler 1Ah (the random award) and display opcode 1Ah read it.
+
+Not run / open: event opcode 14h's module object (table 2's music
+chooser, MODE_RUN's CODE:2CFC8 stop) was not met in that game; with
+flips every 61 frames the port stops at `BALLS_MOVE: two balls`
+(CODE:13597): the multiball needs the ball-ball cases of the physics,
+which "The balls' physics" left unread. Opcodes 1Ah, 1Bh, 7, 12h, 15h,
+16h not checked by -cover.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4203,7 +4243,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      and a whole game in the port"; next: games on tables 2, 3 and 4,
      and table 1 with other keys, for the paths not run yet; tables 1, 3
      and 4 done 2026-10-01 as far as blind games go, see "The modes and
-     the take handlers in the port"; next table 2's slot 40);
+     the take handlers in the port"; table 2's slots 40 and 41 done 2026-10-01, see "Table 2 in the
+     port"; next: table 2's FRAME_COUNT 10 behind, the ball-ball
+     physics for the multiball (BALLS_MOVE, CODE:13597), event opcode
+     14h's module object (table 2's music chooser));
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

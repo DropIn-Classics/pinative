@@ -251,31 +251,36 @@ static void MOD_BALL_BONUS(const struct bonus_data *d, unsigned table)
 
 /* ---- slot 41, at the next ball (MOD_NEXT_BALL) ---- */
 
-/* table 1 CODE:00B6: with the player's multiplier (word +12h) n not 0,
- * the slot-16 counter at 4502h set to n/2 in the player's words +6 and
- * +16h, and the first n/2 light states of the chain at 942Eh (next +10h)
- * given the player's bit in byte +5 */
-static void T1_NEXT_BALL(void)
+/* table 1 CODE:00B6, table 2 CODE:00BB (before its TUNE_COPY): with the
+ * player's multiplier (word +12h) n not 0, the slot-16 counter at
+ * `counter` set to n/2 in the player's words +6 and +16h, and the first
+ * n/2 light states of the chain at `chain` (next +10h) given the
+ * player's bit in byte +5 */
+static void next_ball_lamps(uint32_t counter, uint32_t chain, unsigned table)
 {
     uint32_t m = rd(N_MODULE_BASE), st = rd(0x0014), c, l;
     uint16_t n, h, p;
+    static char why[96];
 
     n = rw(rd(st + 0x0D76) + 0x12);
     ww(0x0020, n);
     if (n == 0)
         return;
-    if (n & 1)
-        pi_stop("MOD_NEXT_BALL: an odd multiplier, whose loop does not end (table 1, CODE:0123)");
+    if (n & 1) {
+        snprintf(why, sizeof why, "MOD_NEXT_BALL: an odd multiplier, whose loop does not end (table %u)",
+                 table);
+        pi_stop(why);
+    }
     h = (uint16_t)(n >> 1);
     ww(0x0024, h);
     p = rw(st + 0x0D72);
     wd(0x0038, sx16(p));
     wd(0x003C, sx16(rw(st + 0x0D74)));
-    c = m + 0x4502;
+    c = m + counter;
     wd(0x0004, c);
     ww(c + sx16(p) * 2 + 6, h);
     ww(c + sx16(p) * 2 + 0x16, h);
-    wd(0x0004, m + 0x942E);
+    wd(0x0004, m + chain);
     do {
         l = rd(0x0004);
         wb(l + 5, (uint8_t)(rb(l + 5) | (uint8_t)rd(0x003C)));
@@ -283,6 +288,68 @@ static void T1_NEXT_BALL(void)
         n = (uint16_t)(rw(0x0020) - 2);
         ww(0x0020, n);
     } while (n != 0);
+}
+
+/* table 2: TUNE_CHOICES (a word per player, the tune 0..2), TUNE_TEMPLATES
+ * (three pointers, three audio records each) and the records 0..2 the
+ * music is played from (CODE:1A760), offsets in the module */
+#define T2_TUNE_CHOICES   0x9D88
+#define T2_TUNE_TEMPLATES 0x9D9E
+#define T2_TUNE_RECORDS   0x1A760
+
+/* the 18 words at [0000] to [0008], [0020]'s low word counting down */
+static void tune_words(void)
+{
+    uint16_t n;
+
+    do {
+        uint32_t q = rd(0x0000), e = rd(0x0008);
+
+        ww(e, rw(q));
+        wd(0x0000, q + 2);
+        wd(0x0008, e + 2);
+        n = rw(0x0020);
+        ww(0x0020, (uint16_t)(n - 1));
+    } while (n != 0);
+}
+
+/* table 2 CODE:9A55 (TUNE_COPY): the current player's template (three
+ * audio records) over the records 0..2 */
+static void T2_TUNE_COPY(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), tc = m + T2_TUNE_CHOICES;
+    uint16_t p, cx;
+
+    wd(0x0004, tc);
+    p = rw(rd(0x0014) + 0x0D72);
+    ww(0x0038, p);
+    cx = rw(tc + sx16(p) * 2);
+    ww(0x0020, cx);
+    wd(0x0000, rd(m + T2_TUNE_TEMPLATES + sx16(cx) * 4));
+    wd(0x0008, m + T2_TUNE_RECORDS);
+    ww(0x0020, 0x11);
+    tune_words();
+}
+
+/* table 2 CODE:9ADA (TUNES_RESET, all of slot 40 MOD_GAME_START at
+ * CODE:00B5): all eight players' choices 0, template 0 over the records
+ * 0..2 */
+static void T2_TUNES_RESET(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), tc = m + T2_TUNE_CHOICES;
+    uint16_t si;
+
+    wd(0x0004, tc);
+    ww(0x0038, 7);
+    do {
+        si = rw(0x0038);
+        ww(tc + sx16(si) * 2, 0);
+        ww(0x0038, (uint16_t)(si - 1));
+    } while (si != 0);
+    wd(0x0000, rd(m + T2_TUNE_TEMPLATES));
+    wd(0x0008, m + T2_TUNE_RECORDS);
+    ww(0x0020, 0x11);
+    tune_words();
 }
 
 void MOD_CALL(uint32_t at)
@@ -298,7 +365,16 @@ void MOD_CALL(uint32_t at)
         return;
     }
     if (table == 1 && off == 0x00B6) {
-        T1_NEXT_BALL();
+        next_ball_lamps(0x4502, 0x942E, 1);
+        return;
+    }
+    if (table == 2 && off == 0x00B5) {
+        T2_TUNES_RESET();
+        return;
+    }
+    if (table == 2 && off == 0x00BB) {
+        next_ball_lamps(0x40AA, 0x994A, 2);
+        T2_TUNE_COPY();
         return;
     }
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);

@@ -449,7 +449,9 @@ comment    CODE:2D8C2 event opcode 17h (a slot-15 record, a position): unless th
 name       CODE:2D7BE OP_HOLE2
 comment    CODE:2D7BE event opcode 18h (a hole, a second hole): as opcode 8, with bit 1 set and the second hole in +34h, whose +6..+0Eh CODE:30CEC takes instead: the ball comes out at the second hole (table 1's modes: held in 4F18h, out at 4DB0h)
 comment    CODE:2D358 event opcode 19h: when state+0E44h (RES_CODE, 0..3) is 5, a call of CODE:B927, a RET: no effect (in the modules as often as opcode 1Bh)
+name       CODE:2D60A OP_HOLE_SERVE
 comment    CODE:2D60A event opcode 1Ah (a hole): its ball (byte +1 less one, an index into state+C107Ah) let go (bit 1 and byte +1 cleared, +34h 0) and put at 11Ch, 1FEh (CODE:29A5A; the plunger lane, presumably); balls on the table (state+0D32h) one less, to be served (state+0D3Ah) one more
+name       CODE:2D70E OP_MULTIBALL
 comment    CODE:2D70E event opcode 1Bh (a word, at most 0Dh): balls to be served (state+0D3Ah) added until they and those on the table (state+0D32h) are the word; state+0D2Eh FFh, watched by CODE:2CD3C: a multiball
 name       CODE:2DBDF OP_MODE_WAIT
 comment    CODE:2DBDF event opcode 1Ch (a slot-15 record or 0, a word, a position): the mode stream waits (state+0D50h, see CODE:2CD3C): the record, when lit, to state+0D66h; the word times FRAME_RATE (state+50h) to state+0D62h (0: on at once to the position; negative: no timer); the position to state+0D6Ah
