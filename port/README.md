@@ -733,6 +733,23 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   say. Built on Linux without warnings, the headless first start (no
   question) copied `game` and `cd` as before; the question itself not
   seen, no window tried.
+- 2026-10-01: that question replaced by doskit's dialog about the
+  game's files (launcher.h, the one every port of the kit shows): the
+  setup screen's backdrop ("Pinball Illusions Setup", the port's name
+  and version), a window "The game's files" with the release found and
+  the data folder, "Copy the files" or "Quit" (Up/Down, Enter; Esc
+  quits), a bar with the file's name while copying, and the same
+  window when nothing was found or the copy failed. Asked once for the
+  game's files and the CD's image and music together; for the CD alone
+  ("Copy the files" or "Not now", which plays from the release's cue
+  sheet) when the game's files are there and the data folder's `cd` is
+  not. Not asked with -gog (the bar is shown); the headless build
+  copies as before, without the dialog. Closing the window while
+  copying ends the program. Built on Windows with MSVC (build.bat),
+  check.py all ok; the dialog's screens seen as screenshots of
+  doskit's tests/launcher/dialogtest.c only: pinative's window, its
+  first start and the copy from a GOG release not run with this
+  change, Linux and macOS not built.
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),

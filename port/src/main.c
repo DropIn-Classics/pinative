@@ -9,7 +9,9 @@
  * the installed GOG release's image is unpacked into the data folder's
  * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
  * copied there (cdimage.h; -gog names the image or the folder instead of
- * looking for it).
+ * looking for it), once the player chose "Copy the files" in the kit's
+ * dialog about the game's files (launcher.h), which offers the CD's image
+ * and music with them.
  * -cue is the cue sheet of the CD's audio tracks (default: the copy in the
  * data folder's `cd`, made the first time from the GOG release's cue
  * sheet, game.ins or game.inst, and the files it names; else the sheet
@@ -37,10 +39,10 @@
 #include "frame.h"
 #include "game.h"
 #include "image.h"
+#include "launcher.h"
 #include "pmax.h"
 #include "platform.h"
 #include "sys.h"
-#include "textmode.h"
 
 static const GogRelease release = {
     "Pinball Illusions",                 /* GOG's folder name: check on an installation */
@@ -54,94 +56,78 @@ static const GogRelease release = {
 /* what earlier versions wrote beside the program (sys_data_migrate) */
 static const char *const old_files[] = { "game", NULL };
 
-static uint8_t pixels[TM_WIDTH * TM_HEIGHT];
-static uint32_t palette[256];
-
-static void show(void)
-{
-    tm_render(pixels, palette);
-    plat_present(pixels, TM_WIDTH, TM_HEIGHT, palette);
-}
+/* the names on the dialog about the game's files (doskit's launcher.h) */
+#ifndef PORT_VERSION
+#define PORT_VERSION ""
+#endif
+static const LauncherApp app = { "Pinball Illusions", "pinative", PORT_VERSION };
 
 /* 1 once the player agreed to a copy from the GOG release (open_cd then
  * takes the CD along without asking again) */
 static int agreed;
-/* 1 if the player declined the game's files */
-static int declined;
+/* 1 if the player closed the window while the CD was copied */
+static int closed;
 
-/* asks whether `what` may be copied from `from` into `to`: Y or Enter yes,
- * N or Esc no; 1 yes.  Not asked (1) when -gog named the release or the
- * build has no window to ask in. */
-static int offer(const char *what, const char *from, const char *to, int named)
+static const char *const cue_names[] = { "game.ins", "game.inst", NULL };
+
+static int gog_cue(const char *gog, char *cue, size_t n);
+
+/* the dialog's bar while copying, or NULL in the build without a window */
+static int (*progress(void))(void *, const char *, long, long)
 {
-    const uint8_t attr = TM_ATTR(TM_LIGHTGREY, TM_BLUE), hi = TM_ATTR(TM_YELLOW, TM_BLUE);
-
-    if (named || agreed || !plat_has_window())
-        return 1;
-    tm_clear(' ', attr);
-    tm_text(2, 2, "Pinball Illusions was found (the GOG release):", TM_ATTR(TM_WHITE, TM_BLUE));
-    tm_text(2, 3, from, hi);
-    tm_text(2, 5, what, TM_ATTR(TM_WHITE, TM_BLUE));
-    tm_text(2, 6, to, hi);
-    tm_text(2, 8, "Do that now?  Y / N", hi);
-    show();
-    while (plat_pump()) {
-        int b;
-
-        while ((b = plat_read_scancode()) >= 0) {
-            if (b == 0x15 || b == 0x1C)                 /* Y, Enter */
-                return agreed = 1;
-            if (b == 0x31 || b == 0x01)                 /* N, Esc */
-                return 0;
-        }
-        plat_sleep_ms(15);
-    }
-    return 0;
+    return plat_has_window() ? launcher_copy_progress : NULL;
 }
 
 /* the game's files: found, or from the GOG release (its CD image
- * unpacked, or an installed folder of the game's files copied); 1 if
- * there */
+ * unpacked, or an installed folder of the game's files copied) once the
+ * player agreed in the kit's dialog about the game's files, which offers
+ * the game's files and the CD's image and music together; 1 if there, 0
+ * after saying why not.  Not asked when -gog named the release or the
+ * build has no window to ask in. */
 static int get_game(const char *given, const char *gog, char *out, size_t n)
 {
-    char from[SYS_PATH], data[SYS_PATH], err[256];
-    int folder, r;
+    char from[SYS_PATH], data[SYS_PATH], cd[SYS_PATH], cue[SYS_PATH], err[256];
+    LauncherCopy copy = { &app, LAUNCHER_GAME, 0, 0 };
+    int dialog = plat_has_window(), with_cd, r;
 
     if (sys_find_game(given, "PINATIVE_GAME", "ILLUSION.EXE", out, n))
         return 1;
-    if (given)
-        return 0;
-    if (gog)
+    if (gog && !given)
         snprintf(from, sizeof from, "%s", gog);
-    else if (!gog_find(&release, from, sizeof from) &&
-             !gog_find_folder(&release, from, sizeof from))
+    else if (given || (!gog_find(&release, from, sizeof from) &&
+                       !gog_find_folder(&release, from, sizeof from))) {
+        if (dialog)
+            launcher_no_game(&app, "-gog FILE (the release's CD image, or its folder) or "
+                                   "-game FOLDER (the game's files)");
+        else
+            plat_message("The game's files were not found. This program needs an installed "
+                         "copy of Pinball Illusions (the GOG release), or -game with its folder.");
         return 0;
-    folder = sys_is_dir(from);
+    }
     sys_data_dir(data, sizeof data);
     sys_join(out, n, data, "game");
-    if (!offer(folder ? "Its game files can be copied into the data folder's"
-                      : "Its CD image can be unpacked into the data folder's",
-               from, out, gog != NULL)) {
-        declined = 1;
-        return 0;
+    sys_join(cd, sizeof cd, data, "cd");
+    with_cd = !sys_is_dir(cd) && gog_cue(gog, cue, sizeof cue);
+    if (dialog && !gog) {
+        if (!launcher_offer_copy(&app, with_cd ? LAUNCHER_GAME_AND_CD : LAUNCHER_GAME, from,
+                                 with_cd ? data : out))
+            return 0;
+        agreed = 1;
     }
-    tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
-    tm_text(2, 2, folder ? "Copying the game's files from" : "Unpacking the game's files from",
-            TM_ATTR(TM_WHITE, TM_BLUE));
-    tm_text(2, 3, from, TM_ATTR(TM_YELLOW, TM_BLUE));
-    show();
-    if (folder)
-        r = gog_copy(from, out, "ILLUSION.EXE", NULL, NULL, err, sizeof err);
+    if (sys_is_dir(from))
+        r = gog_copy(from, out, "ILLUSION.EXE", progress(), &copy, err, sizeof err);
     else
-        r = cd_unpack(from, out, "ILLUSION.EXE", NULL, NULL, err, sizeof err);
-    if (r != 0) {
-        plat_message(err);
+        r = cd_unpack(from, out, "ILLUSION.EXE", progress(), &copy, err, sizeof err);
+    if (r == 0)
+        return 1;
+    if (copy.closed)
         return 0;
-    }
-    return 1;
+    if (dialog)
+        launcher_copy_failed(&app, from, err);
+    else
+        plat_message(err);
+    return 0;
 }
-
-static const char *const cue_names[] = { "game.ins", "game.inst", NULL };
 
 /* the cue sheet beside the GOG release's image (-gog's, or the one
  * found) into `cue`; 1 if there */
@@ -171,19 +157,23 @@ static int gog_cue(const char *gog, char *cue, size_t n)
 static int open_cd(const char *gog)
 {
     char data[SYS_PATH], dir[SYS_PATH], cue[SYS_PATH], from[SYS_PATH], err[256];
+    LauncherCopy copy = { &app, LAUNCHER_CD, 0, 0 };
     int i;
 
     sys_data_dir(data, sizeof data);
     sys_join(dir, sizeof dir, data, "cd");
+    /* asked here only when the game's files were there already (with them,
+     * get_game asked for both); "Not now" plays from the release's sheet */
     if (!sys_is_dir(dir) && gog_cue(gog, from, sizeof from) &&
-        offer("Its CD image and music can be copied into the data folder's", from, dir,
-              gog != NULL)) {
-        tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
-        tm_text(2, 2, "Copying the CD's image and music from", TM_ATTR(TM_WHITE, TM_BLUE));
-        tm_text(2, 3, from, TM_ATTR(TM_YELLOW, TM_BLUE));
-        show();
-        if (cd_copy_disc(from, dir, NULL, NULL, err, sizeof err) != 0)
+        (agreed || gog || !plat_has_window() ||
+         launcher_offer_copy(&app, LAUNCHER_CD, from, dir))) {
+        if (cd_copy_disc(from, dir, progress(), &copy, err, sizeof err) != 0) {
+            if (copy.closed) {
+                closed = 1;
+                return 0;
+            }
             fprintf(stderr, "pinative: %s\n", err);
+        }
     }
     for (i = 0; cue_names[i]; i++)
         if (sys_find(dir, cue_names[i], cue, sizeof cue))
@@ -227,13 +217,6 @@ int main(int argc, char **argv)
     if (!plat_init("Pinball Illusions"))
         return 1;
     if (!get_game(given, gog, game, sizeof game)) {
-        if (declined)
-            plat_message("The game's files were not copied, so nothing can be played. "
-                         "Start pinative again to be asked again, or use -game with "
-                         "the folder of the game's files.");
-        else
-            plat_message("The game's files were not found. This program needs an installed "
-                         "copy of Pinball Illusions (the GOG release), or -game with its folder.");
         plat_shutdown();
         return 1;
     }
@@ -246,6 +229,10 @@ int main(int argc, char **argv)
         open_cd(gog);
     else if (strcmp(cue, "none") != 0)
         cd_open(cue);
+    if (closed) {
+        plat_shutdown();
+        return 0;
+    }
     if (entry)
         pi_stop("ENTRY");
     if (!cfg) {
