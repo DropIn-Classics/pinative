@@ -3963,10 +3963,9 @@ frame 1161, chooser Down `-key 114 down`) at passes 2000, 4000, 6000,
 8000 (still GAME_PHASE 4 at 8000): CODE but FRAME_SPINS equal except
 FRAME_COUNT, the run's 10 ahead at every one of the four (4Ah against
 40h at 8000); video memory equal, the heap as before. Where the 10
-frames come from is not found (not in the earlier table-2 comparisons
-up to GAME_PHASE 6, presumably later; the music chooser's module
-object or a jingle on table 2, not checked). FRAME_COUNT matters: take
-handler 1Ah (the random award) and display opcode 1Ah read it.
+frames come from: found 2026-10-01, see "Table 2's FRAME_COUNT".
+FRAME_COUNT matters: take handler 1Ah (the random award) and display
+opcode 1Ah read it.
 
 Not run / open: event opcode 14h's module object (table 2's music
 chooser, MODE_RUN's CODE:2CFC8 stop) was not met in that game; with
@@ -3974,6 +3973,38 @@ flips every 61 frames the port stops at `BALLS_MOVE: two balls`
 (CODE:13597): the multiball needs the ball-ball cases of the physics,
 which "The balls' physics" left unread. Opcodes 1Ah, 1Bh, 7, 12h, 15h,
 16h not checked by -cover.
+
+### Table 2's FRAME_COUNT
+
+The run's FRAME_COUNT ahead of the port's on table 2 (the blind game of
+"Table 2 in the port", flips every 33 frames) is the runner's timing,
+not the game's. Found 2026-10-01 with dosrun `-log 12A7F5` (CODE:298C5,
+a pass) and `-log 10C8CC` (DRV_TICK) up to pass 8000: the run's
+FRAME_COUNT at passes 2000, 4000, 6000, 8000 was 2000, 4003, 6007,
+8010, the port's the pass number each time (so not 10 ahead at all
+four, as "Table 2 in the port" had it: 0, 3, 7, 10, from these runs). In the run most passes have
+one tick between them; a tick pair "2, 0" (a frame cut by the retrace,
+caught up in the next) nets nothing; ten passes had two ticks with no
+0 after them: 2628, 2636, 2897, 4053, 4673, 4681, 5076, 7051, 7082,
+7091. No event, take or display opcode ran in those frames that the
+frames around them lacked (the port's log of them, same keys).
+
+Timed with `-log` at the frame's routines (DRV_TICK, PLAY_SCROLL
+CODE:301C9, CODE:1023E, FRAME_STEP's four, FLIPPERS_DRAW): in pass
+2627 14.8 ms lie between DRV_TICK and PLAY_SCROLL, against 4.3 ms in
+pass 2626, and nothing of the game's runs between them; that is about
+one picture (14.2 ms) more. Presumably the driver's IRQ handler waiting
+for the retrace (VSYNC_TICK, NOSOUND CODE:08E7, interrupts on): its
+timer, counted in PIT IRQs, came just after a retrace and waited for
+the next; the frame's work after it then ran past the following
+retrace, so that frame took two ticks (pass 2628). Not checked by a
+log inside the driver. The port's timer (port/src/nosound.c) ends the
+wait at the next picture and the game's work takes no time, so it
+cannot lose a picture there; the drift between PIT and CRT the original
+has on a real machine depends on the machine's speed, as here on
+dosrun's 6,000,000 instructions a second. Not done: the same run with
+`-ips 12000000` (with it the intro did not reach the chooser by
+t=128, so the chooser's keys at t=112..115 missed; not followed).
 
 ### The ball-ball physics in the port
 
@@ -4277,9 +4308,10 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      and 4 done 2026-10-01 as far as blind games go, see "The modes and
      the take handlers in the port"; table 2's slots 40 and 41 done 2026-10-01, see "Table 2 in the
      port"; the ball-ball physics done 2026-10-01, see "The ball-ball
-     physics in the port"; next: table 2's FRAME_COUNT behind (1 to 10
-     frames), event opcode 14h's module object (table 2's music
-     chooser));
+     physics in the port"; table 2's FRAME_COUNT behind (1 to 10
+     frames) found 2026-10-01 to be the runner's timing, see "Table
+     2's FRAME_COUNT"; next: event opcode 14h's module object (table
+     2's music chooser));
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (TABLE
      from CODE:A3FF, then the chooser again, CODE:7182).

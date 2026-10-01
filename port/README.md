@@ -572,8 +572,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   and the take handlers in the port", for what did not).
 - 2026-10-01, Linux: table 2 (`-key 114 down`, F1 at frame 1161),
   the same blind keys, passes 2000, 4000, 6000, 8000: CODE but
-  FRAME_SPINS and FRAME_COUNT (the run's 10 ahead at all four, not
-  found yet) equal, video memory and the heap equal as before.
+  FRAME_SPINS and FRAME_COUNT (the run's 10 ahead at 8000: frames
+  the run lost to its driver's wait for the retrace, the runner's timing,
+  docs/HANDOFF.md "Table 2's FRAME_COUNT") equal, video memory and the heap equal as before.
 - 2026-10-01, Linux: two balls against each other (BALLS_PAIR), table 2
   blind games as above with flips every 67 frames (Enter every 5th;
   passes 4753, 4754, 4756, 4800), 65 (every 9th; 5993, 6047, 6100) and
