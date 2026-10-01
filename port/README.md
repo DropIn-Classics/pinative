@@ -614,8 +614,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   subtracting counter started by a poke at CODE:298C5's pass 1400 in
   both (docs/HANDOFF.md, "The BCD counters in the port"): passes 1401
   to 3100 and, with a start below the end, 1480 to 1500: CODE but
-  FRAME_SPINS, video memory, the counter and the heap equal as before.
-  Not run: an adding counter.
+  FRAME_SPINS, video memory, the counter and the heap equal as before;
+  the same for an adding counter of table 3 (passes 1501 to 1720, its
+  end at 1700).
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

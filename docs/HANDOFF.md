@@ -4189,8 +4189,16 @@ Compared: value 20000000h in the top byte, passes 1401, 1500, 2000,
 running then, presumably the ball lost, not looked at); value 01h,
 passes 1480 to 1500 (ended in its first frame, by the compare): CODE
 but FRAME_SPINS, video memory, the counter's bytes and the heap equal
-as before. Not run: an adding counter (none on table 1; table 3's
-fourteen bcd_start not looked at), the end by a borrow alone.
+as before. The end by a borrow alone was not run.
+
+An adding counter, same day: table 3 (chooser Down at 113 and 114, the
+port's 5696 and 5740; F1 at table frame 1300, Enter 1400), the counter
+at linear 2C14AAh (start 01h, end 10h in the top byte, step 5140h)
+poked running at pass 1500 with 09h in its top byte: passes 1501,
+1600, 1690, 1700 (ended: value 10h, byte +0 0), 1720 equal as above.
+A first try with 0Fh there ended at once in both: DAA makes the
+invalid digit 15h, above the end. Table 3 has three adding counters
+(2C14AAh, 2C14D4h, 2C14FEh) and six subtracting ones.
 
 ## Next
 
