@@ -10,9 +10,11 @@
  * `game`, or, installed as a folder holding ILLUSION.EXE, that folder
  * copied there (cdimage.h; -gog names the image or the folder instead of
  * looking for it).
- * -cue is the cue sheet of the CD's audio tracks (default: the one beside
- * the GOG release's image, game.ins or game.inst; "none", or none found: a
- * CD of one data track, no CD music, cd.c);
+ * -cue is the cue sheet of the CD's audio tracks (default: the copy in the
+ * data folder's `cd`, made the first time from the GOG release's cue
+ * sheet, game.ins or game.inst, and the files it names; else the sheet
+ * beside the release; "none", or none found: a CD of one data track, no
+ * CD music, cd.c);
  * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there,
  * else the data folder's; none there: the options 0, no sound set-up, the
  * file made when the options are saved, pmax.h);
@@ -95,12 +97,13 @@ static int get_game(const char *given, const char *gog, char *out, size_t n)
     return 1;
 }
 
-/* the cue sheet beside the GOG release's image (-gog's, or the one found);
- * 1 if one was read */
-static int open_cd(const char *gog)
+static const char *const cue_names[] = { "game.ins", "game.inst", NULL };
+
+/* the cue sheet beside the GOG release's image (-gog's, or the one
+ * found) into `cue`; 1 if there */
+static int gog_cue(const char *gog, char *cue, size_t n)
 {
-    static const char *const names[] = { "game.ins", "game.inst", NULL };
-    char img[SYS_PATH], dir[SYS_PATH], cue[SYS_PATH];
+    char img[SYS_PATH], dir[SYS_PATH];
     int i;
 
     if (gog)
@@ -111,10 +114,35 @@ static int open_cd(const char *gog)
         snprintf(dir, sizeof dir, "%s", img);
     else if (!sys_parent(img, dir, sizeof dir))
         return 0;
-    for (i = 0; names[i]; i++)
-        if (sys_find(dir, names[i], cue, sizeof cue))
-            return cd_open(cue);
+    for (i = 0; cue_names[i]; i++)
+        if (sys_find(dir, cue_names[i], cue, n))
+            return 1;
     return 0;
+}
+
+/* the CD: the copy in the data folder's `cd` (made from the GOG release's
+ * cue sheet, its image and its audio tracks the first time, so that the
+ * music does not need the installation afterwards), else the sheet beside
+ * the release; 1 if one was read */
+static int open_cd(const char *gog)
+{
+    char data[SYS_PATH], dir[SYS_PATH], cue[SYS_PATH], from[SYS_PATH], err[256];
+    int i;
+
+    sys_data_dir(data, sizeof data);
+    sys_join(dir, sizeof dir, data, "cd");
+    if (!sys_is_dir(dir) && gog_cue(gog, from, sizeof from)) {
+        tm_clear(' ', TM_ATTR(TM_LIGHTGREY, TM_BLUE));
+        tm_text(2, 2, "Copying the CD's image and music from", TM_ATTR(TM_WHITE, TM_BLUE));
+        tm_text(2, 3, from, TM_ATTR(TM_YELLOW, TM_BLUE));
+        show();
+        if (cd_copy_disc(from, dir, NULL, NULL, err, sizeof err) != 0)
+            fprintf(stderr, "pinative: %s\n", err);
+    }
+    for (i = 0; cue_names[i]; i++)
+        if (sys_find(dir, cue_names[i], cue, sizeof cue))
+            return cd_open(cue);
+    return gog_cue(gog, cue, sizeof cue) && cd_open(cue);
 }
 
 int main(int argc, char **argv)

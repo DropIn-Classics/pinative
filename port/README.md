@@ -690,4 +690,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   port before: the table in 640x480 and 800x600 pictures, the 336
   pixels in the middle; on 800x600 a game of three balls. Not compared
   with the original's memory; the window builds not tried.
+- 2026-10-01, Linux, headless: the CD copied into the data folder's
+  `cd` at the first start (doskit's cd_copy_disc: the GOG release's
+  game.ins, game.gog and MUSIC, 134 MB, from ~/GOG Games/Pinball
+  Illusions/data, with `DK_DATA_DIR` a scratch folder) and its cue
+  sheet read from there; the run went on to the chooser. Whether the
+  music plays from the copy not listened to; Windows and macOS not
+  tried.
 - Not built on macOS since.
