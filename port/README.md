@@ -152,8 +152,8 @@ data folder (`%LOCALAPPDATA%\Pinball Illusions`, `~/.local/share/pinative`,
 `~/Library/Application Support/Pinball Illusions`). With no file the
 port does not run the game's sound set-up, as the original would: it
 gives the game a header of its own naming NOSOUND.SDR and the options
-all 0 (the port sounds through doskit's Sound Blaster and needs no
-set-up), and makes the file at that place when the options are first
+all 0 (the port loads NOSOUND.SDR whatever is named, so a set-up
+would change nothing; it has no sound output yet), and makes the file at that place when the options are first
 saved (the high scores). This is the port's behaviour, not the game's
 (since 2026-10-01). `-opt s` still stops at SOUND_SETUP; a file with an
 SVGA mode stops the port at SVGA_CHECK.

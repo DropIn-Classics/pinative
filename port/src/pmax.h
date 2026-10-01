@@ -32,7 +32,7 @@ void pmax_set_code_sel(uint16_t sel);
  * at `path`.  Missing (or NULL): the options all 0 and a header of the
  * port's own naming NOSOUND.SDR, so that the sound set-up is not called
  * (the original's header is all FFh then and the set-up runs; the port
- * sounds through doskit and needs none); the file is made at `path` by the
+ * loads NOSOUND.SDR whatever is named); the file is made at `path` by the
  * first AH=6. */
 void pmax_cfg_open(const char *path);
 /* INT 94h AH=7: its 200h bytes of options to `off` in CODE (at pm_ds) */
