@@ -617,6 +617,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   FRAME_SPINS, video memory, the counter and the heap equal as before;
   the same for an adding counter of table 3 (passes 1501 to 1720, its
   end at 1700).
+- 2026-10-01, Linux: the take handlers no blind game ran (1, 2, 8,
+  0Ah, 0Eh, 0Fh, 12h, 13h, 17h, 18h, 1Ah, 1Bh), each forced by a poke
+  of the skill-shot streams in both, tables 1, 2 and 3: at two passes
+  each CODE but FRAME_SPINS, video memory and the heap equal as before
+  (docs/HANDOFF.md, "The take handlers forced in a run").
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

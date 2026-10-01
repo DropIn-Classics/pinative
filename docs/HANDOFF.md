@@ -4229,6 +4229,36 @@ Looked at 2026-10-01; both port stops stay.
   4494h 1, 4500h 0; table 4: 44A6h, 44DEh, 459Eh, 460Ch, 4678h, 46D2h
   1; offsets in the module). Holes reached otherwise not looked for.
 
+### The take handlers forced in a run
+
+The take handlers the blind games did not run, each forced 2026-10-01 by
+a poke at CODE:298C5's pass 1300 (table 1) or 1401 (tables 2, 3) in the
+runner and, by a scratch line, the port: the skill-shot streams of
+header slots 27 and 28 (whose first ball's launch runs one) made to take
+a record with the handler wanted, the record lit for player 0 (byte +1
+01h). Table 1: the take operand of streams 3779h and 3793h (stream+0Eh);
+tables 2 and 3: opcode 5 and the record written at stream+4 (table 2's
+streams 37FFh/3811h have a `music` there, table 3's 36D9h/36F3h a
+take). Notes for doing it again: a stream's offsets in
+tools/event_streams.py's lists count from its first command, which is
+at stream+4; its pointers are DS offsets (module base [CODE:A11D] plus
+the module offset), not linear addresses.
+
+Records (module offsets): table 1 handler 1 6D4Ch, 8 6D18h, 0Ah 7C64h,
+0Eh 788Eh, 12h 7D24h, 13h 8C14h, 18h 7856h (keys of "The BCD counters
+in the port"); table 3 0Fh 5A44h, 17h 75C4h, 1Bh 6736h; table 2 2
+7402h, 1Ah 716Eh (F1 at table frame 1300, Enter 1400). Each record
+reached the handler's dispatch (CODE:2D9DE, dosrun `-log`), handler 1
+counted the extra ball (player +10h 1); handler 1Ah took another record
+by its random award. Compared at two passes each (1600 and 2000; 1700
+and 2100): CODE but FRAME_SPINS, video memory and the heap equal as
+before. What each handler then changed was not looked at one by one
+beyond that; 17h ran with no mode waiting.
+
+Still not run: take handlers 3 and 9 (in no record), event opcodes 0Fh
+and 10h by a stream (BCD_COUNTERS_STEP was run by a poke, see "The BCD
+counters in the port").
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4510,7 +4540,8 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      see "The pause in the port"; the BCD counters done 2026-10-01, see
      "The BCD counters in the port"; MUSIC_REQUEST's stop found out of
      the data's reach, see "MUSIC_REQUEST's word below FFFEh"; the drop kind and the
-     hole level too, see "Two more stops out of reach");
+     hole level too, see "Two more stops out of reach"; the take
+     handlers forced, see "The take handlers forced in a run");
      later table 2's slot 40, and the
      other phases as a game reaches them; the table's end after Y (done
      2026-10-01, see "The table's end and the chooser again").
