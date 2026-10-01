@@ -96,6 +96,40 @@ void pmax_cfg_write(uint32_t off)
     cfg_there = 1;
 }
 
+/* the port's own: the options as pmax_cfg_read gives them, and changed by
+ * the launcher (main.c) before the game reads them */
+void pmax_cfg_options(uint8_t *out, int n)
+{
+    static const uint8_t key[4] = { 'S', 'N', '9', '5' };
+    const uint8_t *s = cfg + 0x20;
+    int i;
+
+    for (i = 0; i < n && i < 0x200; i++)
+        out[i] = cfg_there ? (uint8_t)(s[i] ^ (i < 4 ? key[i] : s[i - 4])) : 0;
+}
+
+int pmax_cfg_set_options(const uint8_t *in, int n)
+{
+    static const uint8_t key[4] = { 'S', 'N', '9', '5' };
+    uint8_t plain[0x200], *s = cfg + 0x20;
+    FILE *f;
+    int i, ok;
+
+    pmax_cfg_options(plain, 0x200);
+    for (i = 0; i < n && i < 0x200; i++)
+        plain[i] = in[i];
+    for (i = 0; i < 0x200; i++)
+        s[i] = (uint8_t)(plain[i] ^ (i < 4 ? key[i] : s[i - 4]));
+    cfg_there = 1;
+    if (!cfg_path[0])
+        return 0;
+    f = fopen(cfg_path, "wb");
+    ok = f && fwrite(cfg, 1, CFG_SIZE, f) == CFG_SIZE;
+    if (f && fclose(f) != 0)
+        ok = 0;
+    return ok ? 0 : -1;
+}
+
 int pmax_cfg_header(uint32_t off)
 {
     uint32_t i;

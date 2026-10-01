@@ -502,7 +502,8 @@ static void INTRO_SCROLL(void)
     do {
         SCROLL_FRAME();
         INTRO_FRAME();
-        if (intro_key())
+        /* the port's launcher: the intro skipped as a key does it */
+        if (intro_key() || pi_skip_intro)
             break;
     } while (rd(N_SCROLL_LEFT) > 0x21);
     /* CODE:7A4D */
@@ -615,7 +616,8 @@ void CHOOSER_LOAD(void)
     for (;;) {
         INTRO_FRAME();
         INTRO_TICK();
-        if (intro_key())
+        /* the port's launcher: the intro skipped as a key does it */
+        if (intro_key() || pi_skip_intro)
             break;
         if (rb(N_INTRO_END) == 1) {
             INTRO_SCROLL();

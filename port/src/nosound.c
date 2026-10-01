@@ -6,6 +6,7 @@
  * the game reaches them.
  */
 #include <stdio.h>
+#include "audiofx.h"
 #include "cdaudio.h"
 #include "frame.h"
 #include "game.h"
@@ -428,12 +429,17 @@ static void out_fill(int16_t *out, int frames, void *user)
     }
     /* the CD's audio over it, as a card's mixer adds its CD input */
     cda_mix(out, frames, rw_rate);
+    /* the port's: the player's volume and sound (launch.c) */
+    audiofx_process(out, frames, pi_volume_gain());
 }
 
 static void out_start(void)
 {
     if (!out_on) {
         rw_rate = rw(D_MIX_RATE);
+        plat_audio_lock();
+        audiofx_init(rw_rate);
+        plat_audio_unlock();
         out_on = plat_audio_start(rw_rate, out_fill, NULL) ? 1 : -1;
     }
 }

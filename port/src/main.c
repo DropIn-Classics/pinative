@@ -1,7 +1,7 @@
 /* main.c - Pinball Illusions: a native compatibility implementation requiring an
  * installed copy of the original game.
  *
- *     pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]
+ *     pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry] [-setup]
  *
  * DIR is the game's unpacked files: -game, else $PINATIVE_GAME, else the first
  * folder `game` holding ILLUSION.EXE beside the program, in the current
@@ -18,6 +18,8 @@
  * -cfg is the player's ILLUSION.CFG (default: the one in DIR, if there,
  * else the data folder's; none there: the options 0, no sound set-up, the
  * file made when the options are saved, pmax.h);
+ * -setup shows the port's setup screen also in the headless build (the
+ * window's build shows it always, but with -entry);
  * -opt the letters after the '/' of the command line (the GOG release's
  * ILLUSION.BAT passes its own arguments there: o the options screen, s the
  * sound set-up, r the options cleared, ? the help).
@@ -149,7 +151,7 @@ int main(int argc, char **argv)
 {
     const char *given = NULL, *gog = NULL, *cfg = NULL, *cue = NULL;
     char game[SYS_PATH], path[SYS_PATH], err[256];
-    int i, entry = 0;
+    int i, entry = 0, setup = 0;
 
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-game") && i + 1 < argc)
@@ -169,8 +171,10 @@ int main(int argc, char **argv)
             pi_stop_vram = argv[++i];
         else if (!strcmp(argv[i], "-entry"))
             entry = 1;
+        else if (!strcmp(argv[i], "-setup"))
+            setup = 1;
         else {
-            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry]\n");
+            fprintf(stderr, "usage: pinative [-game DIR | -gog FILE|FOLDER] [-cue FILE] [-cfg FILE] [-opt LETTERS] [-mem FILE] [-vram FILE] [-entry] [-setup]\n");
             return 2;
         }
     }
@@ -206,6 +210,12 @@ int main(int argc, char **argv)
         cfg = path;
     }
     pmax_cfg_open(cfg);
+    /* the port's setup screen (not in a headless run, which runs the game
+     * as the original starts) */
+    if (pi_launch(setup || (plat_has_window() && !entry)) != 0) {
+        plat_shutdown();
+        return 0;
+    }
     /* the start address taken at the retrace, the picture at the frame's end:
      * the chooser draws its caption into the page on show after the retrace
      * (docs/HANDOFF.md, "CHOOSER_WAIT's loop") */

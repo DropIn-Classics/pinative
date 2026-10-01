@@ -43,6 +43,11 @@ void pmax_cfg_read(uint32_t off);
  * port's header with them (the original's file made by AH=8 is not looked
  * at).  A NULL path: nothing written. */
 void pmax_cfg_write(uint32_t off);
+/* the port's own, for its launcher: the first `n` option bytes as
+ * pmax_cfg_read gives them (0 with no file), and set and the file written
+ * (made when there was none; 0, or -1 when it cannot be written) */
+void pmax_cfg_options(uint8_t *out, int n);
+int pmax_cfg_set_options(const uint8_t *in, int n);
 /* INT 94h AH=5: its first 20h bytes to `off` in CODE; 0 (CF clear) */
 int pmax_cfg_header(uint32_t off);
 

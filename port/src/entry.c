@@ -88,7 +88,9 @@ void ENTRY(void)
     CHOOSER_LOAD();
     /* CODE:033F: a table chosen, or the end */
     {
-        uint8_t al = CHOOSER_START();
+        /* the port's: a table chosen in its launcher instead of the
+         * chooser, once */
+        uint8_t al = pi_start_table ? (uint8_t)(pi_start_table - 1) : CHOOSER_START();
 
         while (al < 4) {
             VGA_INIT();

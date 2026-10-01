@@ -118,6 +118,23 @@ The game folder is recognised by `ILLUSION.EXE` (also what must come out
 of the GOG image when it is unpacked); built with build.sh on macOS
 2026-09-29, the image unpacking not tried.
 
+## The setup screen
+
+The window's build starts with the port's own setup screen (src/launch.c
+on doskit's launcher.h; the headless build only with `-setup`): start
+the game as it starts (intro, table menu) or one of the four tables at
+once; skip the intro (the port's, off by default: the intro ends as a
+key ends it); window or full screen; the game's options (balls, table
+angle, scrolling, multiball maximum, tilt, resolution), stored in
+ILLUSION.CFG as the game's own options screen stores them (the SVGA
+mode byte cleared when the resolution changed, as CODE:32D5A does);
+the sound (volume, bass, treble, deep bass, headphones: doskit's
+audiofx on what the port plays; keypad + - * in play change the
+volume, a bar shows it); the keys (a key of the player's for each of
+the game's, which work as well) and a controller's buttons. The
+port's settings are in the data folder's pinative.cfg. None of it
+changes how the game plays the options it reads.
+
 ## Build and run
 
     sh port/build.sh          # macOS, Linux (SDL2 for the window)
@@ -697,4 +714,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   sheet read from there; the run went on to the chooser. Whether the
   music plays from the copy not listened to; Windows and macOS not
   tried.
+- 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
+  (screenshots), Babewatch started at once from it (in SVGA 640x480,
+  the option saved), the intro skipped (the table menu at picture 350),
+  pinative.cfg written and read back. Not tried: the window builds,
+  the keys and a controller in play, the volume keys, the sound
+  settings heard.
 - Not built on macOS since.

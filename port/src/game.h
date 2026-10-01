@@ -13,6 +13,14 @@ void pi_stop(const char *name);
 /* the program's end: the memory files written, the platform shut down */
 void pi_end(void);
 
+/* launch.c, the port's own: the setup screen (shown when `show`) and its
+ * settings applied; 0, or -1 when the player quit there */
+int pi_launch(int show);
+/* the table to start at once (1..4; 0: the chooser), the intro skipped */
+extern int pi_start_table, pi_skip_intro;
+/* the volume, 0..1 */
+float pi_volume_gain(void);
+
 /* INT 21h AH=9: the '$'-ended text at the linear address `at` on the
  * console */
 void pi_print_dos(uint32_t at);
