@@ -131,8 +131,10 @@ angle, scrolling, multiball maximum, tilt, resolution), stored in
 ILLUSION.CFG as the game's own options screen stores them (the SVGA
 mode byte cleared when the resolution changed, as CODE:32D5A does);
 the sound (volume, bass, treble, deep bass, headphones: doskit's
-audiofx on what the port plays; keypad + - * in play change the
-volume, a bar shows it); the keys (a key of the player's for each of
+audiofx on what the port plays; keypad + and - in play change the
+volume, * mutes and unmutes it, and doskit's hud.h shows "VOLUME" with
+ten steps or "MUTE" in a box at the top for two seconds, as pddnative
+did; the mute is not kept in pinative.cfg); the keys (a key of the player's for each of
 the game's, which work as well) and a controller's buttons. The
 port's settings are in the data folder's pinative.cfg. None of it
 changes how the game plays the options it reads.
@@ -722,7 +724,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),
-  pinative.cfg written and read back. Not tried: the window builds,
+  pinative.cfg written and read back. The volume box 2026-10-01,
+  headless, shown by a temporary call (the null platform gives no
+  sound keys): at the top in VGA 360 and twice the size at 800x600.
+  Not tried: the window builds,
   the keys and a controller in play, the volume keys, the sound
   settings heard.
 - Not built on macOS since.

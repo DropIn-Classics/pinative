@@ -12,6 +12,7 @@
 #include "audiofx.h"
 #include "frame.h"
 #include "game.h"
+#include "hud.h"
 #include "launcher.h"
 #include "pad.h"
 #include "platform.h"
@@ -188,7 +189,7 @@ static void apply_keys(void)
     pad_set_keys(&play_keys);
 }
 
-static int hud_until;           /* the picture count until which the volume shows */
+static int muted;               /* the mute key (*): silent, the volume kept */
 
 static void apply_sound(void)
 {
@@ -199,7 +200,7 @@ static void apply_sound(void)
 
 float pi_volume_gain(void)
 {
-    return (float)volume / 10.0f;
+    return muted ? 0.0f : (float)volume / 10.0f;
 }
 
 static void changed(const LauncherItem *it)
@@ -211,46 +212,25 @@ static void changed(const LauncherItem *it)
         apply_sound();
 }
 
-/* the volume in play: a bar at the top left for two seconds */
-static void hud_draw(VgaFrame *f)
-{
-    int x, y, best = 0, bestv = -1, i;
-
-    if ((long)frame_count() >= hud_until)
-        return;
-    for (i = 0; i < 256; i++) {
-        uint32_t c = f->palette[i];
-        int v = (int)((c >> 16 & 0xFF) + (c >> 8 & 0xFF) + (c & 0xFF));
-        if (v > bestv) {
-            bestv = v;
-            best = i;
-        }
-    }
-    for (y = 4; y < 10 && y < f->height; y++)
-        for (x = 0; x < 10; x++) {
-            int bx = 4 + x * 8, k;
-            for (k = 0; k < 6 && bx + k < f->width; k++)
-                f->pixels[y * f->width + bx + k] =
-                    (uint8_t)(x < volume || y == 4 || y == 9 || k == 0 || k == 5 ? best : 0);
-        }
-}
-
+/* the volume keys in play (+, -, * mute): doskit's hud.h box at the top
+ * of the picture for two seconds, "VOLUME" with its ten steps or "MUTE",
+ * as pddnative showed it */
 static void hud_control(int c)
 {
-    static int before_mute = 10;
-
-    if (c == PLAT_VOLUME_UP && volume < 10)
-        volume++;
-    else if (c == PLAT_VOLUME_DOWN && volume > 0)
-        volume--;
-    else if (c == PLAT_MUTE) {
-        if (volume) {
-            before_mute = volume;
-            volume = 0;
-        } else
-            volume = before_mute;
-    }
-    hud_until = (int)frame_count() + 140;
+    if (c == PLAT_VOLUME_UP || c == PLAT_VOLUME_DOWN) {
+        if (c == PLAT_VOLUME_UP && volume < 10)
+            volume++;
+        else if (c == PLAT_VOLUME_DOWN && volume > 0)
+            volume--;
+        muted = 0;
+    } else if (c == PLAT_MUTE)
+        muted = !muted;
+    else
+        return;
+    if (muted)
+        hud_show("MUTE", 0, 0, 140);
+    else
+        hud_show("VOLUME", volume, 10, 140);
 }
 
 static void settings_path(char *out, size_t n)
