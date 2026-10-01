@@ -49,15 +49,15 @@ static int pad_choice[PAD_BUTTONS] = {
     [PAD_RIGHT] = P_RIGHT,
 };
 
-static const char *const yesno[] = { "no", "yes", NULL };
-static const char *const window[] = { "window", "full screen", NULL };
+static const char *const yesno[] = { "No", "Yes", NULL };
+static const char *const window[] = { "Window", "Full Screen", NULL };
 /* the game's options screen's lines and values, in the order of their
  * bytes (docs/HANDOFF.md, "The options"; the words are the port's) */
 static const char *const balls[] = { "3", "5", NULL };
-static const char *const angle[] = { "normal", "high", "very high", "very low", "low", NULL };
-static const char *const scrolling[] = { "medium", "smooth", "fast", NULL };
+static const char *const angle[] = { "Normal", "High", "Very High", "Very Low", "Low", NULL };
+static const char *const scrolling[] = { "Medium", "Smooth", "Fast", NULL };
 static const char *const multiball[] = { "6", "3", "4", "5", NULL };
-static const char *const tilt[] = { "normal", "earthquake (never tilts)", NULL };
+static const char *const tilt[] = { "Normal", "Earthquake (never tilts)", NULL };
 static const char *const resolution[] = { "VGA 360x350", "SVGA 640x480", "SVGA 800x600",
                                           "VGA 320x240", NULL };
 static const char *const vol_values[] = { "0 (off)", "1", "2", "3", "4", "5", "6", "7", "8",
@@ -70,24 +70,23 @@ enum { A_CHOOSER = 1, A_TABLE1, A_TABLE2, A_TABLE3, A_TABLE4, A_QUIT };
 
 static LauncherItem start_items[] = {
     { LI_HEAD, "Play", NULL, NULL, NULL, 0, NULL },
-    { LI_ACTION, "Start (choose the table)", NULL, NULL, NULL, A_CHOOSER,
-      "The game as it starts: the intro, then the table menu." },
-    { LI_ACTION, "Law 'n Justice", NULL, NULL, NULL, A_TABLE1, "Straight to this table." },
-    { LI_ACTION, "Babewatch", NULL, NULL, NULL, A_TABLE2, "Straight to this table." },
-    { LI_ACTION, "Extreme Sports", NULL, NULL, NULL, A_TABLE3, "Straight to this table." },
-    { LI_ACTION, "The Vikings", NULL, NULL, NULL, A_TABLE4, "Straight to this table." },
+    { LI_ACTION, "Start", NULL, NULL, NULL, A_CHOOSER,
+      "Start from the intro." },
+    { LI_ACTION, "Law 'n Justice", NULL, NULL, NULL, A_TABLE1, "Start at this table." },
+    { LI_ACTION, "Babewatch", NULL, NULL, NULL, A_TABLE2, "Start at this table." },
+    { LI_ACTION, "Extreme Sports", NULL, NULL, NULL, A_TABLE3, "Start at this table." },
+    { LI_ACTION, "The Vikings", NULL, NULL, NULL, A_TABLE4, "Start at this table." },
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
-    { LI_CHOICE, "Skip the intro", "skipintro", yesno, &skip_intro, 0,
-      "Straight to the table menu (the port's, not the game's)." },
+    { LI_CHOICE, "Skip the intro", "skipintro", yesno, &skip_intro, 0, NULL },
     { LI_CHOICE, "Display", "fullscreen", window, &fullscreen, 0, "Alt+Enter switches too." },
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
     { LI_ACTION, "Quit", NULL, NULL, NULL, A_QUIT, NULL },
 };
 
 static LauncherItem game_items[] = {
-    { LI_HEAD, "The game's options (stored in ILLUSION.CFG)", NULL, NULL, NULL, 0, NULL },
+    { LI_HEAD, "Game Options", NULL, NULL, NULL, 0, NULL },
     { LI_CHOICE, "Balls per game", NULL, balls, &opt[0], 0, NULL },
-    { LI_CHOICE, "Table angle", NULL, angle, &opt[1], 0, "How hard the table pulls the ball down." },
+    { LI_CHOICE, "Table angle", NULL, angle, &opt[1], 0, "Higher angle applies higher pull to the ball." },
     { LI_CHOICE, "Scrolling", NULL, scrolling, &opt[2], 0, NULL },
     { LI_CHOICE, "Multiball maximum", NULL, multiball, &opt[3], 0, NULL },
     { LI_CHOICE, "Tilt sensitivity", NULL, tilt, &opt[4], 0, NULL },
@@ -96,7 +95,7 @@ static LauncherItem game_items[] = {
 };
 
 static LauncherItem sound_items[] = {
-    { LI_HEAD, "Sound (the port's; keypad + and - in play too)", NULL, NULL, NULL, 0, NULL },
+    { LI_HEAD, "Sound", NULL, NULL, NULL, 0, NULL },
     { LI_CHOICE, "Volume", "volume", vol_values, &volume, 0, NULL },
     { LI_CHOICE, "Bass", "bass", db_values, &bass, 0, NULL },
     { LI_CHOICE, "Treble", "treble", db_values, &treble, 0, NULL },
@@ -106,24 +105,22 @@ static LauncherItem sound_items[] = {
 };
 
 static LauncherItem key_items[] = {
-    { LI_HEAD, "Keys (the game's own keys work as well)", NULL, NULL, NULL, 0, NULL },
+    { LI_HEAD, "Keyboard Configuration", NULL, NULL, NULL, 0, NULL },
     { LI_KEY, "Left flipper", "key_leftflipper", NULL, &player_key[K_LFLIP], 0,
-      "The game's: Left Shift or Left Ctrl." },
+      "Default: Left Shift or Left Ctrl." },
     { LI_KEY, "Right flipper", "key_rightflipper", NULL, &player_key[K_RFLIP], 0,
-      "The game's: Right Shift or Right Ctrl." },
-    { LI_KEY, "Plunger", "key_plunger", NULL, &player_key[K_PLUNGER], 0, "The game's: Enter." },
-    { LI_KEY, "Nudge (the game's Left Alt)", "key_nudgeleft", NULL, &player_key[K_NUDGE_L], 0, NULL },
-    { LI_KEY, "Nudge (the game's Right Alt)", "key_nudgeright", NULL, &player_key[K_NUDGE_R], 0, NULL },
-    { LI_KEY, "Nudge (the game's Space)", "key_nudgeup", NULL, &player_key[K_NUDGE_UP], 0, NULL },
-    { LI_KEY, "Start a game", "key_start", NULL, &player_key[K_START], 0,
-      "The game's: F1 (F2.. for more players)." },
-    { LI_KEY, "Pause", "key_pause", NULL, &player_key[K_PAUSE], 0, "The game's: P." },
+      "Default: Right Shift or Right Ctrl." },
+    { LI_KEY, "Plunger", "key_plunger", NULL, &player_key[K_PLUNGER], 0, "Default: Enter." },
+    { LI_KEY, "Nudge Left (Default: Left Alt)", "key_nudgeleft", NULL, &player_key[K_NUDGE_L], 0, NULL },
+    { LI_KEY, "Nudge Right (Default: Right Alt)", "key_nudgeright", NULL, &player_key[K_NUDGE_R], 0, NULL },
+    { LI_KEY, "Nudge Up (Default: Space)", "key_nudgeup", NULL, &player_key[K_NUDGE_UP], 0, NULL },
+    { LI_KEY, "Pause", "key_pause", NULL, &player_key[K_PAUSE], 0, "Default: P." },
 };
 
 #define PAD_ITEM(b, label) \
     { LI_CHOICE, label, NULL, pad_actions, &pad_choice[b], 0, NULL }
 static LauncherItem pad_items[] = {
-    { LI_HEAD, "A controller's buttons", NULL, NULL, NULL, 0, NULL },
+    { LI_HEAD, "Controller Configuration", NULL, NULL, NULL, 0, NULL },
     PAD_ITEM(PAD_A, "A"), PAD_ITEM(PAD_B, "B"), PAD_ITEM(PAD_X, "X"), PAD_ITEM(PAD_Y, "Y"),
     PAD_ITEM(PAD_LB, "Left shoulder"), PAD_ITEM(PAD_RB, "Right shoulder"),
     PAD_ITEM(PAD_LT, "Left trigger"), PAD_ITEM(PAD_RT, "Right trigger"),
@@ -291,8 +288,8 @@ int pi_launch(int show)
     plat_set_fullscreen(fullscreen);
     apply_sound();
     {
-        r = launcher_run("Pinball Illusions  -  a native compatibility implementation",
-                         "Needs an installed copy of the original game (the GOG release).",
+        r = launcher_run("Pinball Illusions",
+                         NULL,
                          pages, NPAGES, changed);
         pi_settings_save();
         for (i = 0; i < 6; i++)
