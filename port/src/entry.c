@@ -102,5 +102,7 @@ void ENTRY(void)
     CD_LOCK(0);
     /* IRQ 1 unmasked */
     pic_out21((uint8_t)(pic_in21() & 0xFD));
-    pi_print_dos(PI_IMAGE_BASE + 0x07B4);
+    /* the original prints "Thank you for playing ..." (CODE:07B4) to the
+     * DOS screen here; the port leaves it out, a terminal needs no
+     * farewell */
 }

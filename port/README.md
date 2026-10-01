@@ -117,6 +117,8 @@ options' reset, `-opt ?` prints the help.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
 of the GOG image when it is unpacked); built with build.sh on macOS
 2026-09-29, the image unpacking not tried.
+At the end the port does not print the original's "Thank you for
+playing" line (CODE:07B4) to the terminal.
 
 ## The setup screen
 
