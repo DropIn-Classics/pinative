@@ -4501,8 +4501,12 @@ window build not tried; a run that hears the hole's sound not made (the
 headless build takes no settings). The third bug, table 1's 25-hit
 extra ball, is not an option yet: the shooting game's module code is
 not translated in the port (it stops there), so there is nothing to
-switch; translating SHOOT_START/SHOOT_UPDATE (T001 CODE:9A4E..A193)
-comes first.
+switch. `SHOOT_START` (T001 CODE:9A4E) is now translated in
+port/src/modcode.c from the existing listing; the Windows window and
+headless builds compile. It has not been run against the original.
+Next translate and compare `SHOOT_UPDATE` (CODE:9B25) and the picture
+and window routines through CODE:A193; the shooting game still stops
+at its first update, so the extra ball fix remains unavailable.
 
 ## Next
 

@@ -291,6 +291,39 @@ static void next_ball_lamps(uint32_t counter, uint32_t chain, unsigned table)
     } while (n != 0);
 }
 
+/* Table 1 CODE:9A4E (SHOOT_START), the display game's opcode-14h
+ * object: wait once, then clear the score and hit count, give it four
+ * lives and put the crosshair in window 1.  Each of the four windows
+ * gets its next delay from the module's 256-word delay table; the
+ * table index at state+42h is kept and advanced as in the original. */
+static void T1_SHOOT_START(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), s = m + 0xA19F, w;
+    uint16_t i, n;
+
+    host_call(0x08);
+    wd(0x0004, s);
+    wb(s + 8, 0);
+    ww(s, 0);
+    wd(s + 0x0A, 0);
+    wd(s + 0x0E, 0);
+    ww(s + 4, 1);
+    ww(s + 2, 4);
+    wb(s + 6, 0);
+    wb(s + 7, 0);
+
+    w = s + 0x12;
+    i = rw(s + 0x42);
+    for (n = 0; n < 4; n++) {
+        ww(w, rw(m + 0xA227 + (uint32_t)(i & 0xFF) * 2));
+        ww(w + 2, 0);
+        ww(w + 4, 0);
+        w += 6;
+        i = (uint16_t)((i + 1) & 0xFF);
+    }
+    ww(s + 0x42, i);
+}
+
 /* table 2: TUNE_CHOICES (a word per player, the tune 0..2), TUNE_TEMPLATES
  * (three pointers, three audio records each) and the records 0..2 the
  * music is played from (CODE:1A760), offsets in the module */
@@ -504,6 +537,10 @@ void MOD_CALL(uint32_t at)
     }
     if (table == 2 && off == 0x9A10) {
         T2_TUNE_START();
+        return;
+    }
+    if (table == 1 && off == 0x9A4E) {
+        T1_SHOOT_START();
         return;
     }
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);
