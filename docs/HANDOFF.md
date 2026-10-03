@@ -160,8 +160,12 @@ is marked there as to be checked again in the hints.
   Controller), its questions the kit's file dialogs with the copy's
   progress bar; checked headless with `-setup` (the menu, every page,
   a key given, Esc to Quit, a table started at once, both dialogs
-  declined; port/README.md). No `carried over` block in src/, so
-  xfer's shorter carried comments change nothing here.
+  declined; port/README.md). Merged with origin/master's parallel
+  work (the joint offer of the game's files and the CD together, the
+  title bar): main.c is that joint offer, launch.c the menu (the
+  tabbed screen cannot open pages under the new kit). No `carried
+  over` block in src/, so xfer's shorter carried comments change
+  nothing here.
 
 ## The game's files
 

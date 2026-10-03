@@ -4,7 +4,6 @@
 #define PI_GAME_H
 
 #include <stdint.h>
-
 #include "launcher.h"
 
 /* Where the port stops: a routine not translated yet.  With a memory file
@@ -15,8 +14,8 @@ void pi_stop(const char *name);
 /* the program's end: the memory files written, the platform shut down */
 void pi_end(void);
 
-/* launch.c: the port as doskit's launcher.h names it (the setup screen's
- * title bar, the dialogs about the game's files) */
+/* the names in the title bar of the setup screen and of the dialogs
+ * about the game's files (doskit's launcher.h; defined in main.c) */
 extern const LauncherApp pi_app;
 
 /* launch.c, the port's own: the setup screen (shown when `show`) and its

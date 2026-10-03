@@ -20,13 +20,6 @@
 #include "pmax.h"
 #include "sys.h"
 
-#ifndef PORT_VERSION
-#define PORT_VERSION ""
-#endif
-
-/* doskit's launcher.h names the port in its title bar */
-const LauncherApp pi_app = { "Pinball Illusions", "pinative", PORT_VERSION };
-
 int pi_start_table;             /* 1..4: that table at once; 0 the chooser */
 int pi_skip_intro;
 

@@ -735,24 +735,49 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   headless build), as doskit/docs/RELEASE.md and port/dist/README.txt
   say. Built on Linux without warnings, the headless first start (no
   question) copied `game` and `cd` as before; the question itself not
-  seen, no window tried. Replaced 2026-10-03 by the kit's dialogs, see below.
+  seen, no window tried.
 - 2026-10-03, Linux: doskit to 69d03a2, the setup screen rebuilt as the
   kit's menu with one page per group (src/launch.c: the Play actions,
   Skip the intro and Display in the menu, Game/Sound/Keys/Controller
-  pages; no Quit of its own) and the questions about the game's files
-  as the kit's dialogs (src/main.c: launcher_offer_copy with its
-  progress bar, launcher_no_game, launcher_copy_failed; asked once for
-  the game's files and the CD together, as before; not asked with -gog,
-  and taken without asking in the headless build without DK_KEYS).
-  Headless with `-setup` (DK_KEYS, screenshots): the menu and all four
-  pages, a choice stepped forth and back, a key given (pinative.cfg
-  written and read back), Esc to Quit and Enter quitting, exit 0; Law
-  'n Justice started at once from the menu (the table on screen);
-  "Copy the files"/"Quit" declined (exit 1 with the message) and the
-  CD's "Copy the files"/"Not now" not taken (the game ran on). The
-  copy taken with its bar, the "not found" and "could not be copied"
-  screens not tried (the kit's dialogtest covers them). The window
-  build, Windows and macOS not tried.
+  pages; no Quit of its own); main.c kept as the joint offer of
+  2026-10-01 (the game's files and the CD's image and music together).
+  Headless with `-setup` (screenshots): the menu and all four pages
+  again after the merge, Law 'n Justice started at once from the menu
+  (the table on screen); the joint offer declined (the program ends).
+  The copy taken with its bar, the "not found" and "could not be
+  copied" screens not tried (the kit's dialogtest covers them). The
+  window build, Windows and macOS not tried.
+=======
+  seen, no window tried.
+- 2026-10-01: that question replaced by doskit's dialog about the
+  game's files (launcher.h, the one every port of the kit shows): the
+  setup screen's backdrop ("Pinball Illusions Setup", the port's name
+  and version), a window "The game's files" with the release found and
+  the data folder, "Copy the files" or "Quit" (Up/Down, Enter; Esc
+  quits), a bar with the file's name while copying, and the same
+  window when nothing was found or the copy failed. Asked once for the
+  game's files and the CD's image and music together; for the CD alone
+  ("Copy the files" or "Not now", which plays from the release's cue
+  sheet) when the game's files are there and the data folder's `cd` is
+  not. Not asked with -gog (the bar is shown); the headless build
+  copies as before, without the dialog. Closing the window while
+  copying ends the program. Built on Windows with MSVC (build.bat),
+  check.py all ok; the dialog's screens seen as screenshots of
+  doskit's tests/launcher/dialogtest.c only: pinative's window, its
+  first start and the copy from a GOG release not run with this
+  change, Linux and macOS not built.
+- 2026-10-01: the setup screen's title bar as the dialog's: "Pinball
+  Illusions Setup" at the left, "pinative" and the release's version
+  at the right, where the game's name stood in the middle (doskit's
+  launcher_run takes the names, main.c's pi_app, as the dialog does).
+  Built on Windows with MSVC, check.py all ok; the bar seen in a
+  screenshot of doskit's tests/launcher/launchtest.c, pinative's own
+  screen not looked at.
+- 2026-10-01: the title bar's left side is the game's name alone,
+  "Pinball Illusions", without "Setup", on the setup screen and in the
+  dialog about the game's files (doskit's launcher.c). Seen in a
+  screenshot of launchtest again; pinative not built again for it (the
+  change is in the kit's file only).
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),
