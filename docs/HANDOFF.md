@@ -151,6 +151,17 @@ is marked there as to be checked again in the hints.
   workflow makes `latest.json`; the question and the notice are to be
   added before a first release, and README.txt's "New versions"
   section with them.
+- doskit to 69d03a2 (2026-10-03, 16 commits since bd81e75): the setup
+  screen as pddnative's (a menu with LI_PAGE windows, Esc to Quit),
+  the dialog about the game's files every port shares, INT 33 mouse
+  support, critical-error injection, xfer/symmap fixes. The port is
+  rebuilt with it: its setup screen is the kit's menu with one page
+  per group (Play actions, Skip the intro, Display, Game, Sound, Keys,
+  Controller), its questions the kit's file dialogs with the copy's
+  progress bar; checked headless with `-setup` (the menu, every page,
+  a key given, Esc to Quit, a table started at once, both dialogs
+  declined; port/README.md). No `carried over` block in src/, so
+  xfer's shorter carried comments change nothing here.
 
 ## The game's files
 

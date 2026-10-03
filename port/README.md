@@ -123,7 +123,8 @@ playing" line (CODE:07B4) to the terminal.
 ## The setup screen
 
 The window's build starts with the port's own setup screen (src/launch.c
-on doskit's launcher.h; the headless build only with `-setup`): start
+on doskit's launcher.h, as its docs/LAUNCHER.md draws it: a menu with
+one page per group; the headless build only with `-setup`): start
 the game as it starts (intro, table menu) or one of the four tables at
 once; skip the intro (the port's, off by default: the intro ends as a
 key ends it); window or full screen; the game's options (balls, table
@@ -157,7 +158,9 @@ headless build writes the pictures `DK_SHOTS` names, as
 Both scripts define `PORT_VERSION` (a string) for the compiler when
 there is a version: the environment's `PORT_VERSION`, else the tag of the
 commit built; the workflow sets it for a tag's build. Without one it
-stays undefined; nothing in the port reads it yet.
+stays undefined. The setup screen and the dialogs about the game's
+files name it in their title bar (doskit's LauncherApp); nothing else
+reads it yet.
 `PORT_UPDATE_URL` likewise, from the environment only: where a release
 looks for newer ones (doskit/runtime/update.h); the workflow sets it to
 the latest release's `latest.json`. Nothing reads it yet either: the
@@ -732,7 +735,24 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   headless build), as doskit/docs/RELEASE.md and port/dist/README.txt
   say. Built on Linux without warnings, the headless first start (no
   question) copied `game` and `cd` as before; the question itself not
-  seen, no window tried.
+  seen, no window tried. Replaced 2026-10-03 by the kit's dialogs, see below.
+- 2026-10-03, Linux: doskit to 69d03a2, the setup screen rebuilt as the
+  kit's menu with one page per group (src/launch.c: the Play actions,
+  Skip the intro and Display in the menu, Game/Sound/Keys/Controller
+  pages; no Quit of its own) and the questions about the game's files
+  as the kit's dialogs (src/main.c: launcher_offer_copy with its
+  progress bar, launcher_no_game, launcher_copy_failed; asked once for
+  the game's files and the CD together, as before; not asked with -gog,
+  and taken without asking in the headless build without DK_KEYS).
+  Headless with `-setup` (DK_KEYS, screenshots): the menu and all four
+  pages, a choice stepped forth and back, a key given (pinative.cfg
+  written and read back), Esc to Quit and Enter quitting, exit 0; Law
+  'n Justice started at once from the menu (the table on screen);
+  "Copy the files"/"Quit" declined (exit 1 with the message) and the
+  CD's "Copy the files"/"Not now" not taken (the game ran on). The
+  copy taken with its bar, the "not found" and "could not be copied"
+  screens not tried (the kit's dialogtest covers them). The window
+  build, Windows and macOS not tried.
 - 2026-10-01, Linux, headless with `-setup`: the setup screen's pages
   (screenshots), Babewatch started at once from it (in SVGA 640x480,
   the option saved), the intro skipped (the table menu at picture 350),
