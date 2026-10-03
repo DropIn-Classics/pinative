@@ -1,10 +1,15 @@
 /* setup.c - SETUP_ARGS (CODE:32F39): the language of SETSOUND.DAT's texts
- * and the command line's options, the sound set-up and the options screen
- * when asked for (not translated yet: the port stops there); SVGA_CHECK.
+ * and the command line's options.  The original's own screens behind
+ * them (the options screen, the sound set-up, the options' reset) are
+ * not in the port: the setup screen replaced them (its Game page keeps
+ * the same option bytes, its Sound page the volume; the sound is always
+ * NOSOUND).  Asked for, the port says so and ends.  SVGA_CHECK.
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include "game.h"
 #include "names.h"
+#include "platform.h"
 #include "pmax.h"
 #include "pmem.h"
 
@@ -31,6 +36,16 @@ static void SETSOUND_LOAD(void)
 static void SETSOUND_FREE(void)
 {
     pmax_free(rw(N_SETSOUND_TEXTS + 4));
+}
+
+/* the original's own screen `what` asked for: not in the port, which
+ * has the setup screen instead; said and ended, as the original ends
+ * after its screens */
+static void not_in_port(const char *what)
+{
+    plat_message(what);
+    plat_shutdown();
+    exit(0);
 }
 
 /* CF as the return value: 1 when the program is to end */
@@ -85,12 +100,12 @@ int SETUP_ARGS(void)
 done:
 
     if (rb(N_ARG_R) == 1)
-        pi_stop("OPTIONS_RESET");
+        not_in_port("The options' reset is not in the port (its setup screen keeps the options).");
     if (rb(N_ARG_S) != 0
         || pmax_cfg_header(N_CFG_HEADER) != 0 || rd(N_CFG_HEADER) == 0xFFFFFFFFu)
-        pi_stop("SOUND_SETUP");
+        not_in_port("The sound set-up is not in the port (its Sound page; the sound is always NOSOUND).");
     if (rb(N_ARG_O) == 1)
-        pi_stop("OPTIONS_SCREEN");
+        not_in_port("The options screen is not in the port (its setup screen's Game page).");
     if (pmax_cfg_header(N_CFG_HEADER) != 0 || rd(N_CFG_HEADER) == 0xFFFFFFFFu) {
         SETSOUND_FREE();
         return 1;
