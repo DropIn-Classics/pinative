@@ -138,8 +138,12 @@ volume, * mutes and unmutes it, and doskit's hud.h shows "VOLUME" with
 ten steps or "MUTE" in a box at the top for two seconds, as pddnative
 did; the mute is not kept in pinative.cfg); the keys (a key of the player's for each of
 the game's, which work as well) and a controller's buttons. The
-port's settings are in the data folder's pinative.cfg. None of it
-changes how the game plays the options it reads.
+ port's settings are in the data folder's pinative.cfg. None of it
+ changes how the game plays the options it reads. The Fixes page holds
+ the port's fixes for the original's bugs, off by default: a hole's
+ eject plays the hole's own sound, and game over writes the initials
+ only into a high-score entry (docs/HANDOFF.md, "The original's bugs as
+ options").
 
 ## Build and run
 
@@ -824,4 +828,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   `-opt o/s/r` (the game's own options screen, sound set-up and reset,
   which the port's setup screen replaces) and the defaults for what no
   table uses. Windows and macOS not tried.
+- 2026-10-03, Linux: the setup screen's Fixes page, headless with
+  `-setup` (screenshots): the menu lists Fixes after Controller, the
+  page shows both items No with their help; Right on the first, Esc
+  twice: pinative.cfg has fix_hole_sound = 1, fix_gameover_names = 0.
+  At ENTRY against dosrun (`-break 1011D3 -mem`, the port `-entry
+  -mem`): CODE and TAIL 0 bytes differ, so the defaults play as before.
+  A run that hears the hole's sound not made (the headless build takes
+  no settings); the window build not tried.
 - Not built on macOS since.

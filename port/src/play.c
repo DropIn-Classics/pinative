@@ -880,7 +880,9 @@ static void HOLE_BALL_OUT(void)
 /* the hole's count [0020] at or below 3Ch: at 3Ch the ball out; below
  * 32h every 8th count the sound record +10h of [0004] (none: nothing
  * drawn either), then the picture +30h of [0004] (the second hole) or of
- * the hole flickered by count AND 4 */
+ * the hole flickered by count AND 4. Without bit 1 [0004] still holds
+ * the drop-target queue's place, not the hole (a bug: nothing sounds);
+ * with pi_fix_hole_sound the hole's own record +10h is played instead */
 static void hole_flicker(int second)
 {
     uint16_t di = rw(0x0020);
@@ -899,7 +901,7 @@ static void hole_flicker(int second)
         return;
     cw(0x0024, (uint16_t)(di & 7));
     if ((di & 7) == 0) {
-        r = rd(rd(0x0004) + 0x10);
+        r = !second && pi_fix_hole_sound ? rd(rd(0x0000) + 0x10) : rd(rd(0x0004) + 0x10);
         wd(0x0024, r);
         if (r == 0)
             return;
@@ -2279,7 +2281,7 @@ static void HISCORE_ENTER(void)
  * a 0, the score's word, its dword), at or above one HISCORE_ENTER. The
  * initials of CODE:2B09D go into the entry [0004] also when no entry was
  * passed: [0004] is then state+0D2Eh (MULTIBALL_ON and the next two
- * bytes). Then the players' scores in the attract mode (state+0E34h
+ * bytes); with pi_fix_gameover_names that write is left out. Then the players' scores in the attract mode (state+0E34h
  * FFh, the count state+0E2Ah and CODE:2A928, twice: CODE:2A92A) and
  * GAME_PHASE 1 */
 static void GAME_OVER(void)
@@ -2333,9 +2335,11 @@ static void GAME_OVER(void)
         }
         /* CODE:2AF26 */
         ent = rd(0x0004);
-        wb(ent, rb(0x2B09D));
-        wb(ent + 1, rb(0x2B09E));
-        wb(ent + 2, rb(0x2B09F));
+        if (!pi_fix_gameover_names || ent < st + 0x0D2E) {
+            wb(ent, rb(0x2B09D));
+            wb(ent + 1, rb(0x2B09E));
+            wb(ent + 2, rb(0x2B09F));
+        }
         st = rd(0x0014);
         ww(st + 0x0D72, (uint16_t)(rw(st + 0x0D72) + 1));
         wd(0x0000, rd(0x0000) + 0x16);

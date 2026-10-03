@@ -4434,6 +4434,76 @@ frame 1185, Enter 1299; the scripts lived in build/loop, not kept):
   of 625Eh while the loop waits (real play does it; the user met 1Fh that
   way).
 
+### The gaps' second look
+
+Done 2026-10-03, on Linux: every gap of src/ILLUSION.hints looked at
+again now that the port plays whole games. Two `-cover` runs (table 1:
+a whole blind game to game over, `-until 260`, keys `106 space`, `112
+enter`, `136 f1`, `137 enter` and Enter every 15 s; a second run with
+`114 right`, `115 enter`, `125 esc`, the same game, `150 esc`, `152 y`
+to the chooser and `162 enter`, `165 enter` to a second table, `-until
+215`): no instruction of any of the 208 gaps began in either run (the
+cover files in build/, not kept; gaps.py's `--cover` does not mark them
+for a pMAX image, its offsets are off by the segment's base, so a
+scratch script compared instead). The second run reached TABLE_END,
+DRIVER_RELOAD, the second CHOOSER and MENU_START; the first BALL_END and
+GAME_OVER. Not in either run: the tilt, the pause, the Info and
+greetings pages (their code is all reached and hinted; no pointer into
+a gap exists for them to take).
+
+The code-like gaps decode cleanly and end in RET (or JMP), with no
+dword, no immediate and no relative jump or call to their start
+anywhere in the image (gaps.py's word list, ptrscan.py's two candidates
+both numbers): dead in this release, left as data, each with a comment
+in src/ILLUSION.hints. In short: CODE:2FFA (26h bytes to ES:[1321h]),
+3454 (a key release waited for, presumably), 36A1 (scan code 2 pressed
+and released), 92CE (a fill through ES:[A117h] after a call of
+CODE:3D389), A618/A61E (two calls of the retrace wait CODE:3D372) and
+the lone RET at A653, 15340 (four records checked against CODE:15C1A),
+297A6 (flags to DBFCh/DBFAh, hardware setup presumably), 29832 (the
+frame table set to 29922h), 2E886 (a bit cleared, an unlight helper
+presumably), 302F8 (bytes copied through the work cells), 35BC6,
+35D20 (three requests) and 35E37 (MSCDEX requests through CD_REQUEST;
+the live play is CD_PLAY at CODE:35DDC), and the protection's pieces
+with their loop at CODE:5140 (ignored, the manual check never came).
+The one-to-three-byte tails after a RET or JMP (CODE:A497, A653, 32902,
+32A79, 3300F, 35E37) stay data too. The big gaps are data as read
+before: texts and buffers (0000-02A3 the work cells, 07B4-236A,
+3D409-end), tables (INTRO_SCRIPT, WAVE_TAB, TILE_PERM, the ball
+routines' tables, the physics and display tables) and the records from
+CODE:168C9 on.
+
+Displacements with a register that land in data stay labels (42 `num`
+hints name the clearest field offsets; the absolute operands in
+build/ILLUSION.ASM are the named work cells or offsets inside named
+regions). The image never moves and the port is translated, so no
+address hides as a number anywhere it matters. ptrscan.py still lists
+only its two candidates (CODE:3D34 a count, CODE:523B the dead switch),
+both numbers. The four table modules need no data hints: build.py
+checks their offsets are exactly their `.REL` lists' (1707, 1651, 1506,
+1747 dwords for tables 1..4, no other),
+and every byte of their code is reached.
+
+### The original's bugs as options
+
+Done 2026-10-03, on Linux: the setup screen has a Fixes page (one page
+per group, as the others; off by default, kept in pinative.cfg, so the
+default plays as the original does; port/src/launch.c, src/play.c).
+Two of HANDOFF's item 4 below: a hole's eject plays the hole's own
+sound record +10h (seven times an eject, as the flicker frames come;
+the original reads a stale [CODE:0004] and stays silent) and game over
+writes the initials only into a high-score entry (the original writes
+them past the fifth, over MULTIBALL_ON). Checked headless with `-setup`
+(the Fixes page with both items No; Right on the first, Esc twice: the
+file has fix_hole_sound = 1, fix_gameover_names = 0) and at ENTRY
+against dosrun (CODE and TAIL 0 bytes differ, the defaults). The
+window build not tried; a run that hears the hole's sound not made (the
+headless build takes no settings). The third bug, table 1's 25-hit
+extra ball, is not an option yet: the shooting game's module code is
+not translated in the port (it stops there), so there is nothing to
+switch; translating SHOOT_START/SHOOT_UPDATE (T001 CODE:9A4E..A193)
+comes first.
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
@@ -4476,13 +4546,13 @@ frame 1185, Enter 1299; the scripts lived in build/loop, not kept):
      from the modules' data (same section); not seen in a run: a play
      of a mode's track (hit the objects the counters count);
      x87 is not emulated, not needed up to t=240.
-2. Stage 1 for the main program, on from the above: the gaps are looked
-   at (see "The gaps"; the copy protection there is ignored since
-   2026-10-03, the rest of the unreferenced code wants a second look
-   once more is known); displacements with
-   a register that land in data (field offsets or addresses, by eye);
-   offsets among the 32-bit immediates
-   (ptrscan.py); names (doskit/docs/METHOD.md).
+2. Stage 1 for the main program, on from the above: done 2026-10-03
+   (see "The gaps' second look": no gap ran in the cover runs, the dead
+   routines documented in src/ILLUSION.hints; displacements in data stay
+   labels with 42 `num` hints; ptrscan.py's two candidates both numbers;
+   the modules need no data hints, their offsets are their `.REL` lists').
+   Left: names for more routines as stage 2 names them
+   (doskit/docs/METHOD.md).
 3. Tasks for the next agent (written 2026-09-29; each larger, in order
    of use; the rules in AGENTS.md hold, findings go here and in the
    hints):
@@ -4546,10 +4616,12 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      so every phase is known. Done 2026-09-29: the SVGA modes in the
      runner (see "The SVGA modes in a run"; FRAME_RATE 59 or 60).
 4. For the port (written 2026-09-29, at the user's suggestion): the
-   original's slips as options, off by default, so that the default
-   plays as the original does (scores and extra balls alike). Found so
-   far, both through the shared cell CODE:0004 that host routines use
-   as a work cell:
+   original's bugs as options, off by default, so that the default
+   plays as the original does (scores and extra balls alike). Done
+   2026-10-03 for two of the three, as the setup screen's Fixes page
+   (see "The original's bugs as options"; port/README.md): the hole's
+   sound and the game-over initials. Found so far, both through the
+   shared cell CODE:0004 that host routines use as a work cell:
    - table 1's shooting game: the 25-hit extra ball (see "Table 1's
      shooting game when the lives run out"); the fix keeps the state
      pointer across host vector +18h, so byte +8 is read from the state;

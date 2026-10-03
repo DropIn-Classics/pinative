@@ -22,6 +22,8 @@
 
 int pi_start_table;             /* 1..4: that table at once; 0 the chooser */
 int pi_skip_intro;
+int pi_fix_hole_sound;          /* QoL: a hole ejects with its own sound */
+int pi_fix_gameover_names;      /* QoL: game over writes no initials past the high scores */
 
 /* ---- the settings */
 
@@ -88,6 +90,7 @@ static LauncherItem menu_items[] = {
     { LI_PAGE, "Sound", NULL, NULL, NULL, 2, "Volume, bass, treble, headphones." },
     { LI_PAGE, "Keys", NULL, NULL, NULL, 3, "The keyboard." },
     { LI_PAGE, "Controller", NULL, NULL, NULL, 4, "A controller's buttons." },
+    { LI_PAGE, "Fixes", NULL, NULL, NULL, 5, "The port's fixes for the original's bugs." },
 };
 
 static LauncherItem game_items[] = {
@@ -137,12 +140,23 @@ static LauncherItem pad_items[] = {
     PAD_ITEM(PAD_LEFT, "D-pad left"), PAD_ITEM(PAD_RIGHT, "D-pad right"),
 };
 
+/* the port's fixes for the original's bugs (docs/HANDOFF.md, "Next",
+ * item 4): off the port plays as the original does */
+static LauncherItem fixes_items[] = {
+    { LI_HEAD, "Fixes", NULL, NULL, NULL, 0, NULL },
+    { LI_CHOICE, "Holes play their own sound", "fix_hole_sound", yesno, &pi_fix_hole_sound, 0,
+      "The original's holes stay silent; on plays each hole's own sound." },
+    { LI_CHOICE, "Initials stay in the high scores", "fix_gameover_names", yesno, &pi_fix_gameover_names, 0,
+      "The original writes past the last entry; on keeps them inside." },
+};
+
 static LauncherPage pages[] = {
     { "Setup", menu_items, sizeof menu_items / sizeof menu_items[0] },
     { "Game", game_items, sizeof game_items / sizeof game_items[0] },
     { "Sound", sound_items, sizeof sound_items / sizeof sound_items[0] },
     { "Keys", key_items, sizeof key_items / sizeof key_items[0] },
     { "Controller", pad_items, sizeof pad_items / sizeof pad_items[0] },
+    { "Fixes", fixes_items, sizeof fixes_items / sizeof fixes_items[0] },
 };
 #define NPAGES (int)(sizeof pages / sizeof pages[0])
 

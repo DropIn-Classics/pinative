@@ -23,6 +23,9 @@ extern const LauncherApp pi_app;
 int pi_launch(int show);
 /* the table to start at once (1..4; 0: the chooser), the intro skipped */
 extern int pi_start_table, pi_skip_intro;
+/* QoL fixes for the original's bugs (the setup screen's Fixes page; 0:
+ * as the original) */
+extern int pi_fix_hole_sound, pi_fix_gameover_names;
 /* the volume, 0..1 */
 float pi_volume_gain(void);
 
