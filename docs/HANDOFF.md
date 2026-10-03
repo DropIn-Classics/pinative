@@ -214,9 +214,11 @@ games too), in the kit with tests (rule 7).
 Found 2026-09-30: a name given twice in the hints (FADE_PAL at CODE:6380
 and again at CODE:A72B) passes disasm.py, symmap.py and check.py
 without a word; symmap.py kept the second address, so the intro's
-routines wrote to the table's palette. A check for it belongs in doskit
-with a test (rule 7); not done. Until then: `awk '$1=="name"||$1=="code"
-{print $3}' src/ILLUSION.hints | sort | uniq -d` before a new name.
+routines wrote to the table's palette. Fixed in doskit b077a6c
+(2026-10-03): Hints refuses a name given twice, with the name and both
+addresses; tests/selftest.py checks it (and that the same name at its
+own address again stays fine). The hints here are unchanged by it
+(check.py all ok); CODE:A72B is TBL_FADE_PAL since 2026-09-30.
 
 ## Stage 1: ILLUSION.386
 
