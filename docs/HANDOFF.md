@@ -4377,7 +4377,13 @@ beyond that; 17h ran with no mode waiting.
 
 Still not run: take handlers 3 and 9 (in no record), event opcodes 0Fh
 and 10h by a stream (BCD_COUNTERS_STEP was run by a poke, see "The BCD
-counters in the port").
+counters in the port"). Rechecked 2026-10-03 with `tools/event_streams.py`:
+event opcodes 0Fh and 10h occur in T001, T002 and T003; T004 has 0Fh
+but no 10h. A table-1 original run with F1 at frame 1185, Enter at
+1299 and repeated flipper/plunger inputs reached play but did not reach
+either opcode handler or take handler 3/9. The C dispatch cases exist
+in `port/src/events.c`; their effects and memory against the original
+remain unverified by a forced run.
 
 ### Event opcodes 1Dh, 1Eh and 1Fh in the port
 
