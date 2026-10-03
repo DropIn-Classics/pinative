@@ -492,9 +492,12 @@ static int T1_SHOOT_UPDATE(void)
         wd(0x0000, m + 0x6063);
         ww(0x0020, hits);
         host_call(0x18);
-        /* The original tests CODE:[0004] after DEC_TEXT clobbers it;
-         * preserve that behavior, including the missed 25-hit extra ball. */
-        if (rb(rd(0x0004) + 8) == 0xFF)
+        /* DEC_TEXT clobbers the module-state pointer in CODE:[0004], so
+         * the original misses the flag set at 25 hits. The optional fix
+         * checks the saved state directly; with this fix off, the original
+         * check is retained. */
+        if ((pi_fix_shooting_extra_ball && rb(s + 8) == 0xFF) ||
+            (!pi_fix_shooting_extra_ball && rb(rd(0x0004) + 8) == 0xFF))
             wd(0x0000, m + 0x5F96);
         else
             wd(0x0000, m + 0x5FA2);

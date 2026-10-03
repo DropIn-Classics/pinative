@@ -127,9 +127,10 @@ The module's `SHOOT_START` (T001 CODE:9A4E) and `SHOOT_UPDATE`
 (CODE:9B25) are translated in `src/modcode.c`. The update draws the
 street, four animated windows and crosshair, handles flipper movement,
 shots, lives-out and the 30-hit completion path using the module's own
-tables and image data. It also preserves the original's broken 25-hit
-extra-ball check. Both Windows window and headless builds compile; the
-shooting game has not yet been run or compared against the original.
+tables and image data. The Fixes page can award the extra ball when the
+game's 25-hit flag is set; this fix is on by default and can be turned off
+on the Fixes page. The shooting game has not yet been run or compared
+against the original.
 
 ## The setup screen
 
@@ -150,7 +151,7 @@ did; the mute is not kept in pinative.cfg); the keys (a key of the player's for 
 the game's, which work as well) and a controller's buttons. The
  port's settings are in the data folder's pinative.cfg. None of it
  changes how the game plays the options it reads. The Fixes page holds
- the port's fixes for the original's bugs, off by default: a hole's
+the port's fixes for the original's bugs, on by default: a hole's
  eject plays the hole's own sound, and game over writes the initials
  only into a high-score entry (docs/HANDOFF.md, "The original's bugs as
  options").

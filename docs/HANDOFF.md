@@ -4487,8 +4487,8 @@ and every byte of their code is reached.
 ### The original's bugs as options
 
 Done 2026-10-03, on Linux: the setup screen has a Fixes page (one page
-per group, as the others; off by default, kept in pinative.cfg, so the
-default plays as the original does; port/src/launch.c, src/play.c).
+per group, as the others; the fixes are on by default and kept in
+pinative.cfg; port/src/launch.c, src/play.c).
 Two of HANDOFF's item 4 below: a hole's eject plays the hole's own
 sound record +10h (seven times an eject, as the flicker frames come;
 the original reads a stale [CODE:0004] and stays silent) and game over
@@ -4496,19 +4496,22 @@ writes the initials only into a high-score entry (the original writes
 them past the fifth, over MULTIBALL_ON). Checked headless with `-setup`
 (the Fixes page with both items No; Right on the first, Esc twice: the
 file has fix_hole_sound = 1, fix_gameover_names = 0) and at ENTRY
-against dosrun (CODE and TAIL 0 bytes differ, the defaults). The
-window build not tried; a run that hears the hole's sound not made (the
-headless build takes no settings). The third bug, table 1's 25-hit
-extra ball, is not an option yet. `SHOOT_START` (T001 CODE:9A4E) and
+against dosrun (CODE and TAIL 0 bytes differ when the flags are zero).
+The window build not tried; a run that hears the hole's sound not made
+(the headless build takes no settings). The Fixes page also offers table
+1's shooting game's 25-hit extra ball: on checks the saved module-state
+flag after the decimal-text call clobbers CODE:[0004]. This fix is on by
+default, like the other two. It uses the flag documented from T001
+CODE:9EBA and has not been exercised in a port run. `SHOOT_START`
+(T001 CODE:9A4E) and
 `SHOOT_UPDATE` (CODE:9B25) are now translated in port/src/modcode.c
 from the existing listing. The Windows window and headless builds
 compile. They have not been run against the original.
 `SHOOT_UPDATE` (CODE:9B25), including the picture and window routines
 through CODE:A193, is now translated in port/src/modcode.c from the
-existing listing and module data. The update preserves the original's
-clobbered-state check after DEC_TEXT, so its 25-hit extra ball remains
-unawarded. Both Windows window and headless builds compile; neither the
-shooting game nor its comparison against the original has been run yet.
+existing listing and module data. The 25-hit extra-ball fix is on by
+default and can be disabled on the Fixes page; neither the shooting game
+nor its comparison against the original has been run yet.
 Next run the port through the shooting game and compare its state,
 display and end paths with the original runs above.
 
@@ -4624,11 +4627,9 @@ angle in a run and the countdown of `SERVE_SECONDS`, the ball save, see
      so every phase is known. Done 2026-09-29: the SVGA modes in the
      runner (see "The SVGA modes in a run"; FRAME_RATE 59 or 60).
 4. For the port (written 2026-09-29, at the user's suggestion): the
-   original's bugs as options, off by default, so that the default
-   plays as the original does (scores and extra balls alike). Done
-   2026-10-03 for two of the three, as the setup screen's Fixes page
-   (see "The original's bugs as options"; port/README.md): the hole's
-   sound and the game-over initials. Found so far, both through the
+   original's bugs as individually switchable fixes, on by default (see
+   "The original's bugs as options"; port/README.md). Found so far, all
+   three through the
    shared cell CODE:0004 that host routines use as a work cell:
    - table 1's shooting game: the 25-hit extra ball (see "Table 1's
      shooting game when the lives run out"); the fix keeps the state

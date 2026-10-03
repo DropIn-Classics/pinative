@@ -22,8 +22,9 @@
 
 int pi_start_table;             /* 1..4: that table at once; 0 the chooser */
 int pi_skip_intro;
-int pi_fix_hole_sound;          /* QoL: a hole ejects with its own sound */
-int pi_fix_gameover_names;      /* QoL: game over writes no initials past the high scores */
+int pi_fix_hole_sound = 1;          /* fix the hole's silent eject */
+int pi_fix_gameover_names = 1;      /* keep initials inside the high scores */
+int pi_fix_shooting_extra_ball = 1; /* award the shooting game's 25-hit extra ball */
 
 /* ---- the settings */
 
@@ -140,14 +141,16 @@ static LauncherItem pad_items[] = {
     PAD_ITEM(PAD_LEFT, "D-pad left"), PAD_ITEM(PAD_RIGHT, "D-pad right"),
 };
 
-/* the port's fixes for the original's bugs (docs/HANDOFF.md, "Next",
- * item 4): off the port plays as the original does */
+/* the port's fixes for the original's bugs: on by default, individually
+ * disabled from this page if desired */
 static LauncherItem fixes_items[] = {
     { LI_HEAD, "Fixes", NULL, NULL, NULL, 0, NULL },
     { LI_CHOICE, "Holes play their own sound", "fix_hole_sound", yesno, &pi_fix_hole_sound, 0,
       "The original's holes stay silent; on plays each hole's own sound." },
     { LI_CHOICE, "Initials stay in the high scores", "fix_gameover_names", yesno, &pi_fix_gameover_names, 0,
       "The original writes past the last entry; on keeps them inside." },
+    { LI_CHOICE, "Shooting game awards 25-hit extra ball", "fix_shooting_extra_ball", yesno, &pi_fix_shooting_extra_ball, 0,
+      "The original misses this award; on gives it for 25 or more hits." },
 };
 
 static LauncherPage pages[] = {
