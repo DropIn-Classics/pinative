@@ -156,6 +156,12 @@ is marked there as to be checked again in the hints.
   a real Windows/Linux release download, helper replacement/restart,
   network failure UI, macOS build or release-page flow. Do not announce
   releases until the old-release update path is exercised per platform.
+- Update code on macOS (2026-10-03): `update.c` now omits the package
+  JSON parser, package download/hash/URL helpers, and their locals when
+  building on Apple platforms. Those helpers remain enabled on Windows
+  and Linux. `doskit/tests/selftest.py` passes on Windows, including the
+  regular warning-as-error runtime build. A native macOS build was not
+  available here, so the Apple compiler path still needs checking there.
 - doskit to 69d03a2 (2026-10-03, 16 commits since bd81e75): the setup
   screen as pddnative's (a menu with LI_PAGE windows, Esc to Quit),
   the dialog about the game's files every port shares, INT 33 mouse
