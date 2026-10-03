@@ -257,7 +257,7 @@ comment    CODE:2C1DA each ball of the list at state+C1046h (state+C0D32h of the
 name       CODE:2E08C TAKE_COUNT
 comment    CODE:2E08C handler 15h of CODE:2DA0A: as handler 6 (CODE:2DCA1) without its end: the counter at +34h counted up for the current player, its word +16h too, then CODE:2DD8A (run, table 1: record 41E6h, counter 421Eh, at the ball's launch and in bursts; +16h back to 1 after 9 at CODE:2DF20)
 name       CODE:2E5B7 TAKE_LEVEL_STREAM
-comment    CODE:2E5B7 handler 16h of CODE:2DA0A: the counter at +34h's threshold action equal to the current player's word +16h: its stream (+4) to EVENT_QUEUE (table 1: record 4362h, lit by zone 352Fh's stream, taken by zone 3447h's; run with it forced: threshold 1, opcode 9, the mode stream's opcode 13h plays track 4)
+comment    CODE:2E5B7 handler 16h of CODE:2DA0A: the counter at +34h's threshold action equal to the current player's word +16h: its stream (+4) to EVENT_QUEUE (table 1: record 4362h, lit by zone 352Fh's stream, taken by zone 3447h's; run with it forced: threshold 1, opcode 9, the mode stream's opcode 13h plays track 4; thresholds 2..8 forced 2026-10-03: no track, 13, 10, 11, 6, 5, 3)
 comment    CODE:4FE8 plays track 33h (51) at the chooser's loading of infodata.mgl; not reached in runs up to t=126 (the chooser at t=7 plays no track)
 ; the other slot-15 handlers (2026-09-29, read from the code and the four
 ; modules' records; no run made for the handlers). "The player" is the

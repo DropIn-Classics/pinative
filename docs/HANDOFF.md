@@ -891,12 +891,23 @@ in every run so far):
   00 50 01 3C 02"` (zone 3447h over the whole table): 4362h taken at
   t=132.84 (by CODE:2D939), the display "BLOW ALL BOMBS BEFORE TIMER
   REACHES ZERO" at t=134, a CD stop and a play of frames 44518..49376
-  (track 4) at t=139.13, a timer on the display at t=140. So the chain
-  threshold -> opcode 9 -> mode stream -> opcode 13h -> play is seen
-  once, for threshold 1 of table 1; the other thresholds and tables are
-  not run. What the 6.3 s between the take and the play are (the mode
-  stream's commands before its opcode 13h) is not looked at (but see
-  "The event language": a wait of 7 s).
+   (track 4) at t=139.13, a timer on the display at t=140. So the chain
+   threshold -> opcode 9 -> mode stream -> opcode 13h -> play is seen
+   once, for threshold 1 of table 1 (thresholds 2..8: the runs of
+   2026-10-03 below; the other tables are not run). What the 6.3 s between the take and the play are (the mode
+   stream's commands before its opcode 13h) is not looked at (but see
+   "The event language": a wait of 7 s).
+
+   Runs 2026-10-03, on Linux, the same forcing with the counter's word
+   +16h poked to T-1 at the first count-up (linear 2D82D4, the count-up
+   making it T): thresholds 2..8 play no track, 13, 10, 11, 6, 5, 3 (as
+   read from the data, see "The tables and their CD tracks"). Each take
+   at t=138.3, each play at t=145.0..145.1 (frames 79425..83583,
+   69233..73047, 73047..75848, 53686..58229, 49376..53686,
+   38187..44518); the CD muted again at t=171.1, 189.2, 148.0, 197.3,
+   171.2 for thresholds 3..7, the volume set again (C0h) at t=148.2 for
+   threshold 8. Threshold 2's mode mutes like the others' at t=139.04
+   and 145.17 but plays nothing. The display not looked at.
 
 ### The event language
 
