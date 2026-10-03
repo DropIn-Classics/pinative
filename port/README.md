@@ -643,15 +643,18 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   pmax_cfg_write): table 1 left by Esc and Y with HISCORES' first byte
   changed at TABLE_END (dosrun `-poke`, a scratch line in the port): the
   file written equal byte for byte to dosrun's (docs/HANDOFF.md, "The
-  high scores' file"). Not run: a high score reached by play.
+   high scores' file"). Reached by play 2026-10-03 (the user's test on
+-  Windows, not the agent's): high scores earned several times, the name
+-  typed and the scores kept (the file's bytes not compared).
 - 2026-10-01, Linux: the pause (PLAY_KEYS's CODE:2B51C, PAUSE_QUIT),
   table 1, keys by table frame as above: F1 1185, Enter 1299, P 1400,
   Space 1750 (CODE:298C5's passes 1405, 1700, 1760, 1900) and P 1400,
   Esc 1450, Space 1500, Esc 1550, Y 1600 (passes 1460, 1505, 1555; the
   chooser after Y: the run after 600 FRAME_WAIT calls against the port
   after 601): CODE but the runner's timing, video memory and the heap equal
-  as before (docs/HANDOFF.md, "The pause in the port"). Not run: a
-  pause with music playing.
+   as before (docs/HANDOFF.md, "The pause in the port"). A pause with
+   music playing tried 2026-10-03 (the user's test on Windows, not the
+   agent's): works.
 - 2026-10-01, Linux: BCD_COUNTERS_STEP (CODE:2EAC9), table 1, a
   subtracting counter started by a poke at CODE:298C5's pass 1400 in
   both (docs/HANDOFF.md, "The BCD counters in the port"): passes 1401
@@ -799,10 +802,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   the option saved), the intro skipped (the table menu at picture 350),
   pinative.cfg written and read back. The volume box 2026-10-01,
   headless, shown by a temporary call (the null platform gives no
-  sound keys): at the top in VGA 360 and twice the size at 800x600.
-  Not tried: the window builds,
-  the keys and a controller in play, the volume keys, the sound
-  settings heard.
+   sound keys): at the top in VGA 360 and twice the size at 800x600.
+   Tried 2026-10-03 (the user's test on Windows, not the agent's): the
+   volume keys, the keys and a controller in play. Not tried: the window
+   builds, the sound settings heard.
 - 2026-10-03, Linux: whole blind games on all four tables, started at
   once from the setup screen (F1, Enter every 500 pictures, no
   flippers), run to DK_FRAMES 19000: none stops (`Stopped before

@@ -4162,8 +4162,10 @@ CODE:B3D7) stored by the chained rule of "The configuration file's
 options", equal byte for byte. The port (pmax_cfg_write) does the same
 and writes the file `-cfg` named; with the same poke as a scratch line
 and the keys at pictures 5757 (Space), 6076, 6236 (Enter), 7087 (Esc),
-7157 (Y) its file was identical to the run's. Not run: a high score
-reached by play, the chooser's write at CODE:5277 (what sets
+7157 (Y) its file was identical to the run's. Reached by play 2026-10-03 (the
+user's test on Windows, not the agent's): high scores earned several
+times, the name typed and the scores kept (the file's bytes not
+compared). Not run: the chooser's write at CODE:5277 (what sets
 CODE:5E1C is not looked at), the file AH=8 creates when there is none
 (the port then writes none).
 
@@ -4197,9 +4199,9 @@ and after it), and P 1400, Esc 1450, Space 1500, Esc 1550, Y 1600
 known leftovers. In the chooser after Y the run after 600 FRAME_WAIT
 calls is equal to the port after 601 (the run one frame behind there, FRAME_COUNT
 one ahead in the table: the runner's timing as in "Table 2's
-FRAME_COUNT", presumably; not traced). Not run: a pause with a CD track
-playing or the module at a level (NOSOUND, no `-cue`), a pause during a
-display stream or an animation.
+FRAME_COUNT", presumably; not traced). A pause with music playing
+tried 2026-10-03 (the user's test on Windows, not the agent's): works.
+Not run: a pause during a display stream or an animation.
 
 ### The BCD counters in the port
 
