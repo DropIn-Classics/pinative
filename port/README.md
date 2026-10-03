@@ -667,6 +667,16 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   of the skill-shot streams in both, tables 1, 2 and 3: at two passes
   each CODE but FRAME_SPINS, video memory and the heap equal as before
   (docs/HANDOFF.md, "The take handlers forced in a run").
+- 2026-10-03, Linux: event opcodes 1Eh and 1Fh (src/events.c; the user's
+  `Stopped before EVENT_RUN: the opcode at CODE:2D5C7` on table 1),
+  each forced by lighting record 4362h and, in play, widening zone 3447h
+  with the ball teleported into it (thresholds 2 and 4 of counter 421Eh;
+  a scratch hook in the port, since removed): 1E ran at t=157.57,
+  compared at CODE:298C5's pass 1600; 1Fh ran at t=166.14 (the mode's wait
+  for 625Eh ended by a teleport into zone 3521h), compared at pass 2050:
+  CODE but FRAME_SPINS, TAIL equal, all 90 used heap blocks equal but the
+  driver's sample clock (docs/HANDOFF.md, "Event opcodes 1Dh, 1Eh and 1Fh
+  in the port"). 1Dh translated from the listing, not run.
 - 2026-09-30, Windows (MSVC, build.bat) by the user: built and the
   intro seen playing to its end in the window, with the user's
   Sound Blaster ILLUSION.CFG. The build's warnings not looked at.

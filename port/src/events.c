@@ -1293,6 +1293,27 @@ static void event_op(uint32_t a)
         wd(0x0000, rd(rd(0x0004) + 2));
         MUSIC_REQUEST();
         break;
+    case 0x2D5C7: {                 /* opcode 1Fh (a word): the loop count state+0D6Eh (opcode 1Dh) */
+        uint32_t st = rd(0x0014);
+
+        ww(st + 0x0D6E, rw(rd(0x0004) + 2));
+        break;
+    }
+    case 0x2D6CC: {                 /* opcode 1Dh (a position): while state+0D6Eh is not 0, counted down, the stream to the position: a loop */
+        uint32_t st = rd(0x0014);
+
+        if (rw(st + 0x0D6E) != 0) {
+            ww(st + 0x0D6E, (uint16_t)(rw(st + 0x0D6E) - 1));
+            ww(rd(0x0000) + 2, rw(rd(0x0004) + 2));
+        }
+        break;
+    }
+    case 0x2D88D: {                 /* opcode 1Eh (a position): to state+0D6Ch, where a waiting mode goes once the multiball is down to one ball */
+        uint32_t st = rd(0x0014);
+
+        ww(st + 0x0D6C, rw(rd(0x0004) + 2));
+        break;
+    }
     default:
         snprintf(why, sizeof why, "EVENT_RUN: the opcode at CODE:%X", (unsigned)a);
         pi_stop(why);

@@ -4373,6 +4373,61 @@ Still not run: take handlers 3 and 9 (in no record), event opcodes 0Fh
 and 10h by a stream (BCD_COUNTERS_STEP was run by a poke, see "The BCD
 counters in the port").
 
+### Event opcodes 1Dh, 1Eh and 1Fh in the port
+
+The user's report 2026-10-03: `Stopped before EVENT_RUN: the opcode at
+CODE:2D5C7` on table 1 or 2 when the ball hit a target or hole. CODE:2D5C7
+is event opcode 1Fh (a word: the loop count state+0D6Eh for opcode 1Dh);
+opcodes 1Dh (a position: the loop, count down and jump back) and 1Eh (a
+position: to state+0D6Ch, where a waiting mode goes once the multiball is
+down to one ball) were missing in the port too. All three are only in
+table 1's streams (tools/event_streams.py): threshold 2's mode 7468h
+starts with 1E, threshold 4's mode 60DCh has 1F/1D around a wait for
+record 625Eh, threshold 3's mode 67ECh another 1F/1D pair around 691Eh; so
+the game was table 1. (Display opcodes 13h/14h are the same loop in the
+display language and were translated and compared already.)
+
+Translated 2026-10-03 in src/events.c from the listing (names in
+src/ILLUSION.hints). Forced the same day on Linux (table 1, F1 at table
+frame 1185, Enter 1299; the scripts lived in build/loop, not kept):
+
+- At Enter (CODE:298C5's pass 1300) record 4362h lit for player 0; in
+  phase 4 (pass 1500) zone 3447h widened over the table, the counter's
+  word +16h set to the threshold (handler 16h runs the threshold equal to
+  it), and ball0 teleported onto slot-5's list inside the zone: hole 4F18h
+  takes it the next frame, stream 4F50h takes 4362h, the mode starts. The
+  widening must wait for phase 4: BALL_WAIT runs no EVENT_RUN, so a take
+  in phase 6 holds the ball with its stream frozen (seen). The light alone
+  at Enter is safe (a take needs the stream running).
+- [CODE:A11D] is 1D29E0h now (1D3170h in the runs so far; the heap layout
+  moved with the doskit update), so the old linear pokes (2D74E7 and the
+  like) wrote into code; module data is at the code base + 100F30h (zone
+  3447h at 2D6D57, record 4362h +1 at 2D7C73, counter +16h at 2D7B44, all
+  checked against the file's bytes). Slot 5's list is 1D5DC5h, slot 11's
+  1D5E91h (state+28BAh/+28D2h).
+- The port's scratch hook (removed afterwards) wrote through wb/ww/wd,
+  which take offsets from pm_ds: the run's linears minus 100F30h (first
+  tried as linears, harmless writes into high memory).
+- 1Eh (threshold 2): ran at t=157.57. Compared at pass 1600 (the port with
+  `-cue none`, as dosrun runs trackless; with the data folder's cue sheet
+  the port's CD track table differs, as read): CODE but FRAME_SPINS, TAIL
+  equal; 90 used heap blocks equal but the driver's (37 bytes sample
+  clock).
+- 1Fh (threshold 4): the mode's 60 s wait for 625Eh ended by teleporting
+  the ball onto slot-11's list inside zone 3521h at pass 2000 (stream
+  4AFCh takes 625Eh; a take unlits, RECORD_TAKE). 1Fh ran at t=166.14.
+  Compared at pass 2050: CODE but FRAME_SPINS, TAIL equal, state+0D6Eh 4
+  in both, the mode's cells and 625Eh's lamp equal; the heap as at pass
+  1600 (30 bytes driver clock).
+- 1Dh not reached in a run: the loop's second wait (word 0, so the timer
+  is kept, about 3600 frames left) needs 625Eh taken again, but the ball
+  leaves the small zone at once and no re-teleport (with the entry mark
+  cleared) brought another take. Translated from the listing only; its
+  count cell is covered by 1Fh's comparison and its position store by
+  opcode 0Ah's (compared in blind games). How to reach it: a second take
+  of 625Eh while the loop waits (real play does it; the user met 1Fh that
+  way).
+
 ## Next
 
 1. 32-bit support in doskit, in steps:
