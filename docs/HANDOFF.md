@@ -166,6 +166,12 @@ is marked there as to be checked again in the hints.
   tabbed screen cannot open pages under the new kit). No `carried
   over` block in src/, so xfer's shorter carried comments change
   nothing here.
+- A table started at once from the setup screen came back to a silent
+  table menu (2026-10-03, the user's report): the bypassed chooser
+  never set CHOOSER_LOADED 0 (CODE:5040), so the chooser after the
+  table skipped its files, CD_VOLUME FFh and CD_PLAY 33h; src/entry.c
+  sets it, as CHOOSER does (checked headless with a temporary log of
+  the CD requests, removed afterwards).
 
 ## The game's files
 
