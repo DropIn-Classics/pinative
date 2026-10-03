@@ -430,7 +430,11 @@ jump or call to its start anywhere in the image), left as data:
   Fits: the question's texts at CODE:5DE3, 5DF5 ("Please enter word"),
   5E12 (" at page") have no reference anywhere in the image, not even as
   a 16-bit value. How it was switched off (code cut loose, a flag) is
-  not found; so these pieces are presumably dead in this release;
+   not found; so these pieces are presumably dead in this release;
+   Decided 2026-10-03 (the user's report: the manual check never came in
+   testing): the protection is ignored. The pieces stay data in the hints
+   and the port does nothing for them. Whether the GOG release removed
+   the check or only never triggers it here was not checked.
 - routines after a RET: CODE:2FFA, 36A1 (waits for scan code 2 and its
   release), 73D8, 92CE, 9606 (after the text "HEJ!$"), A618/A61E,
   15340, 297A6, 2E886 and 302F8 (both in the interpreters' style),
@@ -4471,8 +4475,9 @@ frame 1185, Enter 1299; the scripts lived in build/loop, not kept):
      of a mode's track (hit the objects the counters count);
      x87 is not emulated, not needed up to t=240.
 2. Stage 1 for the main program, on from the above: the gaps are looked
-   at (see "The gaps"; the unreferenced code there wants a second look
-   once more is known, the copy protection first); displacements with
+   at (see "The gaps"; the copy protection there is ignored since
+   2026-10-03, the rest of the unreferenced code wants a second look
+   once more is known); displacements with
    a register that land in data (field offsets or addresses, by eye);
    offsets among the 32-bit immediates
    (ptrscan.py); names (doskit/docs/METHOD.md).
