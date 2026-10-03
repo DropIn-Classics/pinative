@@ -685,7 +685,8 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   (FRAME_COUNT, TRACK_LEFT, ...). A scratch print in cd.c: table 1
   plays frames 24470 (track 2's start) for 13717. The real tracks
   decoded (a scratch program: tracks 2, 14, 26, 38, 50, RMS 4100 to
-  8200). Not listened to; the window builds not run.
+  8200). Heard 2026-10-03 (the user's test on Windows, not the
+  agent's): the modules and the CD tracks play.
 - 2026-10-01, sound: the port plays what NOSOUND.SDR mixes. The
   driver mixes the module into its DMA buffer (DMA_SEL, mono words at
   MIX_RATE, 44100) as it does under DOS, where no card reads it; the
@@ -696,9 +697,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   on Linux, headless, by a scratch build writing the words to a file:
   the intro's first 2500 pictures give 41.7 s of samples, rising from
   peaks of 912 to 31040, no jump over 30000 between two samples (no
-  16-bit wrap), about 1600 zero crossings a second. Not listened to;
-  the window builds (SDL, Win32) not run; the pause (command 2, the
-  timer stopped) gives silence by the FIFO running dry, not checked.
+  16-bit wrap), about 1600 zero crossings a second. Heard 2026-10-03
+  (the user's test on Windows, not the agent's): the modules play, and
+  the pause (command 2, the timer stopped) with music playing gives
+  silence.
 - 2026-10-01, Linux, headless: the chooser's caption, which flickered
   (every other picture without it, a white line at the right; the user
   saw it on Windows), shown in every picture since the port uses
