@@ -757,8 +757,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   (CD_VOLUME FFh, CD_PLAY 33h); src/entry.c sets it, as CHOOSER does.
   Checked headless with a temporary CD_PLAY/CD_VOLUME log (removed
   afterwards): the normal start quits with VOLUME 255 and PLAY 51, the
-  direct start did not, and does with the fix. Windows and macOS not
-  tried.
+  direct start did not, and does with the fix. The user's test on
+  Windows confirms it: the table menu plays its music after a table
+  started at once. macOS not tried.
 =======
   seen, no window tried.
 - 2026-10-01: that question replaced by doskit's dialog about the
