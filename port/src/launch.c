@@ -19,6 +19,7 @@
 #include "platform.h"
 #include "pmax.h"
 #include "sys.h"
+#include "update.h"
 
 int pi_start_table;             /* 1..4: that table at once; 0 the chooser */
 int pi_skip_intro;
@@ -29,6 +30,7 @@ int pi_fix_shooting_extra_ball = 1; /* award the shooting game's 25-hit extra ba
 /* ---- the settings */
 
 static int skip_intro, fullscreen = 0;
+static int update_checks;
 static int opt[6];              /* the game's options, OPTIONS+0..5 */
 static int volume = 10, bass = 4, treble = 4, oomph = 0, headphone = 0;
 
@@ -86,6 +88,8 @@ static LauncherItem menu_items[] = {
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
     { LI_CHOICE, "Skip the intro", "skipintro", yesno, &skip_intro, 0, NULL },
     { LI_CHOICE, "Display", "fullscreen", window, &fullscreen, 0, "Alt+Enter switches too." },
+    { LI_CHOICE, "Check for updates", NULL, yesno, &update_checks, 0,
+      "When found, each update asks before it is installed." },
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
     { LI_PAGE, "Game", NULL, NULL, NULL, 1, "The game's options." },
     { LI_PAGE, "Sound", NULL, NULL, NULL, 2, "Volume, bass, treble, headphones." },
@@ -163,6 +167,23 @@ static LauncherPage pages[] = {
 };
 #define NPAGES (int)(sizeof pages / sizeof pages[0])
 
+#ifndef PORT_VERSION
+#define PORT_VERSION ""
+#endif
+#ifndef PORT_UPDATE_URL
+#define PORT_UPDATE_URL ""
+#endif
+
+static UpdateInfo available_update;
+static int update_enabled, update_available;
+
+static void check_updates(void *ctx)
+{
+    (void)ctx;
+    if (update_enabled && !update_available)
+        update_available = update_poll(&available_update);
+}
+
 /* the controllers' names in the file (pad.h's) */
 static void pad_names(void)
 {
@@ -228,7 +249,11 @@ float pi_volume_gain(void)
 
 static void changed(const LauncherItem *it)
 {
-    if (it->value == &fullscreen)
+    if (it->value == &update_checks) {
+        update_set_consent(update_checks);
+        if (update_checks && update_enabled)
+            update_start(PORT_VERSION, PORT_UPDATE_URL);
+    } else if (it->value == &fullscreen)
         plat_set_fullscreen(fullscreen);
     else if (it->value == &bass || it->value == &treble || it->value == &oomph ||
              it->value == &headphone)
@@ -284,6 +309,7 @@ int pi_launch(int show)
     pad_names();
     settings_path(path, sizeof path);
     launcher_load(path, pages, NPAGES);
+    update_checks = update_consent() == 1;
     pmax_cfg_options(o, 6);
     for (i = 0; i < 6; i++)
         opt[i] = o[i];
@@ -291,7 +317,16 @@ int pi_launch(int show)
     plat_set_fullscreen(fullscreen);
     apply_sound();
     {
-        r = launcher_run(&pi_app, NULL, pages, NPAGES, changed);
+        update_enabled = *PORT_VERSION && *PORT_UPDATE_URL;
+        update_available = 0;
+        if (update_enabled) {
+            if (update_consent() < 0)
+                update_set_consent(launcher_ask_updates(&pi_app));
+            update_checks = update_consent() == 1;
+            update_start(PORT_VERSION, PORT_UPDATE_URL);
+        }
+        r = launcher_run_hook(&pi_app, NULL, pages, NPAGES, changed, check_updates, NULL);
+        check_updates(NULL);
         pi_settings_save();
         for (i = 0; i < 6; i++)
             o[i] = (uint8_t)opt[i];
@@ -305,6 +340,14 @@ int pi_launch(int show)
             if (o[5] != before[5])
                 o7[6] = 0;
             pmax_cfg_set_options(o7, 7);
+        }
+        if (update_available && launcher_offer_update(&pi_app, available_update.version,
+                                                       available_update.notes)) {
+            int action = update_install(&available_update);
+            if (action == 1)
+                return -1;          /* the helper applies it after main exits */
+            if (!action)
+                launcher_update_failed(&pi_app);
         }
     }
     if (r == LAUNCHER_QUIT)

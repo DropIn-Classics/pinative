@@ -144,13 +144,18 @@ is marked there as to be checked again in the hints.
   1473C0h and the free top differ by design). One key per frame only
   (see "The objects a ball hits in the port"). The scripts used lived
   in build/p7 (not kept).
-- RELEASE.md point 7 (newer releases made known, asked once on the
-  setup screen, `update.h`) is not in the port: the port has no setup
-  screen of its own yet, the game's SETSOUND is not the place. The
-  build scripts link `update.c` and pass `PORT_UPDATE_URL`, the
-  workflow makes `latest.json`; the question and the notice are to be
-  added before a first release, and README.txt's "New versions"
-  section with them.
+- Update feature (2026-10-03): doskit's runtime now parses the selected
+  platform package and SHA-256 from `latest.json`, downloads and verifies
+  that package only after the player confirms, and starts a helper to
+  replace/restart on Windows and Linux after the app exits. macOS opens
+  the release page. The launcher asks once for update-check consent, and
+  asks for each found update before installation; declining defers it to
+  the next run. pinative checks while its setup menu is open. Template
+  README and release instructions describe the flow. Built pinative on
+  Windows with MSVC; doskit's `tests/selftest.py` passed. Not verified:
+  a real Windows/Linux release download, helper replacement/restart,
+  network failure UI, macOS build or release-page flow. Do not announce
+  releases until the old-release update path is exercised per platform.
 - doskit to 69d03a2 (2026-10-03, 16 commits since bd81e75): the setup
   screen as pddnative's (a menu with LI_PAGE windows, Esc to Quit),
   the dialog about the game's files every port shares, INT 33 mouse

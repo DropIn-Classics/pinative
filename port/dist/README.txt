@@ -57,6 +57,19 @@ package brings SDL2 along; nothing needs to be installed). On the Deck
 the game starts full screen; in Game Mode add pinative as a non-Steam
 game.
 
+New versions
+------------
+
+The first setup asks whether pinative may check for updates. You can
+change this later under Check for updates. Checks happen at most once a
+day and send no game files or personal information. When a newer version
+is found, setup asks each time before installing it. On Windows and
+Linux, choose Install update to download and verify the package; pinative
+then closes, replaces its folder and starts again. Choose Later to keep
+playing; the update will be offered next time. On macOS, the release
+page opens instead. Download and open the app yourself so Gatekeeper can
+check it.
+
 Keys
 ----
 

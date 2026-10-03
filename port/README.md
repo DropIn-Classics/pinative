@@ -175,12 +175,17 @@ Both scripts define `PORT_VERSION` (a string) for the compiler when
 there is a version: the environment's `PORT_VERSION`, else the tag of the
 commit built; the workflow sets it for a tag's build. Without one it
 stays undefined. The setup screen and the dialogs about the game's
-files name it in their title bar (doskit's LauncherApp); nothing else
-reads it yet.
-`PORT_UPDATE_URL` likewise, from the environment only: where a release
-looks for newer ones (doskit/runtime/update.h); the workflow sets it to
-the latest release's `latest.json`. Nothing reads it yet either: the
-port has no setup screen of its own to ask on (RELEASE.md point 7).
+files name it in their title bar (doskit's LauncherApp); update checks
+compare it with the latest release.
+`PORT_UPDATE_URL` likewise comes from the release workflow and names its
+`latest.json`. The setup asks once whether it may check for updates; when
+a newer version is found, it asks each time before installing. Windows
+and Linux download the matching package, check its SHA-256, then replace
+the program folder and restart after the current process exits. macOS
+opens the release page so Gatekeeper sees a player-downloaded app. The
+runtime and launcher changes build on Windows, and doskit's update tests
+pass there. A real release update, its restart helper on Windows/Linux,
+and the macOS link have not been exercised yet.
 
 The runtime is in the doskit submodule: after a clone or a pull,
 `git submodule update --init` (the build fails with files not found
