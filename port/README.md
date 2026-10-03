@@ -112,8 +112,9 @@ as well. The driver's picture measurement (command 0Eh) is
 computed from the CRTC's registers as dosrun times them.
 The port loads
 NOSOUND.SDR, the silent driver, whatever driver the configuration names; `-opt o`,
-`s` and `r` stop at the options screen, the sound set-up and the
-options' reset, `-opt ?` prints the help.
+`s` and `r` say the game's own options screen, sound set-up and reset
+are not in the port (its setup screen instead) and end, `-opt ?`
+prints the help.
 The game folder is recognised by `ILLUSION.EXE` (also what must come out
 of the GOG image when it is unpacked); built with build.sh on macOS
 2026-09-29, the image unpacking not tried.
