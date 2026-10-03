@@ -778,6 +778,29 @@ name       CODE:B99C DRV_TICK      ; handed with command 0Eh at CODE:9B93: count
 ds         CODE:B9AA-B9B7 CODE     ; DS from CODE:A10B
 comment    CODE:BAFE GAME_PHASE 0: waits for the retrace (CODE:3D372) until port 60h reads 1 (Esc pressed), then returns with the phase still 0, so CODE:B993 calls it again; nothing else, QUIT_TABLE untouched. Run 2026-09-29 (table 1, GAME_PHASE poked to 0 at t=145.156 during play, Esc at 146 and 150): 70 passes a second to t=156, AL 1 at both Esc presses and the loop went on; the screen frozen from then on. A leftover, presumably (a debug pause)
 comment    CODE:BB0A after the text '9090', no reference found: a routine at CODE:BB0E in the style of CODE:BAFE (the retrace, CODE:1023E, then port 60h): keys 1/2 (scan codes 2, 3) move the word CODE:DBFE by -1/+1, keys 3/4 the word CODE:DC00 (state+10BEh..10C2h, read nowhere else; at 23Ah or more CODE:DBFC gets F001h), the screen start line CODE:A2B9 to [DC00h]-100 through CODE:9311, and the dword at DS:72h to [DC00h]*150h+[DBFEh], the form CODE:269D7 gives a ball's +72h ([CODE:0010]+72h). A debug tool that moved a point over the table and scrolled with it, presumably; dead in this release
+; dead routines with no pointer anywhere in the image (no dword, no
+; immediate, no relative jump or call to their start; the immediates at
+; CODE:524C, 4E45, 4D66, 4D7B name CODE:5130/5140 only as checksummed
+; stretches) and none ran in the cover runs of 2026-10-03 (table 1: a
+; whole game to game over; a second run to the table's end and the
+; chooser again; no instruction of any of the 208 gaps began): left as
+; data. Not in those runs: the tilt, the pause, the Info and greetings
+; pages. The eight 12-byte protection pieces (CODE:2396 and on, MOV
+; AL,40h; MOV [5DCBh],EAX; JMP 5140h) and their loop at CODE:5140 stay
+; data with them (the manual check never came; docs/HANDOFF.md)
+comment    CODE:2FFA fills 26h bytes at ES:[1321h] (ES from CODE:130F) with FFh and returns; what it clears is not followed
+comment    CODE:3454 loops while the two bytes of [1902h] AND F0Fh are alike, then returns; a key release waited for, presumably
+comment    CODE:36A1 waits for scan code 2 pressed and released (port 60h), then returns
+comment    CODE:92CE calls CODE:3D389 with AH=5, then fills 20h rows of 54h bytes at ES:[A117h]:54h with 3Dh, and returns
+comment    CODE:A618 two calls of CODE:3D372 (the retrace wait) with a RET each, 6 bytes apart (CODE:A618, A61E); CODE:A653 a lone RET
+comment    CODE:15340 over four records from [[0x14]+28FEh] in steps of 1F7h: whose byte +0 is not 3 goes in ESI to CODE:15C1A; then returns. What the records are is not followed
+comment    CODE:297A6 from the flags at DA4Ch, DA54h, DA4Fh, DA51h writes FAABh, 555h, 0 and back to DBFCh, DBFAh, and returns; hardware setup, presumably
+comment    CODE:29832 in the frame routines' tables (CODE:29912, the like tables 29922h, 29932h after it): the one setting CODE:2982E to 29922h (CODE:29873, not reached)
+comment    CODE:2E886 clears bit ([0x38] AND 7) in the dword at [CODE:0004] and returns, keeping the work cells; an unlight helper, presumably
+comment    CODE:302F8 copies bytes from [CODE:0000] to [CODE:0004] through the work cells [0x20], [0x24], and returns
+comment    CODE:35BC6 an MSCDEX request (header 0Ch, length 2) through INT 93h AH=13h and CD_REQUEST (CODE:35B0D), and returns
+comment    CODE:35D20 three MSCDEX requests, each returned from: the play of the track-table entry [EBX*4+35F1B], then twice a request polling FS:[3] (bits 100h, 200h). The live play is CD_PLAY at CODE:35DDC
+comment    CODE:35E37 JMP CODE:35E1B, with a like MSCDEX request through CD_REQUEST after it, returned from
 comment    CODE:B9B9 handed with command 0Fh at CODE:9BAF (ECX from CODE:9B8E: DDDDh, E898h, EEEEh or F258h, set at CODE:9725..9882): sets CODE:BAD1 to FFh, the CRT start address from CODE:BAD2 (+54h while the word at CODE:D884 is not 0) and, when CODE:00A2 is 3, instead the attribute controller's pel panning (2, 4 or 6 as CODE:D884 is negative, 0 or positive) with the start from CODE:BAD2 alone: presumably the screen's scroll per frame, not checked
 ds         CODE:B9C3-BA7A CODE     ; DS from CODE:A10B
 ; the table's start, CODE:A323 to CODE:B048 (2026-09-30, the code and a run
