@@ -123,14 +123,13 @@ playing" line (CODE:07B4) to the terminal.
 
 ### Table 1's shooting game
 
-The module's `SHOOT_START` (T001 CODE:9A4E) is translated in
-`src/modcode.c`: it clears the hit count and score, initializes four
-lives and the crosshair, and seeds the four windows from the module's
-delay table. The Windows window and headless builds compile with this
-change. It has not been run against the original yet. `SHOOT_UPDATE`
-(CODE:9B25), including the window animation and its pictures, is still
-untranslated, so the port stops when this object first updates; the
-shooting game and its extra ball are not playable yet.
+The module's `SHOOT_START` (T001 CODE:9A4E) and `SHOOT_UPDATE`
+(CODE:9B25) are translated in `src/modcode.c`. The update draws the
+street, four animated windows and crosshair, handles flipper movement,
+shots, lives-out and the 30-hit completion path using the module's own
+tables and image data. It also preserves the original's broken 25-hit
+extra-ball check. Both Windows window and headless builds compile; the
+shooting game has not yet been run or compared against the original.
 
 ## The setup screen
 

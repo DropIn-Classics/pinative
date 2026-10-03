@@ -324,6 +324,196 @@ static void T1_SHOOT_START(void)
     ww(s + 0x42, i);
 }
 
+/* The module calls the main image's +28h callback before these blits;
+ * that callback selects DM_ANIM for ES and VM_DATA for FS.  The port
+ * keeps the same bytes in those two pMAX blocks. */
+static void T1_SHOOT_PIC(uint32_t m, uint32_t picture, int transparent)
+{
+    uint32_t fs = pmax_base(rw(N_VM_DATA_SEL));
+    uint32_t es = pmax_base(rw(N_DM_ANIM));
+    uint32_t index = picture + 1;
+    uint32_t src = fs + rd(fs + index * 4);
+    uint32_t dst = es + rd(m + 0xA19B);
+    uint32_t width = rd(m + 0xA193), height = rd(m + 0xA197), y, x;
+
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
+            uint8_t c = lrb(src++);
+
+            if (!transparent || c != 0)
+                lwb(dst + x, (uint8_t)(c + 0xFC));
+        }
+        dst += 0xA0;
+    }
+}
+
+/* A twelve-digit packed-BCD addition in the module, leaving the same
+ * end pointers in the shared scratch cells as its DAA loop. */
+static void T1_SHOOT_BCD_ADD(uint32_t dst, uint32_t src)
+{
+    wd(0x0000, dst);
+    wd(0x000C, src);
+    bcd12_add(dst, src);
+    wd(0x0000, dst - 6);
+    wd(0x000C, src - 6);
+}
+
+/* CODE:9E2D, the four windows. Their timer, step and picture number
+ * occupy six bytes each at state+12h; pairs in A1F3 drive the animation. */
+static void T1_SHOOT_WINDOWS(uint32_t m, uint32_t s)
+{
+    uint32_t w = s + 0x12, i;
+    uint16_t count = 3;
+
+    wd(0x0008, w);
+    ww(0x0038, count);
+    wd(0x003C, 0);
+    for (i = 0; i < 4; i++, w += 6) {
+        uint16_t look;
+
+        if (rw(w) != 0) {
+            ww(w, (uint16_t)(rw(w) - 1));
+            look = rw(w + 4);
+        } else {
+            uint16_t step = (uint16_t)(rw(w + 2) + 1);
+
+            if (step >= 10) {
+                uint16_t at = rw(s + 0x42);
+
+                ww(w + 2, 0);
+                ww(w + 4, 0);
+                ww(w, rw(m + 0xA227 + (uint32_t)(at & 0xFF) * 2));
+                ww(s + 0x42, (uint16_t)((at + 1) & 0xFF));
+                look = 0;
+            } else {
+                uint32_t pair = m + 0xA1F3 + (uint32_t)step * 4;
+
+                ww(w + 2, step);
+                ww(w, rw(pair));
+                look = rw(pair + 2);
+                if (look & 0x8000) {
+                    ww(s + 2, (uint16_t)(rw(s + 2) - 1));
+                    wd(0x0000, m + 0x11CA9);
+                    host_call(0x04);
+                    look &= 0x7FFF;
+                }
+                ww(w + 4, look);
+            }
+        }
+
+        /* SHOOT_PIC uses the 1-based window frames after its own +1. */
+        ww(0x0020, look);
+        if (look != 0) {
+            uint16_t cross = rw(s + 4);
+
+            wd(0x0034, i * 0x300);
+            if (look == 2 && i == cross) {
+                uint16_t hits = (uint16_t)(rw(s) + 1);
+
+                ww(s, hits);
+                if (hits == 0x19)
+                    wb(s + 8, 0xFF);
+                wd(0x0000, m + 0x11CC3);
+                host_call(0x04);
+                T1_SHOOT_BCD_ADD(s + 0x12, m + 0xA447);
+                /* A hit clears this window and starts its next delay now. */
+                ww(w + 2, 0);
+                ww(w + 4, 0);
+                {
+                    uint16_t at = rw(s + 0x42);
+                    ww(w, rw(m + 0xA227 + (uint32_t)(at & 0xFF) * 2));
+                    ww(s + 0x42, (uint16_t)((at + 1) & 0xFF));
+                }
+            } else {
+                wd(m + 0xA19B, rw(m + 0xA1E3 + i * 2));
+                wd(m + 0xA197, 0x10);
+                wd(m + 0xA193, 0x20);
+                T1_SHOOT_PIC(m, i * 3 + look - 1, 0);
+            }
+        }
+        wd(0x0008, w + 6);
+        wd(0x003C, i + 1);
+        ww(0x0038, (uint16_t)(count - 1));
+        count--;
+    }
+}
+
+/* T001 CODE:9B25, once per frame of the shooting game. */
+static int T1_SHOOT_UPDATE(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), s = m + 0xA19F, main_state;
+    uint16_t cross, hits;
+
+    wd(0x0004, s);
+    wd(m + 0xA197, 0x10);
+    wd(m + 0xA193, 0xA0);
+    wd(m + 0xA19B, 0);
+    T1_SHOOT_PIC(m, 0, 0);
+    T1_SHOOT_WINDOWS(m, s);
+
+    main_state = rd(0x0014);
+    if (rb(main_state + 0x2A7B)) {
+        if (rb(s + 6) == 0) {
+            wb(s + 7, 0);
+            if (rw(s + 4) != 0) {
+                ww(s + 4, (uint16_t)(rw(s + 4) - 1));
+                wb(s + 6, 0x19);
+                wb(s + 6, (uint8_t)(rb(s + 6) - 1));
+            }
+        } else {
+            wb(s + 6, (uint8_t)(rb(s + 6) - 1));
+        }
+    } else if (rb(main_state + 0x2A7C)) {
+        if (rb(s + 7) == 0) {
+            wb(s + 6, 0);
+            if (rw(s + 4) != 3) {
+                ww(s + 4, (uint16_t)(rw(s + 4) + 1));
+                wb(s + 7, 0x19);
+                wb(s + 7, (uint8_t)(rb(s + 7) - 1));
+            }
+        } else {
+            wb(s + 7, (uint8_t)(rb(s + 7) - 1));
+        }
+    } else {
+        wb(s + 6, 0);
+        wb(s + 7, 0);
+    }
+
+    cross = rw(s + 4);
+    wd(m + 0xA197, 0x0F);
+    wd(m + 0xA193, 0x10);
+    wd(m + 0xA19B, rw(m + 0xA1EB + (uint32_t)cross * 2) >> 1);
+    T1_SHOOT_PIC(m, 0x0D, 1);
+
+    if ((int16_t)rw(s + 2) <= 0) {
+        hits = rw(s);
+        wb(m + 0x6061, '0');
+        wb(m + 0x6062, '0');
+        wd(0x0000, m + 0x6063);
+        ww(0x0020, hits);
+        host_call(0x18);
+        /* The original tests CODE:[0004] after DEC_TEXT clobbers it;
+         * preserve that behavior, including the missed 25-hit extra ball. */
+        if (rb(rd(0x0004) + 8) == 0xFF)
+            wd(0x0000, m + 0x5F96);
+        else
+            wd(0x0000, m + 0x5FA2);
+        host_call(0x1C);
+        wd(0x0020, 0xFFFFFFFF);
+        return 1;
+    }
+    if (rw(s) >= 0x1E) {
+        T1_SHOOT_BCD_ADD(s + 0x12, m + 0xA43F);
+        T1_SHOOT_BCD_ADD(rd(main_state + 0x0D76) + 8, s + 0x12);
+        wd(0x0000, m + 0x5FAE);
+        host_call(0x1C);
+        wd(0x0020, 0xFFFFFFFF);
+        return 1;
+    }
+    wd(0x0020, 0);
+    return 0;
+}
+
 /* table 2: TUNE_CHOICES (a word per player, the tune 0..2), TUNE_TEMPLATES
  * (three pointers, three audio records each) and the records 0..2 the
  * music is played from (CODE:1A760), offsets in the module */
@@ -505,6 +695,8 @@ int MOD_UPDATE(uint32_t at)
 
     if (table == 2 && off == 0x9B68)
         return T2_TUNE_UPDATE();
+    if (table == 1 && off == 0x9B25)
+        return T1_SHOOT_UPDATE();
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);
     pi_stop(name);
     return 1;
