@@ -1,8 +1,9 @@
 /* launch.c - the port's setup screen before the game (doskit's
- * launcher.h): which table to start, the game's options (stored in
- * ILLUSION.CFG as the game's own options screen stores them), the sound
- * (volume, doskit's audiofx), the keys and a controller's buttons; and
- * the volume keys in play (frame.h's hud).  The port's, not the game's:
+ * launcher.h): a menu to start the game or one table at once, with pages
+ * for the game's options (stored in ILLUSION.CFG as the game's own
+ * options screen stores them), the sound (volume, doskit's audiofx), the
+ * keys and a controller's buttons; and the volume keys in play
+ * (frame.h's hud).  The port's, not the game's:
  * none of it changes what the game does with the options it reads.
  *
  * The port's settings (all but the game's options) are kept in the data
@@ -18,6 +19,13 @@
 #include "platform.h"
 #include "pmax.h"
 #include "sys.h"
+
+#ifndef PORT_VERSION
+#define PORT_VERSION ""
+#endif
+
+/* doskit's launcher.h names the port in its title bar */
+const LauncherApp pi_app = { "Pinball Illusions", "pinative", PORT_VERSION };
 
 int pi_start_table;             /* 1..4: that table at once; 0 the chooser */
 int pi_skip_intro;
@@ -67,9 +75,11 @@ static const char *const db_values[] = { "-12 dB", "-9 dB", "-6 dB", "-3 dB", "0
                                           "+6 dB", "+9 dB", "+12 dB", NULL };
 static const char *const oomph_values[] = { "off", "+3 dB", "+6 dB", "+9 dB", "+12 dB", NULL };
 
-enum { A_CHOOSER = 1, A_TABLE1, A_TABLE2, A_TABLE3, A_TABLE4, A_QUIT };
+enum { A_CHOOSER = 1, A_TABLE1, A_TABLE2, A_TABLE3, A_TABLE4 };
 
-static LauncherItem start_items[] = {
+/* the menu (page 0): how to start first, then the two single settings
+ * and one page per group; "Quit" is the launcher's */
+static LauncherItem menu_items[] = {
     { LI_HEAD, "Play", NULL, NULL, NULL, 0, NULL },
     { LI_ACTION, "Start", NULL, NULL, NULL, A_CHOOSER,
       "Start from the intro." },
@@ -81,7 +91,10 @@ static LauncherItem start_items[] = {
     { LI_CHOICE, "Skip the intro", "skipintro", yesno, &skip_intro, 0, NULL },
     { LI_CHOICE, "Display", "fullscreen", window, &fullscreen, 0, "Alt+Enter switches too." },
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
-    { LI_ACTION, "Quit", NULL, NULL, NULL, A_QUIT, NULL },
+    { LI_PAGE, "Game", NULL, NULL, NULL, 1, "The game's options." },
+    { LI_PAGE, "Sound", NULL, NULL, NULL, 2, "Volume, bass, treble, headphones." },
+    { LI_PAGE, "Keys", NULL, NULL, NULL, 3, "The keyboard." },
+    { LI_PAGE, "Controller", NULL, NULL, NULL, 4, "A controller's buttons." },
 };
 
 static LauncherItem game_items[] = {
@@ -132,7 +145,7 @@ static LauncherItem pad_items[] = {
 };
 
 static LauncherPage pages[] = {
-    { "Start", start_items, sizeof start_items / sizeof start_items[0] },
+    { "Setup", menu_items, sizeof menu_items / sizeof menu_items[0] },
     { "Game", game_items, sizeof game_items / sizeof game_items[0] },
     { "Sound", sound_items, sizeof sound_items / sizeof sound_items[0] },
     { "Keys", key_items, sizeof key_items / sizeof key_items[0] },
@@ -268,9 +281,7 @@ int pi_launch(int show)
     plat_set_fullscreen(fullscreen);
     apply_sound();
     {
-        r = launcher_run("Pinball Illusions",
-                         NULL,
-                         pages, NPAGES, changed);
+        r = launcher_run(&pi_app, NULL, pages, NPAGES, changed);
         pi_settings_save();
         for (i = 0; i < 6; i++)
             o[i] = (uint8_t)opt[i];
@@ -286,7 +297,7 @@ int pi_launch(int show)
             pmax_cfg_set_options(o7, 7);
         }
     }
-    if (r == LAUNCHER_QUIT || r == A_QUIT)
+    if (r == LAUNCHER_QUIT)
         return -1;
     pi_start_table = r >= A_TABLE1 && r <= A_TABLE4 ? r - A_TABLE1 + 1 : 0;
     pi_skip_intro = skip_intro || pi_start_table != 0;
