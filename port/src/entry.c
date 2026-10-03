@@ -89,7 +89,12 @@ void ENTRY(void)
     /* CODE:033F: a table chosen, or the end */
     {
         /* the port's: a table chosen in its launcher instead of the
-         * chooser, once */
+         * chooser, once.  CHOOSER sets CHOOSER_LOADED 0 (CODE:5040);
+         * the bypassed chooser would have, so that the chooser after
+         * the table loads its files and plays its music (track 51)
+         * again */
+        if (pi_start_table)
+            ww(N_CHOOSER_LOADED, 0);
         uint8_t al = pi_start_table ? (uint8_t)(pi_start_table - 1) : CHOOSER_START();
 
         while (al < 4) {
