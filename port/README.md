@@ -802,4 +802,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   Not tried: the window builds,
   the keys and a controller in play, the volume keys, the sound
   settings heard.
+- 2026-10-03, Linux: whole blind games on all four tables, started at
+  once from the setup screen (F1, Enter every 500 pictures, no
+  flippers), run to DK_FRAMES 19000: none stops (`Stopped before
+  FRAME_STEP` by the bound; the tables in their attract modes on
+  screen). No gameplay stopper is left on these paths; what stops is
+  `-opt o/s/r` (the game's own options screen, sound set-up and reset,
+  which the port's setup screen replaces) and the defaults for what no
+  table uses. Windows and macOS not tried.
 - Not built on macOS since.
