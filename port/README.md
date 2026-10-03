@@ -745,8 +745,11 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   again after the merge, Law 'n Justice started at once from the menu
   (the table on screen); the joint offer declined (the program ends).
   The copy taken with its bar, the "not found" and "could not be
-  copied" screens not tried (the kit's dialogtest covers them). The
-  window build, Windows and macOS not tried.
+  copied" screens not tried (the kit's dialogtest covers them).
+  Windows 2026-10-03 (the user's test, not the agent's): build.bat
+  builds; the first start's joint dialog copies the game and the CD,
+  the setup screen's menu and pages work, a table loads and a ball
+  plays. macOS not tried.
 =======
   seen, no window tried.
 - 2026-10-01: that question replaced by doskit's dialog about the
