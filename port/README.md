@@ -852,4 +852,9 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   -mem`): CODE and TAIL 0 bytes differ, so the defaults play as before.
   A run that hears the hole's sound not made (the headless build takes
   no settings); the window build not tried.
-- Not built on macOS since.
+- 2026-10-04, macOS (the user's test, not the agent's): build.sh
+  builds and the game starts and plays. The checkout's doskit predated
+  the runtime modules (pmem.c, cdaudio.c, update.c, launcher.c, hud.c);
+  `git submodule update --init` fixed it. Details of the play (which
+  table, sound, the setup dialog's paths) not recorded; the update
+  check and the release-page flow not exercised.
