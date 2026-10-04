@@ -2015,6 +2015,46 @@ game in a run", the state poked at the first update, `-poke 2DDBC5#1
   score is shown, not paid. How the score's bytes map to the digits
   shown is not worked out.
 
+### Table 1's shooting game in the port
+
+   Compared 2026-10-04, on Windows, by forcing the same game in both
+   (the two pokes of "A mode's track in a run" and the counter's word
+   +16h to 4 at the first count-up, CODE:2E0F6; lives to 99, 1 or 32
+   at the first SHOOT_UPDATE; a scratch hook in the port for the same
+   writes and for stopping at an update, removed afterwards; the key
+   files `build/shoot_keys.txt` and `build/shoot_dkkeys.txt` are not
+   kept).
+
+   The original (GOG `ILLUSION.CFG`, SB16.SDR): SHOOT_START at t=146.08,
+   SHOOT_UPDATE 2228 times to t=183.02; before update 2228 lives 61,
+   hits 29, the 25-hit flag FF, the score 29; after it 30 hits and
+   80,000,000 (the 30-hit completion, stream 5FAEh: two display
+   streams and light @5FC6). Lives-out with lives 1 ends at update 78;
+   with lives 32 at update 1961 (lives 1, hits 26, flag FF).
+
+   The port, given the same keys by table frame: SHOOT_START and every
+   update's state (lives, hits, crosshair, flag, BCD score, delay-table
+   index) equal at updates 100, 1000 and 2228, after the completion
+   (frames 3190, 3300) and at both lives-outs; memcmp.py at each shows
+   only the known classes (the heap layout: the run's SB16 against the
+   port's NOSOUND shifts pointers by 0x790/0x890; the retrace timing;
+   chooser and scroll leftovers). With the 25-hit fix off the port
+   takes the original's branch (stream 5FA2h, no extra ball, equal
+   states); with it on, record 5FC6h is lit for the player.
+
+   Key timing found on the way: the run's mid-frame key interrupt lands
+   a frame after the port's frame-wait key, so run frame N+1 is port
+   frame N (seen at the launch: run 411 == port 410); the port's game
+   keys go one picture later than the frame (DK_KEYS picture = frame +
+   5725 here, not + 5724). The chooser keys keep the frame's picture:
+   space must land in the attract mode (here picture 5530; 5281 is
+   still the intro), enter chooses the table (frame 1 at picture 5725).
+
+   Not compared: the dot-matrix display's pictures pixel for pixel
+   (video memory differs by the attract scroll, the menus having opened
+   at different scroll positions); a track's time running out during
+   the shooting game; table 4's sea game in the port.
+
 ### Table 4's sea game in a run
 
 Found 2026-09-29, on Linux, from table 4's module (read in part) and runs

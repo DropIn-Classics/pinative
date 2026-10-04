@@ -129,8 +129,14 @@ street, four animated windows and crosshair, handles flipper movement,
 shots, lives-out and the 30-hit completion path using the module's own
 tables and image data. The Fixes page can award the extra ball when the
 game's 25-hit flag is set; this fix is on by default and can be turned off
-on the Fixes page. The shooting game has not yet been run or compared
-against the original.
+on the Fixes page. Compared 2026-10-04, on Windows, against the
+original forced into the same game (record 4362h lit, zone 3447h over
+the table, counter 421Eh to threshold 5; lives 99, 1 or 32): the
+start, updates 100, 1000 and 2228 (lives 98/85/61, hits 1/15/29),
+the 30-hit completion (80,000,000, stream 5FAEh) and both lives-outs
+equal the original's states; with the fix off the port takes the
+original's branch, with it on record 5FC6h is lit (docs/HANDOFF.md,
+"Table 1's shooting game in the port").
 
 ## The setup screen
 
@@ -858,3 +864,12 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   `git submodule update --init` fixed it. Details of the play (which
   table, sound, the setup dialog's paths) not recorded; the update
   check and the release-page flow not exercised.
+- 2026-10-04, Windows: table 1's shooting game forced in both (see
+  above), the port's keys by table frame (DK_KEYS picture = frame +
+  5724, game keys one picture later: the run's mid-frame key interrupt
+  lands a frame after the port's frame-wait key): at updates 100, 1000
+  and 2228, after the 30-hit completion and at both lives-outs (fix
+  off and on) CODE differs only by the heap layout (the run's SB16
+  against the port's NOSOUND), the retrace timing and chooser/scroll
+  leftovers; TAIL 0 bytes differ; video memory differs by the attract
+  scroll. The dot-matrix pictures not compared pixel for pixel.
