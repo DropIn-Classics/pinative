@@ -7,8 +7,14 @@ code. The game's data comes from the player's Pinball Illusions of
 GOG.com and is read from it each time the program runs; without it
 nothing can be played.
 
-Not playable yet: the program shows the intro and the table chooser
-(with its Info pages) and stops when a table is chosen.
+What plays: the intro, the table chooser (with its Info pages) and
+all four tables: Law 'n Justice, Babewatch, Extreme Sports, The
+Vikings. High scores are kept. The setup screen before the game holds
+the game's options (balls, table angle, scrolling, multiball maximum,
+tilt, resolution), the sound, the keys, a controller's buttons and, on
+the Fixes page, the port's fixes for three of the original's bugs
+(holes play their own sound, initials stay in the high scores, the
+shooting game awards its 25-hit extra ball), on by default.
 
 Starting
 --------
@@ -79,6 +85,14 @@ Intro: Space or Esc leaves it.
 Table chooser: the arrow keys choose, Enter or Space takes the choice,
 F1 to F4 take a table at once; Esc leaves an Info page, else ends the
 program.
+At a table: F1 to F8 start a game with 1 to 8 players; Enter launches
+the ball; Left/Right Shift or Ctrl are the flippers; Space, Left Alt
+and Right Alt nudge (too much tilts); P pauses; Esc leaves the table
+(answer Y to quit, any other key back to the game). A high score takes
+three letters (Backspace, Enter).
+Keypad + and - change the volume, * mutes and unmutes it. The keys for
+the flippers, the plunger, the nudges and the pause can be changed on
+the setup screen's Keys page.
 
 Removing the copied game files
 
