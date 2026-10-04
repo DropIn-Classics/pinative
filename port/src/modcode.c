@@ -6,6 +6,7 @@
  * port by its table and offset.
  */
 #include <stdio.h>
+#include "frame.h"
 #include "game.h"
 #include "names.h"
 #include "pmax.h"
@@ -688,6 +689,88 @@ static int T2_TUNE_UPDATE(void)
     return 1;
 }
 
+/* table 4 CODE:97E5 (SEA_OBJECT), the sea game on the display
+ * (docs/bpc-module.md, "Table 4's sea game"): the boat steered with the
+ * flippers past rocks, picking up bonuses. Offsets in the module. */
+#define T4_SEA_STATE    0xACB6
+
+/* the PIT's counter 0 as table 4 CODE:A27B reads it (latched, low byte
+ * then high). The port has no PIT behind its memory (its NOSOUND counts
+ * the timer's IRQs per picture instead); here the same rate (the reload
+ * the runs show, 18733, about 63.7 ticks a second) from the picture
+ * count, so headless runs repeat exactly. The rocks come out elsewhere
+ * than in a run, as with any other timer. */
+static uint16_t sea_pit(void)
+{
+    double q = (double)frame_count() / 70.0 * 1193182.0 / 18733.0;
+
+    q -= (double)(uint64_t)q;
+    return (uint16_t)((1.0 - q) * 18733.0);
+}
+
+/* table 4 CODE:A27B (SEA_RANDOM): ACD6 plus the timer, doubled with
+ * carry, XOR the word at ACBA, plus the row count. The shared work
+ * cells written as the original leaves them. */
+static void T4_SEA_RANDOM(uint32_t m)
+{
+    uint32_t edi = rd(0x0020), ebp = rd(0x0024), sum;
+    uint16_t di;
+
+    ebp = (ebp & 0xFFFF0000u) | rw(m + 0xACBA);
+    wd(0x0024, ebp);
+    sum = (uint32_t)rw(m + 0xACD6) + sea_pit();
+    di = (uint16_t)(sum * 2 + (sum > 0xFFFF ? 1 : 0));
+    wd(0x0020, (edi & 0xFFFF0000u) | di);
+    di ^= rw(m + 0xACBA);
+    wd(0x0020, (edi & 0xFFFF0000u) | di);
+    di = (uint16_t)(di + (rd(m + 0xACCE) & 0xFFFF));
+    wd(0x0020, (edi & 0xFFFF0000u) | di);
+    ww(m + 0xACD6, di);
+}
+
+/* table 4 CODE:B1B1 (SEA_CLEAR_BUF): 1400h bytes at the display buffer
+ * cleared. The original calls host +28h (which selects DM_ANIM for ES
+ * and returns its selector in EAX); the port addresses the block as
+ * the table-1/2 picture routines do. */
+static void T4_SEA_CLEAR_BUF(void)
+{
+    uint32_t es = pmax_base(rw(N_DM_ANIM)), i;
+
+    for (i = 0; i < 0x1400; i++)
+        lwb(es + i, 0);
+}
+
+/* table 4 CODE:97ED (SEA_START, the object's +0): the host vector kept,
+ * the 28 bytes ACBA..ACD5 cleared, ACBA's word to [0000h], no Enter yet,
+ * no bonus on the water, no end, a row each frame, the random number
+ * stirred, the display buffer cleared. ACD6 (and the last key) kept. */
+static void T4_SEA_START(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), p = m + 0xACBA;
+    int n;
+
+    host_call(0x08);
+    wd(0x000C, m + 0x97E5);
+    wd(m + 0x9874, rd(0x0010));
+    wd(0x0000, p);
+    for (n = 0; n < 7; n++) {
+        wd(p, 0);
+        p += 4;
+    }
+    ww(0x003C, 0xFFFF);
+    wb(m + 0xACD8, 0);
+    wb(m + 0xACB8, 0);
+    wb(m + 0xACE4, 0);
+    wb(m + 0xACD9, 1);
+    /* SCRATCH (sea-game comparison, removed afterwards): the run's
+     * poke clearing the serve's Enter at the object's start
+     * (dosrun -poke 2A6BAD#1 10DB5F 00: image offset 0CC2Fh). */
+    wb(0x0CC2F, 0);
+    T4_SEA_RANDOM(m);
+    wd(0x0020, 0);
+    T4_SEA_CLEAR_BUF();
+}
+
 /* the module object's +4 at DS:`at` (CODE:2CFC8 calls it): 1 when it
  * returns with ZF clear (done), 0 with ZF set (called again) */
 int MOD_UPDATE(uint32_t at)
@@ -736,6 +819,10 @@ void MOD_CALL(uint32_t at)
     }
     if (table == 1 && off == 0x9A4E) {
         T1_SHOOT_START();
+        return;
+    }
+    if (table == 4 && off == 0x97ED) {
+        T4_SEA_START();
         return;
     }
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);

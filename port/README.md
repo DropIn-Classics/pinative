@@ -138,6 +138,18 @@ equal the original's states; with the fix off the port takes the
 original's branch, with it on record 5FC6h is lit (docs/HANDOFF.md,
 "Table 1's shooting game in the port").
 
+### Table 4's sea game
+
+The module's `SEA_START` (T004 CODE:97ED), `SEA_RANDOM` (CODE:A27B)
+and `SEA_CLEAR_BUF` (CODE:B1B1) are translated in `src/modcode.c`;
+`SEA_UPDATE` (CODE:9878) still stops the port. The start compared
+2026-10-04, on Windows, against the original forced into the same game
+(record 5EA2h lit, zone 33FFh over the table, counter 5F60h to
+threshold 2): the sea state and the kept host vector equal but the
+random number, which stirs the PIT's counter 0 (here the same rate
+from the picture count, so the rocks come out elsewhere than in a
+run; docs/HANDOFF.md, "Table 4's sea game in the port").
+
 ## The setup screen
 
 The window's build starts with the port's own setup screen (src/launch.c
@@ -873,3 +885,10 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   against the port's NOSOUND), the retrace timing and chooser/scroll
   leftovers; TAIL 0 bytes differ; video memory differs by the attract
   scroll. The dot-matrix pictures not compared pixel for pixel.
+- 2026-10-04, Windows: table 4's sea game started in both (forced as in
+  docs/HANDOFF.md, "Table 4's sea game in a run"; a scratch hook in the
+  port for the forcing, kept while the update is translated): at the
+  first update the sea state (module ACBAh..ACE6h) and the kept host
+  vector equal but the random number ACD6h (the PIT's counter 0, here
+  the same rate from the picture count); the image but the known
+  classes. `SEA_UPDATE` still stops the port.

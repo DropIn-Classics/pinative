@@ -2053,7 +2053,30 @@ game in a run", the state poked at the first update, `-poke 2DDBC5#1
    Not compared: the dot-matrix display's pictures pixel for pixel
    (video memory differs by the attract scroll, the menus having opened
    at different scroll positions); a track's time running out during
-   the shooting game; table 4's sea game in the port.
+   the shooting game; table 4's sea game in the port (its start since,
+   next section).
+
+### Table 4's sea game in the port
+
+   Begun 2026-10-04, on Windows: `T4_SEA_START` (module 97EDh),
+   `T4_SEA_RANDOM` (A27Bh), `T4_SEA_CLEAR_BUF` (B1B1h) and the dispatch
+   in `src/modcode.c`; `SEA_UPDATE` (9878h) still stops the port.
+   Forced as "Table 4's sea game in a run" in both (record 5EA2h lit,
+   zone 33FFh over the table, counter 5F60h to threshold 2; the serve's
+   Enter cleared at the start; a scratch hook in the port, kept while
+   the update is translated): at the first update the sea state
+   (ACBAh..ACE6h) and the kept host vector equal but the random number
+   ACD6h, and the image but the known classes (the heap layout: the
+   run's SB16 against the port's NOSOUND; the retrace timing; chooser
+   and scroll leftovers, among them PAL_FROM).
+
+   The random number stirs the PIT's counter 0, which the port has no
+   model of (its NOSOUND counts the timer's IRQs per picture instead);
+   here the same rate (the reload the runs show, 18733) from the
+   picture count, so headless runs repeat exactly. The rocks come out
+   elsewhere than in a run, as with any other timer. Next: the update
+   and its routines, then forced scenarios (a bonus, the extra ball,
+   the crash) against the runs above.
 
 ### Table 4's sea game in a run
 
