@@ -2186,6 +2186,15 @@ crash ends the game with "ITEM COLLECTED / FISH".
   steering can be tried without playing for the rare trigger.
   Verified headless: with the variable the sea runs (ACCA 253),
   without it nothing starts and the counter runs on as usual.
+- Two spawn bugs found through the cheat runs (2026-10-05,
+  port/src/modcode.c, both against T004.ASM): the empty-column
+  spawn tested immunity (ACCB) instead of bonus-on-water (ACB8) and
+  never wrote the rock byte, so only bonuses spawned; and the crash
+  set [0000] to rd(000Ch) instead of keeping the column pointer
+  (the ASM PUSHes/POPs it), so after every crash the row loop wrote
+  into the sea method table (early-column crash stopped the port at
+  module 9979h). Verified headless: rocks spawn and advance, a
+  crash meeting runs the script to a clean end of the run.
 
 ### Table 3's opcode-14h record
 
