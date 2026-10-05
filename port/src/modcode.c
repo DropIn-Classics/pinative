@@ -792,10 +792,11 @@ static void T4_SEA_BCD6(void)
 }
 
 /* table 4 CODE:9EC8 (SEA_CRASH, the boat met a rock): the crash script
- * and its audio record; the row loop goes on. */
+ * and its audio record; the row loop goes on ([0000] kept, as the
+ * original's POP restores the column pointer). */
 static void T4_SEA_CRASH(uint32_t m)
 {
-    uint32_t keep10 = rd(0x0010);
+    uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010);
 
     wb(m + 0xACE5, 0x36);
     wd(m + 0xACE6, m + 0x9AEC);
@@ -803,8 +804,7 @@ static void T4_SEA_CRASH(uint32_t m)
     wd(0x0010, rd(m + 0x9874));
     host_call(0x04);
     wd(0x0010, keep10);
-    /* [0000h] left at the object, as the original's POP leaves it */
-    wd(0x0000, rd(0x000C));
+    wd(0x0000, keep0);
 }
 
 /* table 4 CODE:9F1D (SEA_EXTRA_BALL, kind 6): its stream queued and the
