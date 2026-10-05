@@ -735,7 +735,7 @@ static void T4_SEA_STEER(uint32_t m, uint32_t st)
     if (rb(m + 0xACCD) != 0) {                        /* the move's end */
         ccd = (int8_t)rb(m + 0xACCD);
         ebx = rd(0x0024);
-        if (ccd < 0)
+        if (ccd >= 0)
             ebx = (ebx & 0xFFFFFF00u) | ((ebx - 1) & 0xFF);
         bl = (uint8_t)(ebx + 2);
         ebx = (ebx & 0xFFFFFF00u) | bl;
