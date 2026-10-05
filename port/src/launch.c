@@ -29,7 +29,7 @@ int pi_fix_shooting_extra_ball = 1; /* award the shooting game's 25-hit extra ba
 
 /* ---- the settings */
 
-static int skip_intro, fullscreen = 0;
+static int skip_intro, fullscreen = 0, vsync = 0;
 static int update_checks;
 static int opt[6];              /* the game's options, OPTIONS+0..5 */
 static int volume = 10, bass = 4, treble = 4, oomph = 0, headphone = 0;
@@ -88,6 +88,7 @@ static LauncherItem menu_items[] = {
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
     { LI_CHOICE, "Skip the intro", "skipintro", yesno, &skip_intro, 0, NULL },
     { LI_CHOICE, "Display", "fullscreen", window, &fullscreen, 0, "Alt+Enter switches too." },
+    { LI_CHOICE, "VSync", "vsync", yesno, &vsync, 0, "Tear-free pictures at the panel's rate." },
     { LI_CHOICE, "Check for updates", NULL, yesno, &update_checks, 0,
       "When found, each update asks before it is installed." },
     { LI_HEAD, "", NULL, NULL, NULL, 0, NULL },
@@ -255,6 +256,8 @@ static void changed(const LauncherItem *it)
             update_start(PORT_VERSION, PORT_UPDATE_URL);
     } else if (it->value == &fullscreen)
         plat_set_fullscreen(fullscreen);
+    else if (it->value == &vsync)
+        plat_set_vsync(vsync);
     else if (it->value == &bass || it->value == &treble || it->value == &oomph ||
              it->value == &headphone)
         apply_sound();
@@ -315,6 +318,7 @@ int pi_launch(int show)
         opt[i] = o[i];
     memcpy(before, o, 6);
     plat_set_fullscreen(fullscreen);
+    plat_set_vsync(vsync);
     apply_sound();
     {
         update_enabled = *PORT_VERSION && *PORT_UPDATE_URL;
