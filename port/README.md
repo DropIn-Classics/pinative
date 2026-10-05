@@ -140,15 +140,38 @@ original's branch, with it on record 5FC6h is lit (docs/HANDOFF.md,
 
 ### Table 4's sea game
 
-The module's `SEA_START` (T004 CODE:97ED), `SEA_RANDOM` (CODE:A27B)
-and `SEA_CLEAR_BUF` (CODE:B1B1) are translated in `src/modcode.c`;
-`SEA_UPDATE` (CODE:9878) still stops the port. The start compared
-2026-10-04, on Windows, against the original forced into the same game
-(record 5EA2h lit, zone 33FFh over the table, counter 5F60h to
-threshold 2): the sea state and the kept host vector equal but the
-random number, which stirs the PIT's counter 0 (here the same rate
-from the picture count, so the rocks come out elsewhere than in a
-run; docs/HANDOFF.md, "Table 4's sea game in the port").
+The module's whole sea game is translated in `src/modcode.c`:
+`SEA_START` (T004 CODE:97ED), `SEA_UPDATE` (CODE:9878), `SEA_SCRIPT_STEP`
+(CODE:9A20) with the Enter (CODE:9BC8) and crash (CODE:9C44) ends,
+`SEA_ROW` (CODE:9C91) with the rock (CODE:9EC8), bonus (CODE:9F68/A053)
+and extra-ball (CODE:9F1D) meetings, `SEA_BONUS_CHECK` (CODE:A067),
+`SEA_STEER` (CODE:A2E1), `SEA_RANDOM` (CODE:A27B), `SEA_DRAW_PREP`
+(CODE:A16E), `SEA_DRAW` (CODE:A3EC) with its water, column, boat and
+arrow blits, and `SEA_CLEAR_BUF` (CODE:B1B1). Compared 2026-10-04, on
+Windows, against the original forced into the same game (record 5EA2h
+lit, zone 33FFh over the table, counter 5F60h to threshold 2; no
+Enter-clear on either side, so both run Enter's script at once): at
+the start (after `SEA_START`, before the first update), after update 1
+and after update 5 the sea state (module ACBAh..ACE6h) is byte-equal
+but the random number ACD6h and the script pointer's module-shifted
+bytes; the main program but the known classes (the heap layout: the
+run's SB16 against the port's NOSOUND; the retrace timing; chooser
+and scroll leftovers), the config path (`\ILLUSION.CFG` in the run)
+and the kept host vector's high byte (the address spaces differ by
+design). The random number stirs the PIT's counter 0, here the same
+rate from the picture count, so headless runs repeat exactly but the
+rocks come out elsewhere than in a run: with no keys the port takes
+15 bonuses and the extra ball (ACE4h, the game over after 2569
+updates) while the original meets a rock (386 updates, the crash's
+end). The completed end is reached in the port (identical end states
+at DK_FRAMES 9800, 10100 and 20000); the crash end is reached in the
+original but in no clean port run (no rock met; its dispatch is the
+exercised script-end dispatch, its leaf reviewed). A headless run of
+table 4 with random flipper input for 150000 frames (seed 404) stops
+nowhere but `FRAME_STEP` at the frame bound. The display's pixels are
+not compared. Forcing uses a scratch hook in the port's take handler
+(`take_count`, kept while the game is verified), mirroring dosrun's
+`-poke` options.
 
 ## The setup screen
 
@@ -889,11 +912,16 @@ download, replacement and restart are still unchecked.
   scroll. The dot-matrix pictures not compared pixel for pixel.
 - 2026-10-04, Windows: table 4's sea game started in both (forced as in
   docs/HANDOFF.md, "Table 4's sea game in a run"; a scratch hook in the
-  port for the forcing, kept while the update is translated): at the
-  first update the sea state (module ACBAh..ACE6h) and the kept host
-  vector equal but the random number ACD6h (the PIT's counter 0, here
-  the same rate from the picture count); the image but the known
-  classes. `SEA_UPDATE` still stops the port.
+  port for the forcing, kept while the game is verified): at the
+  start, after update 1 and after update 5 the sea state (module
+  ACBAh..ACE6h) is byte-equal but the random number ACD6h (the PIT's
+  counter 0, here the same rate from the picture count) and the script
+  pointer's module-shifted bytes; the image but the known classes, the
+  config path and the kept host vector's high byte. With no keys the
+  port ends by the extra ball (2569 updates) and the original by the
+  crash (386 updates). A 150000-frame headless run with random flipper
+  input (seed 404) stops nowhere but `FRAME_STEP`. The crash end is
+  not reached in the port, the display's pixels are not compared.
 - 2026-10-04, macOS 15.7.3 (Intel, Apple clang 17): the GOG Mac
   release's image is named (`mac_bundle` in src/main.c, the path of
   docs/HANDOFF.md, "The GOG release on the Mac"). Before, a first start

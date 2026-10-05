@@ -708,6 +708,367 @@ static uint16_t sea_pit(void)
     return (uint16_t)((1.0 - q) * 18733.0);
 }
 
+/* table 4 CODE:A2E1 (SEA_STEER): the running move on (the position by
+ * the step, the lane when it ends), else the flippers move the boat a
+ * lane (left down at once, right up when the position reaches 80h).
+ * The lane wraps modulo 8, the position stays below 80h. */
+static void T4_SEA_STEER(uint32_t m, uint32_t st)
+{
+    uint32_t ebx = rd(0x0028), ecx, edx;
+    uint8_t bl = rb(m + 0xACCD), cl;
+    int8_t ccd;
+
+    ebx = (ebx & 0xFFFFFF00u) | bl;
+    wd(0x0028, ebx);
+    wb(m + 0xACD3, (uint8_t)(rb(m + 0xACD3) - bl));
+    wd(0x0024, 0xFFFFFFFFu);
+    ecx = rd(0x002C);
+    cl = rb(m + 0xACCC);
+    ecx = (ecx & 0xFFFFFF00u) | cl;
+    wd(0x002C, ecx);
+    edx = 0x7Fu & rb(m + 0xACD3);
+    wd(0x0020, edx);
+    if (edx != 0) {                                   /* still moving */
+        wb(m + 0xACD3, (uint8_t)edx);
+        return;
+    }
+    if (rb(m + 0xACCD) != 0) {                        /* the move's end */
+        ccd = (int8_t)rb(m + 0xACCD);
+        ebx = rd(0x0024);
+        if (ccd < 0)
+            ebx = (ebx & 0xFFFFFF00u) | ((ebx - 1) & 0xFF);
+        bl = (uint8_t)(ebx + 2);
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0024, ebx);
+        wb(m + 0xACCD, 0);
+        wb(m + 0xACD2, (uint8_t)(rb(m + 0xACD2) + bl));
+        ww(m + 0xACD2, (uint16_t)(rw(m + 0xACD2) & 7));
+        return;
+    }
+    if (rb(st + 0x2A7B)) {                            /* left */
+        ebx = rd(0x0024);
+        bl = (uint8_t)(ebx + 1);
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0024, ebx);
+        ecx = rd(0x002C);
+        wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | (ecx & 0xFF));
+    } else if (rb(st + 0x2A7C)) {                     /* right */
+        wd(0x0024, 0xFFFFFFFEu);
+        ecx = rd(0x002C);
+        cl = (uint8_t)-(int8_t)(ecx & 0xFF);
+        ecx = (ecx & 0xFFFFFF00u) | cl;
+        wd(0x002C, ecx);
+        ebx = rd(0x0024);
+        bl = (uint8_t)(ebx + 1);
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0024, ebx);
+        ecx = rd(0x002C);
+        wd(0x0020, (rd(0x0020) & 0xFFFFFF00u) | (ecx & 0xFF));
+    }
+    ebx = rd(0x0024);
+    bl = (uint8_t)(ebx + 1);
+    ebx = (ebx & 0xFFFFFF00u) | bl;
+    wd(0x0024, ebx);
+    ecx = rd(0x0020);
+    wb(m + 0xACCD, (uint8_t)ecx);
+    wb(m + 0xACD3, (uint8_t)(rb(m + 0xACD3) - (ecx & 0xFF)));
+    wb(m + 0xACD2, (uint8_t)(rb(m + 0xACD2) - bl));
+    ww(m + 0xACD2, (uint16_t)(rw(m + 0xACD2) & 0x7F07));
+}
+
+/* a six-byte packed-BCD addition for the sea game's bonuses: the
+ * number ending 4 past [0008h] added to the one ending 4 past [0010h]
+ * (as the original's DAA loop does it); [0008h] and [0010h] both less
+ * 6 after, the flags kept out (PUSHFD). */
+static void T4_SEA_BCD6(void)
+{
+    uint32_t src = rd(0x0008) - 4, dst = rd(0x0010) - 4;
+    int i, cf = 0;
+
+    for (i = 0; i < 6; i++)
+        adc_daa(dst + (uint32_t)i, src + (uint32_t)i, &cf);
+    wd(0x0008, rd(0x0008) - 6);
+    wd(0x0010, rd(0x0010) - 6);
+}
+
+/* table 4 CODE:9EC8 (SEA_CRASH, the boat met a rock): the crash script
+ * and its audio record; the row loop goes on. */
+static void T4_SEA_CRASH(uint32_t m)
+{
+    uint32_t keep10 = rd(0x0010);
+
+    wb(m + 0xACE5, 0x36);
+    wd(m + 0xACE6, m + 0x9AEC);
+    wd(0x0000, m + 0x19557);
+    wd(0x0010, rd(m + 0x9874));
+    host_call(0x04);
+    wd(0x0010, keep10);
+    /* [0000h] left at the object, as the original's POP leaves it */
+    wd(0x0000, rd(0x000C));
+}
+
+/* table 4 CODE:9F1D (SEA_EXTRA_BALL, kind 6): its stream queued and the
+ * end flag set; the row loop goes on. */
+static void T4_SEA_EXTRA_BALL(uint32_t m)
+{
+    uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010);
+
+    wd(0x0000, m + 0x90AE);
+    wd(0x0010, rd(m + 0x9874));
+    host_call(0x1C);
+    wd(0x0010, keep10);
+    wd(0x0000, keep0);
+    wb(m + 0xACE4, 0xFF);
+}
+
+/* table 4 CODE:9F68/0xA053 (SEA_BONUS_5M/10M, kinds 2/4): the score and
+ * the course a step on, its audio record; the row loop goes on. */
+static void T4_SEA_BONUS(uint32_t m, uint32_t score)
+{
+    uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010), pl;
+
+    wd(0x0008, m + score);
+    wb(m + 0xACD4, (uint8_t)(rb(m + 0xACD4) + 4));
+    wd(0x0000, m + 0x194A1);
+    wd(0x0010, rd(m + 0x9874));
+    host_call(0x04);
+    wd(0x0010, keep10);
+    wd(0x0000, keep0);
+    pl = rd(rd(0x0014) + 0x0D76) + 8;
+    wd(0x0010, pl);
+    T4_SEA_BCD6();
+}
+
+/* table 4 CODE:9C91 (SEA_ROW): every column a row down (rows 1..7 only
+ * on even row counts, from 8 on every row); new objects from the
+ * random number (a bonus of the course step's kind at row 1 when none
+ * is on the water and its bits 12..13 are not both 0, else a rock at
+ * row 1, but nothing while immunity runs and nothing past a column
+ * above row 2); the boat met on leaving row 15 in its column. */
+static void T4_SEA_ROW(uint32_t m)
+{
+    uint32_t p = m + 0xACBA, q = m + 0xACB9, ebx, ecx, edx, edi, ebp;
+    uint8_t bl, cl;
+    int8_t kind;
+
+    wd(0x0000, p);
+    wd(0x0004, q);
+    wb(q, rb(p + 7));
+    wd(0x0020, 0);
+    wd(0x0038, 0);
+    ebx = rd(0x0030);
+    bl = (uint8_t)(rb(m + 0xACD2) + 1);
+    ebx = (ebx & 0xFFFFFF00u) | bl;
+    wd(0x0030, ebx);
+    ecx = rd(0x002C);
+    cl = rb(m + 0xACD3);
+    ecx = (ecx & 0xFFFFFF00u) | cl;
+    wd(0x002C, ecx);
+    ebx = rd(0x002C);
+    if ((ebx & 0xFF) >= 0x40) {
+        ebx = rd(0x0030);
+        ebx = (ebx & 0xFFFFFF00u) | ((ebx + 1) & 0xFF);
+        wd(0x0030, ebx);
+    }
+    ecx = 7 - (rd(0x0030) & 7);
+    wd(0x002C, ecx);
+    edi = rd(0x0030);
+    edi = (edi & 0xFFFF0000u) | rw(m + 0xACCE);
+    wd(0x0030, edi);
+    wd(0x003C, 7);
+    for (;;) {
+        p = rd(0x0000);
+        ebx = rd(0x0020);
+        bl = rb(p);
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0020, ebx);
+        if (bl != 0) {
+            ecx = bl & 0xF;
+            edi = (0xF - ecx) >> 3;
+            wd(0x0034, edi);
+            ecx = 0;
+            ebp = edi & 0x1F;
+            ecx = (uint32_t)1 << ebp;
+            ecx = (~(0u - (ecx & 0xFFFF))) & 0xFFFF;
+            ecx &= rw(m + 0xACCE);
+            wd(0x0024, ecx);
+            if (ecx == 0) {
+                bl = (uint8_t)(bl + 1);
+                ebx = (ebx & 0xFFFFFF00u) | bl;
+                wd(0x0020, ebx);
+                ecx = bl & 0xF;
+                wd(0x0024, ecx);
+                if (ecx != 0) {
+                    p = rd(0x0000);
+                    wb(p, bl);
+                    wd(0x0000, p + 1);
+                } else {
+                    ebx = rd(0x002C);
+                    ecx = rd(0x003C);
+                    if ((ecx & 0xFF) == (ebx & 0xFF)) {
+                        p = rd(0x0000);
+                        wb(p, 0);
+                        wd(0x0000, p + 1);
+                        kind = (int8_t)((bl >> 4) & 0xF);
+                        wd(0x0020, (rd(0x0020) & 0xFFFF0000u) |
+                           (kind == 1 ? 8 : kind == 3 ? 0xA8 :
+                            kind == 5 ? 0x193 : kind == 7 ? 0x5D : 0));
+                        if (kind == 1)
+                            T4_SEA_CRASH(m);
+                        else if (kind == 3)
+                            T4_SEA_BONUS(m, 0xAD42);
+                        else if (kind == 5)
+                            T4_SEA_BONUS(m, 0xAD4A);
+                        else if (kind == 7)
+                            T4_SEA_EXTRA_BALL(m);
+                        else
+                            pi_stop("SEA_ROW: a meeting of an odd kind");
+                    } else {
+                        p = rd(0x0000);
+                        wb(p, 0);
+                        wd(0x0000, p + 1);
+                    }
+                }
+            }
+        } else {
+            uint32_t t;
+            edi = rd(0x0024);
+            edi = (edi & 0xFFFF0000u) | rw(m + 0xACD6);
+            t = (edi & 0xFFFF) + 0x5173;
+            edi = (edi & 0xFFFF0000u) |
+                  ((t + (rd(0x0038) & 0xFFFF) + (t > 0xFFFF ? 1 : 0)) & 0xFFFF);
+            ww(m + 0xACD6, (uint16_t)edi);
+            ebx = edi;
+            bl = (uint8_t)(ebx & 7);
+            ebx = (ebx & 0xFFFFFF00u) | bl;
+            wd(0x0024, ebx);
+            if (bl != 0) {
+                p = rd(0x0000);
+                ebx = rd(0x0020);
+                wb(p, (uint8_t)ebx);
+                wd(0x0000, p + 1);
+            } else {
+                edi = 0xF;
+                q = rd(0x0004);
+                edx = 0xFu & rb(q);
+                wd(0x0028, edx);
+                if ((edx & 0xFF) > 2) {
+                    p = rd(0x0000);
+                    ebx = rd(0x0020);
+                    wb(p, (uint8_t)ebx);
+                    wd(0x0000, p + 1);
+                } else if (rb(m + 0xACCB) != 0) {
+                    p = rd(0x0000);
+                    ebx = rd(0x0020);
+                    wb(p, (uint8_t)ebx);
+                    wd(0x0000, p + 1);
+                } else {
+                    ebx = (ebx & 0xFFFF0000u) | (ebx & 0x3000);
+                    wd(0x0024, ebx);
+                    if ((ebx & 0xFFFF) == 0) {
+                        p = rd(0x0000);
+                        ebx = rd(0x0020);
+                        wb(p, (uint8_t)ebx);
+                        wd(0x0000, p + 1);
+                    } else {
+                        wb(m + 0xACB8, 0xFF);
+                        ebx = 0x21 + rb(m + 0xACD5);
+                        wd(0x0020, ebx);
+                        p = rd(0x0000);
+                        ebx = rd(0x0020);
+                        wb(p, (uint8_t)ebx);
+                        wd(0x0000, p + 1);
+                    }
+                }
+            }
+        }
+        q = rd(0x0004) + 1;
+        wd(0x0004, q);
+        if (rw(0x003C) == 0)
+            break;
+        ww(0x003C, (uint16_t)(rw(0x003C) - 1));
+    }
+    wb(m + 0xACB9, rb(q));
+}
+
+/* table 4 CODE:A067 (SEA_BONUS_CHECK): 0 while no bonus is on the
+ * water; with one, 0 in its column, else 6 or 18 by its side and 6
+ * more by the distance round. */
+static void T4_SEA_BONUS_CHECK(uint32_t m)
+{
+    uint32_t p = m + 0xACB9, ebx, ecx, edx, ebp;
+    uint8_t bl, cl;
+
+    wd(0x0000, p);
+    wd(0x003C, 7);
+    for (;;) {
+        p = rd(0x0000);
+        ebx = 0xFFFFFFF0u;
+        bl = (uint8_t)(0xF0 & rb(p));
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0020, ebx);
+        wd(0x0000, p + 1);
+        if (bl != 0)
+            break;
+        if (rw(0x003C) == 0) {
+            wb(m + 0xACB8, 0);
+            wb(m + T4_SEA_STATE, 0);
+            return;
+        }
+        ww(0x003C, (uint16_t)(rw(0x003C) - 1));
+    }
+    wb(m + 0xACB8, 0xFF);
+    wd(0x002C, 0);
+    ebp = 7;
+    ebx = rd(0x0020);
+    bl = (uint8_t)((rb(m + 0xACD2) + 2) & 7);
+    ebx = (ebx & 0xFFFFFF00u) | bl;
+    wd(0x0020, ebx);
+    ecx = ebp;
+    cl = (uint8_t)(ecx - bl);
+    ecx = (ecx & 0xFFFFFF00u) | cl;
+    wd(0x0024, ecx);
+    edx = rd(0x003C);
+    ecx = rd(0x0024);
+    if ((edx & 0xFF) != (ecx & 0xFF)) {
+        if ((int8_t)(edx & 0xFF) >= (int8_t)(ecx & 0xFF)) {
+            /* XCHG DX,CX */
+            uint32_t t = (edx & 0xFFFF0000u) | (ecx & 0xFFFF);
+            ecx = (ecx & 0xFFFF0000u) | (edx & 0xFFFF);
+            edx = t;
+            wd(0x003C, edx);
+            wd(0x0024, ecx);
+            ecx = rd(0x002C) + 0xC;
+            wd(0x002C, ecx);
+        }
+        ecx = rd(0x002C) + 6;
+        wd(0x002C, ecx);
+        ebx = rd(0x003C);
+        ecx = rd(0x0028);
+        cl = (uint8_t)(ebx + 8);
+        ecx = (ecx & 0xFFFFFF00u) | cl;
+        edx = rd(0x0024);
+        cl = (uint8_t)(ecx - edx);
+        ecx = (ecx & 0xFFFFFF00u) | cl;
+        wd(0x0028, ecx);
+        bl = (uint8_t)(ebx - edx);
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x003C, ebx);
+        if (bl & 0x80) {
+            bl = (uint8_t)-bl;
+            ebx = (ebx & 0xFFFFFF00u) | bl;
+            wd(0x003C, ebx);
+        }
+    }
+    ebx = rd(0x0028);
+    ecx = rd(0x003C);
+    if ((int8_t)((ecx - ebx) & 0xFF) < 0) {
+        ecx = rd(0x002C) + 6;
+        wd(0x002C, ecx);
+    }
+    ww(m + T4_SEA_STATE, (uint16_t)rd(0x002C));
+}
+
 /* table 4 CODE:A27B (SEA_RANDOM): ACD6 plus the timer, doubled with
  * carry, XOR the word at ACBA, plus the row count. The shared work
  * cells written as the original leaves them. */
@@ -740,6 +1101,457 @@ static void T4_SEA_CLEAR_BUF(void)
         lwb(es + i, 0);
 }
 
+/* table 4 CODE:A16E (SEA_DRAW_PREP): the columns copied for the
+ * drawing (so five columns from any lane read in one run of bytes),
+ * the five columns' x by the eased position. */
+static void T4_SEA_DRAW_PREP(uint32_t m)
+{
+    uint32_t p = m + 0xACB9, ebx, ecx, edx, eax, ebp, esi;
+    uint8_t pos, eased;
+
+    wd(0x0000, m + 0xACDA);
+    wd(0x0004, p);
+    wd(0x0008, m + 0xA25B);
+    wd(0x0010, m + 0xAF4D);
+    wd(0x0038, 0xF);
+    ebx = rd(p + 1);
+    wd(p + 9, ebx);
+    ebx = rd(p + 5);
+    wd(p + 0xD, ebx);
+    pos = rb(m + 0xACD3);
+    eased = rb(m + 0xAF4D + pos);
+    wd(0x0020, rd(0x0020) - eased);
+    wd(0x0024, rd(0x0024) - eased);
+    wd(0x0028, rd(0x0028) - eased);
+    wd(0x002C, rd(0x002C) - eased);
+    ebp = rd(0x0030) - eased;
+    wd(0x0030, ebp);
+    edx = rd(0x0020);
+    eax = rd(0x0024);
+    ecx = rd(0x0028);
+    ebx = rd(0x002C);
+    ebp = rd(0x0030);
+    wd(0x0030, ebp);
+    esi = rd(0x0000);
+    ww(esi, (uint16_t)edx);
+    esi += 2;
+    ww(esi, (uint16_t)eax);
+    esi += 2;
+    ww(esi, (uint16_t)ecx);
+    esi += 2;
+    ww(esi, (uint16_t)ebx);
+    esi += 2;
+    wd(0x0000, esi);
+    ww(esi, (uint16_t)ebp);
+}
+
+/* the display selected for the sea game's direct blits (the
+ * original's host +28h call, which the port does not model: it keeps
+ * the same bytes in the two blocks). */
+static uint32_t T4_SEA_DM(void)
+{
+    return pmax_base(rw(N_DM_ANIM));
+}
+
+static uint32_t T4_SEA_FS(uint32_t m)
+{
+    (void)m;
+    return pmax_base(rw(N_VM_DATA_SEL));
+}
+
+/* table 4 CODE:AFD5 (SEA_PIC): a whole 160 x 16 picture (the scripts'
+ * steps), 0FCh added to each byte. */
+static void T4_SEA_PIC(uint32_t m, uint32_t ecx)
+{
+    uint32_t fs = T4_SEA_FS(m), es = T4_SEA_DM();
+    uint32_t src = fs + lrd(fs + ecx * 4), i, n;
+
+    for (n = 0; n < 16; n++)
+        for (i = 0; i < 160; i++)
+            lwb(es++, (uint8_t)(lrb(src++) + 0xFC));
+}
+
+/* table 4 CODE:B024 (SEA_WATER): the water band, 160 wide, all but the
+ * first EDX of 16 lines, 0FCh added to each byte. */
+static void T4_SEA_WATER(uint32_t m, uint32_t ecx, uint32_t edx)
+{
+    uint32_t fs = T4_SEA_FS(m), es = T4_SEA_DM();
+    uint32_t src = fs + lrd(fs + ecx * 4), i, n;
+
+    es += rd(m + 0xB1F3);
+    for (n = 0; n < 16 - edx; n++)
+        for (i = 0; i < 160; i++)
+            lwb(es++, (uint8_t)(lrb(src++) + 0xFC));
+}
+
+/* table 4 CODE:B076 (SEA_SPRITE): picture ECX+1 from its byte
+ * SPRITE_SKIP on, 16 lines of SPRITE_WIDTH to the display at x
+ * SPRITE_X, line 0; 0 bytes and x not below 160 left out. */
+static void T4_SEA_SPRITE(uint32_t m, uint32_t ecx)
+{
+    uint32_t fs = T4_SEA_FS(m), es = T4_SEA_DM();
+    uint32_t src = fs + lrd(fs + ecx * 4) + rd(m + 0xB1F3);
+    uint32_t dst = es + rd(m + 0xB1EF), width = rd(m + 0xB1E7), n;
+    uint16_t x;
+
+    if (width == 0)
+        return;
+    for (n = 0; n < 16; n++) {
+        uint32_t left = width;
+        x = (uint16_t)rd(m + 0xB1EF);
+        while (left-- != 0) {
+            uint8_t c = lrb(src++);
+            if (c != 0 && x < 0xA0)
+                lwb(dst, (uint8_t)(c + 0xFC));
+            dst++;
+            x++;
+        }
+        dst -= width;
+        dst += 0xA0;
+    }
+}
+
+/* table 4 CODE:B0FA (SEA_SPRITE2): as SEA_SPRITE, but SPRITE_SKIP added
+ * to the display offset instead: the boat (500h, line 8). */
+static void T4_SEA_SPRITE2(uint32_t m, uint32_t ecx)
+{
+    uint32_t fs = T4_SEA_FS(m), es = T4_SEA_DM();
+    uint32_t src = fs + lrd(fs + ecx * 4);
+    uint32_t dst = es + rd(m + 0xB1EF) + rd(m + 0xB1F3);
+    uint32_t width = rd(m + 0xB1E7), n;
+    uint16_t x;
+
+    if (width == 0)
+        return;
+    for (n = 0; n < 16; n++) {
+        uint32_t left = width;
+        x = (uint16_t)rd(m + 0xB1EF);
+        while (left-- != 0) {
+            uint8_t c = lrb(src++);
+            if (c != 0 && x < 0xA0)
+                lwb(dst, (uint8_t)(c + 0xFC));
+            dst++;
+            x++;
+        }
+        dst -= width;
+        dst += 0xA0;
+    }
+}
+
+/* table 4 CODE:B17E (SEA_CLEAR): the display cleared to 0FCh, every
+ * frame. */
+static void T4_SEA_CLEAR(void)
+{
+    uint32_t es = T4_SEA_DM(), i;
+
+    for (i = 0; i < 0xA00; i++)
+        lwb(es + i, 0xFC);
+}
+
+/* table 4 CODE:9BC8 (SEA_ENTER_END, Enter's script's end): the rocks
+ * cleared, 150 frames of immunity. 0 while the game goes on. */
+static int T4_SEA_ENTER_END(uint32_t m)
+{
+    uint32_t p = m + 0xACBA, ebx, ecx;
+    uint8_t bl;
+    int n;
+
+    wd(0x0000, p);
+    wd(0x0020, 0xFFFFFFF0u);
+    wd(0x003C, 7);
+    for (n = 0; n < 8; n++) {
+        p = rd(0x0000);
+        ebx = rd(0x0024);
+        bl = (uint8_t)(0xF0 & rb(p));
+        ebx = (ebx & 0xFFFFFF00u) | bl;
+        wd(0x0024, ebx);
+        ecx = rd(0x0020);
+        if (bl == 0) {
+            wb(p, 0);
+            ecx = (ecx & 0xFFFFFF00u) | 0;
+            wd(0x0020, ecx);
+        }
+        wd(0x0000, p + 1);
+        if (rw(0x003C) == 0)
+            break;
+        ww(0x003C, (uint16_t)(rw(0x003C) - 1));
+    }
+    wb(m + 0xACCB, 0x96);
+    wd(0x0020, 0);
+    return rb(m + 0xACE4) != 0;
+}
+
+/* table 4 CODE:9C44 (SEA_CRASH_END, the crash's end): stream 90BAh
+ * queued (the music, the "ITEM COLLECTED"/"FISH" display), the game
+ * over. */
+static int T4_SEA_CRASH_END(uint32_t m)
+{
+    uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010);
+
+    wd(0x0000, m + 0x90BA);
+    wd(0x0010, rd(m + 0x9874));
+    host_call(0x1C);
+    wd(0x0010, keep10);
+    wd(0x0000, keep0);
+    wd(0x0020, 0xFFFFFFFFu);
+    return 1;
+}
+
+/* table 4 CODE:9A20 (SEA_SCRIPT_STEP): a running script's next picture;
+ * at its end the script's routine (its first dword). 1 when it ends
+ * the game then, else 0. */
+static int T4_SEA_SCRIPT_STEP(uint32_t m)
+{
+    uint32_t script = rd(0x0020), routine;
+    uint16_t count = rb(m + 0xACE5);
+
+    wd(0x0000, script);
+    wb(m + 0xACE5, (uint8_t)(count - 1));
+    wd(0x0020, (uint32_t)(uint16_t)(count * 2));
+    if (count == 0) {
+        routine = rd(script);
+        wd(0x0000, routine);
+        wd(m + 0xACE6, 0);
+        if (routine == m + 0x9BC8)
+            return T4_SEA_ENTER_END(m);
+        if (routine == m + 0x9C44)
+            return T4_SEA_CRASH_END(m);
+        pi_stop("SEA_SCRIPT_STEP: the script's end");
+        return 1;
+    }
+    wd(0x0000, script + (uint32_t)(uint16_t)(count * 4));
+    T4_SEA_PIC(m, rd(script + (uint32_t)(uint16_t)(count * 4)));
+    wd(0x0020, 0);
+    return 0;
+}
+
+/* one of the five columns around the boat (SEA_DRAW's repeated block
+ * at EBP+`off`, its x from the word at CACDAh+2*`off`): the column's
+ * object by its kind and row, in perspective, into the display. */
+static void T4_SEA_COLUMN(uint32_t m, uint32_t ebp, unsigned off)
+{
+    uint32_t esi, edi = m + 0xAA98, ebx, ecx = m + 0xAA54, edx, eax;
+    uint8_t dl;
+    uint16_t dx;
+
+    edx = 0;
+    dl = rb(ebp + off);
+
+    wb(m + 0x97E4, dl);
+    edx = (uint32_t)(uint16_t)(dl * 4);
+    wd(0x0024, edx);
+    eax = edx;
+    esi = rd(edi + eax);
+    wd(0x0028, esi);
+    if (esi == 0)
+        return;
+    edx &= 0x3C;
+    wd(0x0024, edx);
+    eax = edx;
+    ebx = ecx + eax;
+    ebp = (uint32_t)(int32_t)(int16_t)rw(ebx);
+    ebp >>= 1;
+    wd(0x002C, ebp);
+    edi = (uint32_t)(int32_t)(int16_t)rw(ebx + 2);
+    wd(0x0030, edi);
+    edi -= 8;
+    wd(m + 0xB1E7, edi);
+    wd(0x0034, edi);
+    ww(0x003C, (uint16_t)edi);
+    ecx = rd(0x0024);
+    ecx = (ecx & 0xFFFF0000u) | ((ecx >> 4) & 0xFFFF);
+    wd(0x0024, ecx);
+    eax = 3;
+    eax = (eax & 0xFFFF0000u) | ((eax - (ecx & 0xFFFF)) & 0xFFFF);
+    wd(0x0020, eax);
+    ebp = 0xF;
+    ebx = rd(0x0014);
+    edx = 0xF;
+    edx = (edx & 0xFFFFFF00u) | ((edx - rb(ebx)) & 0xFF);
+    ecx = eax;
+    ecx = (ecx & 0xFFFFFF00u) | (ecx & 0xFF);
+    dx = (uint16_t)(edx & 0xFFFF);
+    dx = (uint16_t)(dx >> (ecx & 31));
+    edx = dx;
+    ebp = rd(0x003C);
+    edi = ebp & 0xFFFF;
+    edx = (uint32_t)((int32_t)edx * (int32_t)edi);
+    wd(m + 0xB1F3, edx);
+    ebx = (uint32_t)(int32_t)(int16_t)rw(m + 0xCACDA + 2 * off);
+    dx = (uint16_t)(rb(m + 0x97E4) & 0xF);
+    eax = ebx;
+    edx = (uint32_t)dx + 0x12;
+    {
+        int32_t prod = (int32_t)(int16_t)eax * (int16_t)edx;
+        eax = (uint32_t)(int32_t)(int16_t)(prod / 62);
+    }
+    eax += 0x30;
+    eax += rd(0x002C);
+    wd(m + 0xB1EF, eax);
+    ecx = rd(0x0028);
+    wd(m + 0xB1EB, 0x10);
+    T4_SEA_SPRITE(m, ecx);
+}
+
+/* table 4 CODE:A3EC (SEA_DRAW): the water band, five columns, the
+ * boat, the arrow. */
+static void T4_SEA_DRAW(uint32_t m)
+{
+    uint32_t st = rd(0x0014), saved = rd(m + 0xA3EC), ebp;
+    uint32_t esi, edi, ebx, ecx, edx, eax;
+    uint8_t h;
+
+    wd(0x0004, m + 0xA3EC);
+    esi = rd(0x0014);
+    wd(0x0014, st);
+    edi = m + 0xAD4A;
+    ebp = rw(m + 0xACD0);
+    edi += ebp & 0xFFFF;
+    wd(0x0014, edi);
+    ebx = 6;
+    h = rb(edi);
+    ebx = (ebx & 0xFFFFFF00u) | ((ebx - h) & 0xFF);
+    if ((int8_t)(ebx & 0xFF) > 0) {
+        ebx = 0u - ebx;
+        ebx += 0x10;
+        wd(0x0028, ebx);
+        ecx = (rd(m + 0xACCE) & 3) + 0x2C;
+        eax = 0xA0;
+        eax = (eax * (ebx & 0xFFFF)) & 0xFFFF;
+        wd(m + 0xB1F3, eax);
+        edx = rd(0x0028);
+        T4_SEA_WATER(m, ecx, edx);
+    }
+    esi = rd(0x000C);
+    ebx = rd(0x0020);
+    edi = m + 0xAA98;
+    wd(0x0000, edi);
+    ecx = m + 0xAA54;
+    wd(0x0010, ecx);
+    ebx = rd(0x0020);
+    ebx = (ebx & 0xFFFFFF00u) | rb(m + 0xACD2);
+    wd(0x0020, ebx);
+    ebx = (ebx & 0xFFFF0000u) | (uint32_t)(uint16_t)(int8_t)(ebx & 0xFF);
+    ebp = m + 0xACB9;
+    ebp += ebx & 0xFFFF;
+    wd(0x0008, ebp);
+    T4_SEA_COLUMN(m, ebp, 0);
+    T4_SEA_COLUMN(m, ebp, 1);
+    T4_SEA_COLUMN(m, ebp, 3);
+    T4_SEA_COLUMN(m, ebp, 4);
+    T4_SEA_COLUMN(m, ebp, 2);
+    wd(0x0024, m + 0x97E5);
+    wd(0x0014, st);
+    ebp = rd(st + 0x2A0E);
+    wd(0x0004, ebp);
+    wd(m + 0xB1EF, 0x48);
+    wd(m + 0xB1E7, 0x10);
+    wd(m + 0xB1EB, 8);
+    ecx = 0x11;
+    wd(m + 0xB1F3, 0x500);
+    T4_SEA_SPRITE2(m, ecx);
+    ecx = 3;
+    edx = rd(0x000C);
+    ecx = (ecx & 0xFFFFFF00u) | ((ecx - 0) & 0xFF);
+    ecx = (ecx & 0xFFFFFF00u) | (rb(m + 0xACCA) & 0xFF);
+    ecx &= 3;
+    wd(0x0020, ecx);
+    if (ecx != 0) {
+        ecx = rw(m + T4_SEA_STATE);
+        wd(0x0020, ecx);
+        if (ecx != 0) {
+            ebx = 0;
+            esi = m + 0xAC98 + ecx;
+            edi = rd(esi);
+            wd(0x0000, edi);
+            esi += 4;
+            ebx = rw(esi);
+            wd(m + 0xB1EF, ebx);
+            wd(m + 0xB1E7, 0x10);
+            wd(m + 0xB1EB, 0x10);
+            ecx = edi;
+            wd(m + 0xB1F3, 0);
+            T4_SEA_SPRITE(m, ecx);
+            wd(0x0008, ebx);
+            esi = edi;
+            wd(0x0010, esi);
+        }
+    }
+    esi = rd(0x0004);
+    esi -= 4;
+    wd(0x0004, esi);
+    wd(esi, saved);
+}
+
+/* table 4 CODE:9878 (SEA_UPDATE, the object's +4), once a frame: a
+ * running script's step, else Enter's script once, else immunity and
+ * the frame count down, the scroll on, the random number stirred, the
+ * steering, the bonus check, a row with the course step's values when
+ * its frames run out, then the drawing. 1 when the end flag is set. */
+static int T4_SEA_UPDATE(void)
+{
+    uint32_t m = rd(N_MODULE_BASE), st = rd(0x0014);
+    uint32_t esi, edi, ebx;
+    uint8_t cl;
+
+    wd(0x000C, m + 0x97E5);
+    esi = rd(0x000C);
+    edi = rd(m + 0xACE6);
+    wd(0x0020, edi);
+    if (edi != 0)
+        return T4_SEA_SCRIPT_STEP(m);
+    if (rb(st + 0xF1) == 0x1C && rb(m + 0xACD8) == 0) {
+        uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010);
+
+        wb(m + 0xACD8, 0xFF);
+        wb(m + 0xACE5, 0x18);
+        wd(m + 0xACE6, m + 0x9A88);
+        wd(0x0000, m + 0x1953D);
+        wd(0x0010, rd(m + 0x9874));
+        host_call(0x04);
+        wd(0x0010, keep10);
+        wd(0x0000, keep0);
+    } else {
+        T4_SEA_CLEAR();
+        if (rb(m + 0xACCB) != 0)
+            wb(m + 0xACCB, (uint8_t)(rb(m + 0xACCB) - 1));
+        wb(m + 0xACCA, (uint8_t)(rb(m + 0xACCA) + 1));
+        ebx = rd(0x0020);
+        ebx = (ebx & 0xFFFFFF00u) | rb(m + 0xACCC);
+        ebx = (ebx & 0xFFFF0000u) | (((ebx & 0xFF) >> 1) & 0xFFFF);
+        wd(0x0020, ebx);
+        ebx = (rd(m + 0xACD0) + (ebx & 0xFFFF)) & 0xFFFF;
+        ww(m + 0xACD0, (uint16_t)ebx);
+        ww(m + 0xACD0, (uint16_t)(rw(m + 0xACD0) & 0x1FF));
+        T4_SEA_RANDOM(m);
+        T4_SEA_STEER(m, st);
+        T4_SEA_BONUS_CHECK(m);
+        cl = (uint8_t)(rb(m + 0xACD9) - 1);
+        wb(m + 0xACD9, cl);
+        if (cl == 0) {
+            edi = m + 0xACFA;
+            ebx = rb(m + 0xACD4);
+            edi += ebx & 0xFFFF;
+            wd(0x0020, ebx);
+            cl = rb(edi);
+            wb(m + 0xACD9, cl);
+            edi++;
+            cl = rb(edi);
+            wb(m + 0xACCC, cl);
+            edi++;
+            wd(0x0000, edi);
+            cl = rb(edi);
+            wb(m + 0xACD5, cl);
+            wd(m + 0xACCE, rd(m + 0xACCE) + 1);
+            T4_SEA_ROW(m);
+        }
+        T4_SEA_DRAW_PREP(m);
+        T4_SEA_DRAW(m);
+    }
+    wd(0x0020, rb(m + 0xACE4) != 0);
+    return rb(m + 0xACE4) != 0;
+}
+
 /* table 4 CODE:97ED (SEA_START, the object's +0): the host vector kept,
  * the 28 bytes ACBA..ACD5 cleared, ACBA's word to [0000h], no Enter yet,
  * no bonus on the water, no end, a row each frame, the random number
@@ -762,10 +1574,6 @@ static void T4_SEA_START(void)
     wb(m + 0xACB8, 0);
     wb(m + 0xACE4, 0);
     wb(m + 0xACD9, 1);
-    /* SCRATCH (sea-game comparison, removed afterwards): the run's
-     * poke clearing the serve's Enter at the object's start
-     * (dosrun -poke 2A6BAD#1 10DB5F 00: image offset 0CC2Fh). */
-    wb(0x0CC2F, 0);
     T4_SEA_RANDOM(m);
     wd(0x0020, 0);
     T4_SEA_CLEAR_BUF();
@@ -783,6 +1591,8 @@ int MOD_UPDATE(uint32_t at)
         return T2_TUNE_UPDATE();
     if (table == 1 && off == 0x9B25)
         return T1_SHOOT_UPDATE();
+    if (table == 4 && off == 0x9878)
+        return T4_SEA_UPDATE();
     snprintf(name, sizeof name, "table %u's module at CODE:%X", table, (unsigned)off);
     pi_stop(name);
     return 1;

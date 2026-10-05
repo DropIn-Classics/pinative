@@ -2078,6 +2078,49 @@ game in a run", the state poked at the first update, `-poke 2DDBC5#1
    and its routines, then forced scenarios (a bonus, the extra ball,
    the crash) against the runs above.
 
+   Finished 2026-10-04, on Windows: the whole update with every helper
+   (`STEER`, `ROW` with the rock/bonus/extra-ball meetings, `BONUS_CHECK`,
+   `DRAW_PREP`, `DRAW` with its water/column/boat/arrow blits, the
+   scripts with both ends) in `src/modcode.c`; no `SEA_UPDATE` stop is
+   left. Two mistranslations found by the runs and fixed: the script
+   and sprite tables read with `lrd` (absolute) for `rd` (DS-relative)
+   in `T4_SEA_SCRIPT_STEP` (twice), `T4_SEA_COLUMN` and `T4_SEA_DRAW`
+   (build/T004.ASM: `MOV EDI,[EDI]`, `MOV ESI,[EDI+EAX]`,
+   `MOV EDI,[ESI]`, all DS); every script end had stopped the port.
+   The `DRAW` debug stub is replaced by the real drawing, every
+   `SCRATCH`/`DBG` line is out of `modcode.c`. The port-side
+   `take_count` forcing hook (`port/src/events.c`) stays, mirroring
+   dosrun's `-poke` options; the start's Enter-clearing poke is gone on
+   both sides, so both run Enter's script at once.
+
+   Compared with the same keys by frame (the port's DK_KEYS pictures
+   6227:3B and 6287:1C for the run's F1 and launch; sea update N at
+   port picture 6621+N, one update a frame): after `SEA_START`
+   (dosrun `-break 2A6C38#1`, port picture 6621), after update 1
+   (`#2`, 6622) and after update 5 (`#6`, 6626) the sea state
+   ACBAh..ACE6h is byte-equal but ACD6h (the PIT random: run 240Ch,
+   port 4142h) and the script pointer's module-shifted bytes (the
+   module loads at 19C490h in the run, 19BD00h in the port, by
+   design); the main program but the known classes, the config path
+   (`\ILLUSION.CFG` in the run) and the kept host vector's high byte
+   (run 02h, port 00h: the address spaces differ by design).
+   The outcomes differ by the random: with no keys the port takes 15
+   bonuses and the extra ball (ACE4h set, 2569 updates, the same end
+   state at DK_FRAMES 9800, 10100 and 20000) while the original meets
+   a rock (386 updates, `SEA_CRASH` once, `SEA_CRASH_END` once, the
+   extra ball never); both return to game phase 4. The crash end is
+   reached in the original only: no clean port run meets a rock, so
+   `T4_SEA_CRASH_END` never executes in the port (its dispatch is the
+   exercised script-end dispatch, its twelve lines reviewed against
+   the disassembly). A headless run of table 4 with random flipper
+   input for 150000 frames (seed 404, `build/soak_dkkeys.txt`)
+   stops nowhere but `FRAME_STEP` at the frame bound (144173 table
+   frames). Video memory spot-checked after update 1 (no sea drawing
+   yet): 2560 of 262144 bytes differ, all in the top 10K of plane 0;
+   the sea's own pixels are not compared. Not verified: a crash end
+   in the port, pixel-equal sea drawing, the PIT-exact spawn sequence
+   (approximate by design).
+
 ### Table 4's sea game in a run
 
 Found 2026-09-29, on Linux, from table 4's module (read in part) and runs
