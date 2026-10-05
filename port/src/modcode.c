@@ -957,23 +957,33 @@ static void T4_SEA_ROW(uint32_t m)
                     ebx = rd(0x0020);
                     wb(p, (uint8_t)ebx);
                     wd(0x0000, p + 1);
-                } else if (rb(m + 0xACCB) != 0) {
-                    p = rd(0x0000);
-                    ebx = rd(0x0020);
-                    wb(p, (uint8_t)ebx);
-                    wd(0x0000, p + 1);
                 } else {
-                    ebx = (ebx & 0xFFFF0000u) | (ebx & 0x3000);
-                    wd(0x0024, ebx);
-                    if ((ebx & 0xFFFF) == 0) {
+                    /* a bonus of the course step's kind only with none
+                     * on the water (ACB8) and bits 12..13 not both 0;
+                     * else a rock (byte 1); no rock while immunity
+                     * (ACCB) runs, in which case the 0 already in
+                     * [20H] stays */
+                    int bonus = rb(m + 0xACB8) == 0;
+
+                    if (bonus) {
+                        ebx = (ebx & 0xFFFF0000u) | (ebx & 0x3000);
+                        wd(0x0024, ebx);
+                        bonus = (ebx & 0xFFFF) != 0;
+                    }
+                    if (bonus) {
+                        wb(m + 0xACB8, 0xFF);
+                        ebx = (0x21 + rb(m + 0xACD5)) & 0xFF;
+                        wd(0x0020, ebx);
                         p = rd(0x0000);
                         ebx = rd(0x0020);
                         wb(p, (uint8_t)ebx);
                         wd(0x0000, p + 1);
+                    } else if (rb(m + 0xACCB) == 0) {
+                        wd(0x0020, 1);
+                        p = rd(0x0000);
+                        wb(p, 1);
+                        wd(0x0000, p + 1);
                     } else {
-                        wb(m + 0xACB8, 0xFF);
-                        ebx = 0x21 + rb(m + 0xACD5);
-                        wd(0x0020, ebx);
                         p = rd(0x0000);
                         ebx = rd(0x0020);
                         wb(p, (uint8_t)ebx);
