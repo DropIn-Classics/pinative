@@ -271,21 +271,6 @@ static int take_count(void)
 {
     uint32_t c = rd(rd(0x0008) + 0x34), k;
     uint16_t cx, dx, si;
-    /* SCRATCH (sea-game comparison, removed afterwards): the run's
-     * pokes at the first count-up (dosrun -poke 12F026#1 ...). */
-    static int sea_pokes = 0;
-    if (rb(N_TABLE_NUM) == 4 && c - rd(N_MODULE_BASE) == 0x5F60 && ++sea_pokes == 1) {
-        uint32_t m = rd(N_MODULE_BASE), z = m + 0x33FF;
-
-        fprintf(stderr, "scratch: table-4 count-up pokes applied\n");
-        wb(m + 0x5EA3, 1);
-        wd(z, 0);
-        wb(z + 4, 0x50);
-        wb(z + 5, 0x01);
-        wb(z + 6, 0x3C);
-        wb(z + 7, 0x02);
-        ww(m + 0x5F76, 1);
-    }
 
     wd(0x0000, c);
     k = c + sx16(rw(0x0038)) * 2;
