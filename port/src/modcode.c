@@ -792,10 +792,11 @@ static void T4_SEA_BCD6(void)
 }
 
 /* table 4 CODE:9EC8 (SEA_CRASH, the boat met a rock): the crash script
- * and its audio record; the row loop goes on. */
+ * and its audio record; the row loop goes on ([0000] kept, as the
+ * original's POP restores the column pointer). */
 static void T4_SEA_CRASH(uint32_t m)
 {
-    uint32_t keep10 = rd(0x0010);
+    uint32_t keep0 = rd(0x0000), keep10 = rd(0x0010);
 
     wb(m + 0xACE5, 0x36);
     wd(m + 0xACE6, m + 0x9AEC);
@@ -803,8 +804,7 @@ static void T4_SEA_CRASH(uint32_t m)
     wd(0x0010, rd(m + 0x9874));
     host_call(0x04);
     wd(0x0010, keep10);
-    /* [0000h] left at the object, as the original's POP leaves it */
-    wd(0x0000, rd(0x000C));
+    wd(0x0000, keep0);
 }
 
 /* table 4 CODE:9F1D (SEA_EXTRA_BALL, kind 6): its stream queued and the
@@ -957,23 +957,33 @@ static void T4_SEA_ROW(uint32_t m)
                     ebx = rd(0x0020);
                     wb(p, (uint8_t)ebx);
                     wd(0x0000, p + 1);
-                } else if (rb(m + 0xACCB) != 0) {
-                    p = rd(0x0000);
-                    ebx = rd(0x0020);
-                    wb(p, (uint8_t)ebx);
-                    wd(0x0000, p + 1);
                 } else {
-                    ebx = (ebx & 0xFFFF0000u) | (ebx & 0x3000);
-                    wd(0x0024, ebx);
-                    if ((ebx & 0xFFFF) == 0) {
+                    /* a bonus of the course step's kind only with none
+                     * on the water (ACB8) and bits 12..13 not both 0;
+                     * else a rock (byte 1); no rock while immunity
+                     * (ACCB) runs, in which case the 0 already in
+                     * [20H] stays */
+                    int bonus = rb(m + 0xACB8) == 0;
+
+                    if (bonus) {
+                        ebx = (ebx & 0xFFFF0000u) | (ebx & 0x3000);
+                        wd(0x0024, ebx);
+                        bonus = (ebx & 0xFFFF) != 0;
+                    }
+                    if (bonus) {
+                        wb(m + 0xACB8, 0xFF);
+                        ebx = (0x21 + rb(m + 0xACD5)) & 0xFF;
+                        wd(0x0020, ebx);
                         p = rd(0x0000);
                         ebx = rd(0x0020);
                         wb(p, (uint8_t)ebx);
                         wd(0x0000, p + 1);
+                    } else if (rb(m + 0xACCB) == 0) {
+                        wd(0x0020, 1);
+                        p = rd(0x0000);
+                        wb(p, 1);
+                        wd(0x0000, p + 1);
                     } else {
-                        wb(m + 0xACB8, 0xFF);
-                        ebx = 0x21 + rb(m + 0xACD5);
-                        wd(0x0020, ebx);
                         p = rd(0x0000);
                         ebx = rd(0x0020);
                         wb(p, (uint8_t)ebx);
