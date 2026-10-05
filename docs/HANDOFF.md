@@ -2203,6 +2203,14 @@ Illusions.app/Contents/Resources/Illusions.boxer`):
   not looked at). A second `game.gog` (8,805,888 bytes, another SHA-256)
   is in `C.harddisk/illusion/`, not looked at.
 
+For the native port's first-start copy, doskit now falls back from a cue
+track missing beside `game.inst` to a same-named file in a `*.cdmedia`
+directory under the enclosing `*.boxer`. A synthetic Boxer-layout case in
+`doskit/tests/selftest.py` checks that the track is copied into the cue
+sheet's `MUSIC/` path and can be opened. The actual Mac release was not yet
+copied with this fallback; opening its cue sheet directly without copying
+is also not handled by this fallback.
+
 For the runner the Windows layout was made from symbolic links in a
 scratch folder (`game.inst`, `game.gog`, `MUSIC/Track02..51.ogg`); `-cd
 -cue FOLDER/game.inst` then prints 51 tracks, lead-out 64:13:38, track 2

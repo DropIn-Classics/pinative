@@ -237,8 +237,10 @@ data folder's `game` and `cd` (the copied game files, CD image and
 music) and keep pinative.cfg and ILLUSION.CFG, so a fresh copy from the
 GOG release can be tried (since 2026-10-01).
 
-No release made yet; no package started from a download. The new
-workflow not run yet (the macOS app, its static SDL2, the checks).
+No release made yet; no package started from a download. CI has run on
+master for Windows, macOS and Linux and builds the platform packages.
+Launching packages started from a download and exercising update
+download, replacement and restart are still unchecked.
 
 ## Checked
 
@@ -892,3 +894,19 @@ workflow not run yet (the macOS app, its static SDL2, the checks).
   vector equal but the random number ACD6h (the PIT's counter 0, here
   the same rate from the picture count); the image but the known
   classes. `SEA_UPDATE` still stops the port.
+- 2026-10-04, macOS 15.7.3 (Intel, Apple clang 17): the GOG Mac
+  release's image is named (`mac_bundle` in src/main.c, the path of
+  docs/HANDOFF.md, "The GOG release on the Mac"). Before, a first start
+  with `/Applications/Pinball Gold Illusions.app` installed and an empty
+  data folder said the game's files were not found. With it the
+  headless build (`-setup`, DK_KEYS, DK_SHOTS) unpacked `game`
+  (ILLUSION.EXE, INSTALL.EXE) into `~/Library/Application
+  Support/Pinball Illusions`, showed the setup screen and played table
+  1 (20.000 points at picture 2200). Only this one installation was
+  tried; the window build's offer to copy was not seen (no screen
+  access in that session). The cue sheet names `MUSIC\Track02..51.ogg`,
+  while tracks 3..51 are in the bundle's `game.cdmedia`. Doskit's copy
+  routine now searches the enclosing `.boxer` bundle for missing `.cdmedia`
+  files and keeps them in the cue sheet's layout; its synthetic selftest
+  passes. Copying this actual Mac release with the fallback has not been
+  rerun; direct playback from the bundle without copying remains unchecked.
