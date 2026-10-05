@@ -6,6 +6,7 @@
  * Paths not translated stop the port by name.
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include "game.h"
 #include "names.h"
 #include "pmem.h"
@@ -263,6 +264,24 @@ static int COUNTER_LEVELS(void)
     }
 }
 
+/* A test cheat for table 4's sea game (test-only, not for release):
+ * with PI_TEST_SEA=1 in the environment, the first meeting counter
+ * starts the sea game, so its steering can be tried without playing
+ * for the rare trigger. Pokes the same bytes a dosrun -poke run
+ * uses; the counter then runs on as usual. */
+static int sea_cheat_armed(void)
+{
+    static int checked = 0, armed = 0;
+
+    if (!checked) {
+        const char *e = getenv("PI_TEST_SEA");
+
+        checked = 1;
+        armed = e != 0 && e[0] == '1';
+    }
+    return armed;
+}
+
 /* the start of take handlers 6 and 15h: the slot-16 counter at the
  * record's +34h counted up for the player (+6, and +16h), its stream +48h
  * when it reaches its top +4 (0: none), then COUNTER_LEVELS (its result,
@@ -271,6 +290,21 @@ static int take_count(void)
 {
     uint32_t c = rd(rd(0x0008) + 0x34), k;
     uint16_t cx, dx, si;
+    static int sea_cheated = 0;
+
+    if (sea_cheat_armed() && !sea_cheated && rb(N_TABLE_NUM) == 4 &&
+        c - rd(N_MODULE_BASE) == 0x5F60) {
+        uint32_t m = rd(N_MODULE_BASE), z = m + 0x33FF;
+
+        sea_cheated = 1;
+        wb(m + 0x5EA3, 1);
+        wd(z, 0);
+        wb(z + 4, 0x50);
+        wb(z + 5, 0x01);
+        wb(z + 6, 0x3C);
+        wb(z + 7, 0x02);
+        ww(m + 0x5F76, 1);
+    }
 
     wd(0x0000, c);
     k = c + sx16(rw(0x0038)) * 2;

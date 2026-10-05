@@ -2180,6 +2180,12 @@ crash ends the game with "ITEM COLLECTED / FISH".
   `... 2A808B 96`): the crash at 141.89 all the same.
 - Not checked: which file the pictures come from, what each picture
   looks like beyond the boat, the arrow and the band.
+- Test cheat (2026-10-05, port/src/events.c, test-only): with
+  PI_TEST_SEA=1 the first meeting counter (module 5F60h) starts the
+  sea game with the same pokes as the dosrun runs above, so its
+  steering can be tried without playing for the rare trigger.
+  Verified headless: with the variable the sea runs (ACCA 253),
+  without it nothing starts and the counter runs on as usual.
 
 ### Table 3's opcode-14h record
 
