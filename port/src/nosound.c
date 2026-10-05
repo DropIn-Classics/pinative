@@ -415,6 +415,17 @@ static unsigned out_head, out_tail;    /* written by the game, read by the audio
 static int out_on;
 static int rw_rate = 44100;             /* the rate the audio was started at */
 
+static void out_reset(void)
+{
+    int running = out_on == 1;
+
+    if (running)
+        plat_audio_lock();
+    out_head = out_tail = 0;
+    if (running)
+        plat_audio_unlock();
+}
+
 static void out_fill(int16_t *out, int frames, void *user)
 {
     int i;
@@ -615,8 +626,13 @@ static int CMD_PLAY(NsRegs *r)
         pi_stop("NOSOUND: command 1's buffers (CODE:0A53)");
     /* CODE:0C1F */
     ww(D_MIX_POS, 0);
+    /* Prime the whole ring from silence before TIMER_START puts the read
+     * head back at zero. A stopped song leaves SAMPLE_POS mid-ring. */
+    wd(D_SAMPLE_POS, rw(D_MIX_SIZE));
+    clear(rw(D_DMA_SEL), rw(D_DMA_SIZE));
     for (i = rw(D_NBUF); i; i--)
         MIX_UPDATE();
+    out_reset();
     /* CODE:091D */
     if (rb(D_VSYNC_ON) == 0xFF)
         ww(D_TIMER_COUNT, rw(D_VS_IRQS));
