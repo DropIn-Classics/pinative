@@ -60,6 +60,7 @@ void VGA_INIT(void)
     for (i = 0; i < 0x438 * 4; i++)
         vga_write((uint16_t)(0xA916 + i), lrb(base + 0x30A + (uint32_t)i));
     pmax_free(sel);
+    frame_wait();               /* present the picture before the table loads */
 }
 
 void HISCORE_INIT(void)
